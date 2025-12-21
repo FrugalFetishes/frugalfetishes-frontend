@@ -6,6 +6,9 @@
 
 // ====== CONFIG ======
 const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
+
+// DEV ONLY: matches backend env DEV_OTP_KEY (used to receive devOtp for any email)
+const DEV_OTP_KEY = "ff-dev";
 const FIREBASE_WEB_API_KEY = "AIzaSyBcMM5dAFqbQXcN0ltT4Py6SeA5Fzg-nD8";
 
 // ====== DOM ======
@@ -218,6 +221,7 @@ async function jsonFetch(url, options = {}) {
 async function startAuth(email) {
   return jsonFetch(`${BACKEND_BASE_URL}/api/auth/start`, {
     method: "POST",
+    headers: DEV_OTP_KEY ? { "x-dev-otp-key": DEV_OTP_KEY } : {},
     body: JSON.stringify({ email })
   });
 }
