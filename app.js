@@ -32,10 +32,18 @@ const feedListEl = $("feedList");
 const btnLoadMatches = $("btnLoadMatches");
 const matchesStatusEl = $("matchesStatus");
 const matchesListEl = $("matchesList");
+const btnLoadThread = $("btnLoadThread");
+const btnSendMessage = $("btnSendMessage");
+const messageTextEl = $("messageText");
+const threadMetaEl = $("threadMeta");
+const threadStatusEl = $("threadStatus");
+const threadListEl = $("threadList");
 const errorBoxEl = $("errorBox");
 
 let lastCodeId = null;
 let allFeedItems = [];
+let selectedMatchId = null;
+let selectedOtherUid = null;
 
 // ====== Storage ======
 const storage = {
@@ -147,6 +155,97 @@ async function getMatches() {
     method: "GET",
     headers: { "Authorization": `Bearer ${idToken}` }
   });
+}
+
+
+async function getThread(matchId, limit = 50) {
+  const idToken = storage.idToken;
+  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  if (!matchId) throw new Error("No match selected.");
+  const qs = new URLSearchParams({ matchId, limit: String(limit) }).toString();
+  return jsonFetch(`${BACKEND_BASE_URL}/api/messages/thread?${qs}`, {
+    method: "GET",
+    headers: { "Authorization": `Bearer ${idToken}` }
+  });
+}
+
+async function sendMessage(matchId, text) {
+  const idToken = storage.idToken;
+  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  if (!matchId) throw new Error("No match selected.");
+  if (!text || !text.trim()) throw new Error("Message text is empty.");
+  return jsonFetch(`${BACKEND_BASE_URL}/api/messages/send`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${idToken}` },
+    body: JSON.stringify({ matchId, text: text.trim() })
+  });
+}
+
+function normalizeThreadResponse(r) {
+  if (!r) return [];
+  if (Array.isArray(r.items)) return r.items;
+  if (Array.isArray(r.messages)) return r.messages;
+  if (Array.isArray(r.data)) return r.data;
+  if (Array.isArray(r)) return r;
+  return [];
+}
+
+function renderThread(messages) {
+  if (!threadListEl) return;
+  threadListEl.innerHTML = "";
+  if (!messages || messages.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "No messages yet.";
+    threadListEl.appendChild(li);
+    return;
+  }
+
+  for (const msg of messages) {
+    const li = document.createElement("li");
+
+    const title = document.createElement("div");
+    title.className = "profileTitle";
+    const from = msg.fromUid || msg.from || msg.senderUid || "(unknown)";
+    title.textContent = `From: ${from}`;
+    li.appendChild(title);
+
+    const actions = document.createElement("div");
+    actions.className = "row";
+
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.textContent = "Open Chat";
+    openBtn.addEventListener("click", () => {
+      selectedMatchId = String(matchId);
+      selectedOtherUid = otherUid ? String(otherUid) : null;
+      if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Selected: ${selectedOtherUid} (matchId: ${selectedMatchId})` : `Selected matchId: ${selectedMatchId}`);
+      if (threadStatusEl) setStatus(threadStatusEl, "Click 'Load Thread' to view messages.");
+      if (threadListEl) threadListEl.innerHTML = "";
+      if (messageTextEl) messageTextEl.focus();
+    });
+
+    actions.appendChild(openBtn);
+    li.appendChild(actions);
+
+    const kv = document.createElement("div");
+    kv.className = "kv";
+
+    const add = (k, v) => {
+      const kdiv = document.createElement("div");
+      kdiv.className = "key";
+      kdiv.textContent = k;
+      const vdiv = document.createElement("div");
+      vdiv.textContent = v;
+      kv.appendChild(kdiv);
+      kv.appendChild(vdiv);
+    };
+
+    add("Text", msg.text || "");
+    if (msg.createdAt) add("createdAt", JSON.stringify(msg.createdAt));
+
+    li.appendChild(kv);
+    threadListEl.appendChild(li);
+  }
 }
 
 function normalizeMatchesResponse(r) {
@@ -475,6 +574,54 @@ if (btnLoadMatches) {
 }
 
 
+if (btnLoadThread) {
+  btnLoadThread.addEventListener("click", async () => {
+    clearError();
+    if (threadStatusEl) setStatus(threadStatusEl, "");
+    if (threadListEl) threadListEl.innerHTML = "";
+    btnLoadThread.disabled = true;
+    try {
+      if (!selectedMatchId) throw new Error("No match selected. Click 'Open Chat' on a match first.");
+      if (threadStatusEl) setStatus(threadStatusEl, "Loading thread...");
+      const r = await getThread(selectedMatchId, 50);
+      const msgs = normalizeThreadResponse(r);
+      renderThread(msgs);
+      if (threadStatusEl) setStatus(threadStatusEl, `Loaded ${msgs.length} messages ✅`);
+    } catch (e) {
+      if (threadStatusEl) setStatus(threadStatusEl, "");
+      showError(`Thread failed: ${e.message}`);
+    } finally {
+      btnLoadThread.disabled = false;
+    }
+  });
+}
+
+if (btnSendMessage) {
+  btnSendMessage.addEventListener("click", async () => {
+    clearError();
+    btnSendMessage.disabled = true;
+    try {
+      if (!selectedMatchId) throw new Error("No match selected. Click 'Open Chat' on a match first.");
+      const text = messageTextEl ? messageTextEl.value : "";
+      if (threadStatusEl) setStatus(threadStatusEl, "Sending...");
+      const r = await sendMessage(selectedMatchId, text);
+      if (messageTextEl) messageTextEl.value = "";
+      // After send, reload thread so user sees it immediately
+      const t = await getThread(selectedMatchId, 50);
+      const msgs = normalizeThreadResponse(t);
+      renderThread(msgs);
+      if (threadStatusEl) setStatus(threadStatusEl, "Sent ✅ (credits decremented server-side)");
+    } catch (e) {
+      if (threadStatusEl) setStatus(threadStatusEl, "");
+      showError(`Send failed: ${e.message}`);
+    } finally {
+      btnSendMessage.disabled = false;
+    }
+  });
+}
+
+
+
 
 btnLogout.addEventListener("click", () => {
   storage.idToken = null;
@@ -485,6 +632,11 @@ btnLogout.addEventListener("click", () => {
   renderFeed([]);
   if (matchesListEl) matchesListEl.innerHTML = "";
   if (matchesStatusEl) setStatus(matchesStatusEl, "");
+  selectedMatchId = null;
+  selectedOtherUid = null;
+  if (threadListEl) threadListEl.innerHTML = "";
+  if (threadStatusEl) setStatus(threadStatusEl, "");
+  if (threadMetaEl) setStatus(threadMetaEl, "");
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
