@@ -71,6 +71,28 @@
       <ul id="matchesList" class="list" aria-label="Matches"></ul>
     </section>
 
+
+    <section class="card" aria-label="Messaging">
+      <h2>Messaging</h2>
+      <p class="muted">Select a match, then load and send messages.</p>
+
+      <div class="row">
+        <button id="btnLoadThread" type="button">Load Thread</button>
+      </div>
+
+      <div id="threadMeta" class="muted" role="status" aria-live="polite"></div>
+
+      <label for="messageText">Message</label>
+      <input id="messageText" type="text" placeholder="Type a message…" />
+
+      <div class="row">
+        <button id="btnSendMessage" type="button">Send Message (costs 1 credit)</button>
+      </div>
+
+      <div id="threadStatus" class="muted" role="status" aria-live="polite"></div>
+      <ul id="threadList" class="list" aria-label="Message thread"></ul>
+    </section>
+
     <section class="card" aria-label="Feed">
       <h2>Feed</h2>
       <p class="muted">You must be signed in to load the feed.</p>
