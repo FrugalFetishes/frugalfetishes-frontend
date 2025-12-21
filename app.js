@@ -154,6 +154,35 @@ function renderFeed(items) {
     title.textContent = `${p.uid} — ${p.age ?? "?"} — ${p.city ?? ""}`;
     li.appendChild(title);
 
+    // Photo (optional): if profile has photos array of URLs, show first one. Otherwise show placeholder.
+    const photoWrap = document.createElement("div");
+    photoWrap.style.margin = "8px 0";
+
+    const firstPhoto = Array.isArray(p.photos) && p.photos.length > 0 ? p.photos[0] : null;
+    if (firstPhoto && typeof firstPhoto === "string") {
+      const img = document.createElement("img");
+      img.src = firstPhoto;
+      img.alt = `${p.uid} photo`;
+      img.loading = "lazy";
+      img.style.width = "100%";
+      img.style.maxWidth = "420px";
+      img.style.borderRadius = "12px";
+      img.style.border = "1px solid #dddddd";
+      photoWrap.appendChild(img);
+    } else {
+      const ph = document.createElement("div");
+      ph.textContent = "No photo yet";
+      ph.style.padding = "12px";
+      ph.style.borderRadius = "12px";
+      ph.style.border = "1px dashed #dddddd";
+      ph.style.background = "#ffffff";
+      ph.style.color = "#444444";
+      ph.style.maxWidth = "420px";
+      photoWrap.appendChild(ph);
+    }
+
+    li.appendChild(photoWrap);
+
     const actions = document.createElement("div");
     actions.className = "row";
 
