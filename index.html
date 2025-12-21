@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>FrugalFetishes — Minimal Web App</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="container" aria-label="FrugalFetishes Minimal App">
+    <h1>FrugalFetishes</h1>
+
+    <section class="card" aria-label="Login">
+      <h2>Login</h2>
+      <p class="muted">Step 1: enter your email, then use the OTP code.</p>
+
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="test@example.com" autocomplete="email" />
+
+      <div class="row">
+        <button id="btnStart" type="button">Send OTP</button>
+        <button id="btnLogout" type="button" class="secondary">Logout</button>
+      </div>
+
+      <div id="startResult" class="muted" role="status" aria-live="polite"></div>
+
+      <hr />
+
+      <label for="otp">OTP code</label>
+      <input id="otp" type="text" inputmode="numeric" placeholder="6 digits" autocomplete="one-time-code" />
+
+      <button id="btnVerify" type="button">Verify + Sign In</button>
+
+      <div id="authStatus" class="muted" role="status" aria-live="polite"></div>
+      <div id="errorBox" class="error" role="alert" aria-live="assertive" hidden></div>
+    </section>
+
+    <section class="card" aria-label="Feed">
+      <h2>Feed</h2>
+      <p class="muted">You must be signed in to load the feed.</p>
+
+      <div class="row">
+        <button id="btnLoadFeed" type="button">Load Feed</button>
+        <button id="btnCredits" type="button" class="secondary">Check Credits</button>
+      </div>
+
+      <div id="feedStatus" class="muted" role="status" aria-live="polite"></div>
+      <ul id="feedList" class="list" aria-label="Profiles"></ul>
+    </section>
+  </main>
+
+  <script src="./app.js"></script>
+</body>
+</html>
