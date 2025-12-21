@@ -376,6 +376,25 @@ async function hydrateProfileFromServer() {
     if (Array.isArray(profile.interests) && profileInterestsEl) profileInterestsEl.value = profile.interests.join(", ");
     if (profile.location && typeof profile.location.lat === "number" && profileLatEl) profileLatEl.value = String(profile.location.lat);
     if (profile.location && typeof profile.location.lng === "number" && profileLngEl) profileLngEl.value = String(profile.location.lng);
+    // Photos: prefer profile.photos, fallback to user.photos
+    const photos = (profile && Array.isArray(profile.photos) ? profile.photos :
+                   (resp.user && Array.isArray(resp.user.photos) ? resp.user.photos : []));
+    if (Array.isArray(photos) && photoPreviewEl) {
+      // Render previews
+      photoPreviewEl.innerHTML = "";
+      photos.slice(0, 6).forEach((src, idx) => {
+        const img = document.createElement("img");
+        img.src = String(src);
+        img.alt = `Photo ${idx + 1}`;
+        img.loading = "lazy";
+        img.style.width = "100%";
+        img.style.height = "auto";
+        img.style.borderRadius = "12px";
+        img.style.border = "1px solid var(--border)";
+        photoPreviewEl.appendChild(img);
+      });
+    }
+
 
     // Save as draft for this uid
     captureDraft();
