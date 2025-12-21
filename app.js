@@ -19,6 +19,9 @@ const btnLoadFeed = $("btnLoadFeed");
 const btnCredits = $("btnCredits");
 const btnLogout = $("btnLogout");
 
+const btnCheckBackend = $("btnCheckBackend");
+const backendDebugEl = $("backendDebug");
+
 const profileDisplayNameEl = $("profileDisplayName");
 const profileAgeEl = $("profileAge");
 const profileCityEl = $("profileCity");
@@ -84,6 +87,25 @@ function clearError() {
 function setStatus(el, message) {
   el.textContent = message || "";
 }
+
+
+function setBackendDebug(msg) {
+  if (backendDebugEl) setStatus(backendDebugEl, msg);
+}
+
+async function checkBackend() {
+  clearError();
+  setBackendDebug(`BACKEND_BASE_URL = ${BACKEND_BASE_URL}`);
+  try {
+    const r = await fetch(`${BACKEND_BASE_URL}/api/health`, { method: "GET" });
+    const txt = await r.text();
+    const body = (txt || "").replace(/\s+/g, " ").trim();
+    setBackendDebug(`BACKEND_BASE_URL = ${BACKEND_BASE_URL}\n/health status = ${r.status}\nbody = ${body.substring(0, 500)}`);
+  } catch (e) {
+    setBackendDebug(`BACKEND_BASE_URL = ${BACKEND_BASE_URL}\n/health error: ${e.message}`);
+  }
+}
+
 
 function setAuthedUI() {
   if (storage.idToken) {
@@ -927,5 +949,7 @@ btnLogout.addEventListener("click", () => {
     }
   });
 
+
+  if (btnCheckBackend) btnCheckBackend.addEventListener("click", checkBackend);
 
 })();
