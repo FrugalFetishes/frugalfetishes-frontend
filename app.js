@@ -5,7 +5,7 @@
  */
 
 // ====== CONFIG ======
-const BACKEND_BASE_URL = "https://express-js-on-vercel-git-main-frugal-fetishes-projects.vercel.app";
+const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
 const FIREBASE_WEB_API_KEY = "AIzaSyBcMM5dAFqbQXcN0ltT4Py6SeA5Fzg-nD8";
 
 // ====== DOM ======
