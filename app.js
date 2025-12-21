@@ -680,14 +680,27 @@ btnVerify.addEventListener("click", async () => {
   try {
     setStatus(authStatusEl, "Verifying...");
     const v = await verifyAuth(email, lastCodeId, otp);
-    if (!v || !v.token) throw new Error("Verify response missing token.");
 
-    setStatus(authStatusEl, "Exchanging token...");
-    const ex = await exchangeCustomTokenForIdToken(v.token);
-    if (!ex || !ex.idToken) throw new Error("Token exchange missing idToken.");
+    // Backend may return either:
+    // - { idToken } (already exchanged), OR
+    // - { customToken } (preferred), OR legacy { token }
+    const idTokenFromVerify = v && v.idToken;
+    const customToken = v && (v.customToken || v.token);
 
-    storage.idToken = ex.idToken;
-    setAuthedUI();
+    if (!idTokenFromVerify && !customToken) {
+      throw new Error("Verify response missing token.");
+    }
+
+    if (idTokenFromVerify) {
+      storage.idToken = idTokenFromVerify;
+    } else {
+      setStatus(authStatusEl, "Exchanging token...");
+      const ex = await exchangeCustomTokenForIdToken(customToken);
+      if (!ex || !ex.idToken) throw new Error("Token exchange missing idToken.");
+      storage.idToken = ex.idToken;
+    }
+
+setAuthedUI();
     setStatus(feedStatusEl, "Signed in. You can load the feed now.");
   } catch (e) {
     storage.idToken = null;
