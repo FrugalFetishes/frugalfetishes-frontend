@@ -125,3 +125,25 @@ button:disabled {
 }
 
 .kv div.key { color: var(--muted); }
+
+
+/* Photo upload previews */
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.photoItem img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid #dddddd;
+  display: block;
+}
+
+.photoItem button {
+  margin-top: 6px;
+  width: 100%;
+}
