@@ -60,10 +60,43 @@ const threadStatusEl = $("threadStatus");
 const threadListEl = $("threadList");
 const errorBoxEl = $("errorBox");
 
+// Discover UI elements (safe if missing)
+const swipeCardEl = $("swipeCard");
+const swipePhotoEl = $("swipePhoto");
+const swipeTitleEl = $("swipeTitle");
+const swipeSubEl = $("swipeSub");
+const btnPassEl = $("btnPass");
+const btnLikeEl = $("btnLike");
+const btnExpandEl = $("btnExpand");
+const expandSheetEl = $("expandSheet");
+const btnCollapseEl = $("btnCollapse");
+const sheetTitleEl = $("sheetTitle");
+const sheetPhotosEl = $("sheetPhotos");
+const sheetAgeEl = $("sheetAge");
+const sheetCityEl = $("sheetCity");
+const sheetLastActiveEl = $("sheetLastActive");
+const sheetPlanEl = $("sheetPlan");
+const sheetInterestsEl = $("sheetInterests");
+const sheetAboutEl = $("sheetAbout");
+const btnPass2El = $("btnPass2");
+const btnLike2El = $("btnLike2");
+
+// Tabs
+const tabButtons = Array.from(document.querySelectorAll(".tabBtn"));
+const tabPanels = Array.from(document.querySelectorAll(".tabPanel"));
+const btnToggleDevFeed = $("btnToggleDevFeed");
+
 let lastCodeId = null;
 let allFeedItems = [];
 let selectedMatchId = null;
 let selectedOtherUid = null;
+
+// ====== Discover Deck UI (new; additive) ======
+let deckIndex = 0;
+let deckItems = [];
+let currentProfile = null;
+let isExpanded = false;
+let touchStart = null;
 
 // ====== Storage ======
 const storage = {
@@ -632,6 +665,8 @@ function getFilteredItems(items) {
 function applyFiltersAndRender() {
   const filtered = getFilteredItems(allFeedItems);
   renderFeed(filtered);
+  // In Discover, the deck respects current filters
+  setDeckFromFeed(filtered);
   if (filterStatusEl) setStatus(filterStatusEl, `Showing ${filtered.length} of ${allFeedItems.length} profiles.`);
 }
 
@@ -701,10 +736,54 @@ btnVerify.addEventListener("click", async () => {
     }
 
 setAuthedUI();
+  // Tabs
+  if (tabButtons && tabButtons.length) {
+    tabButtons.forEach(btn => btn.addEventListener("click", () => setActiveTab(btn.getAttribute("data-tab"))));
+    setActiveTab("discover");
+  }
+
+  // Discover actions
+  if (btnPassEl) btnPassEl.addEventListener("click", passCurrent);
+  if (btnLikeEl) btnLikeEl.addEventListener("click", () => likeCurrent());
+  if (btnExpandEl) btnExpandEl.addEventListener("click", expandCurrent);
+  if (btnCollapseEl) btnCollapseEl.addEventListener("click", collapseSheet);
+  if (btnPass2El) btnPass2El.addEventListener("click", passCurrent);
+  if (btnLike2El) btnLike2El.addEventListener("click", () => likeCurrent());
+
+  // Dev feed toggle
+  if (btnToggleDevFeed && feedListEl) {
+    btnToggleDevFeed.addEventListener("click", () => {
+      feedListEl.hidden = !feedListEl.hidden;
+    });
+  }
+
+  attachSwipeHandlers();
     setStatus(feedStatusEl, "Signed in. You can load the feed now.");
   } catch (e) {
     storage.idToken = null;
     setAuthedUI();
+  // Tabs
+  if (tabButtons && tabButtons.length) {
+    tabButtons.forEach(btn => btn.addEventListener("click", () => setActiveTab(btn.getAttribute("data-tab"))));
+    setActiveTab("discover");
+  }
+
+  // Discover actions
+  if (btnPassEl) btnPassEl.addEventListener("click", passCurrent);
+  if (btnLikeEl) btnLikeEl.addEventListener("click", () => likeCurrent());
+  if (btnExpandEl) btnExpandEl.addEventListener("click", expandCurrent);
+  if (btnCollapseEl) btnCollapseEl.addEventListener("click", collapseSheet);
+  if (btnPass2El) btnPass2El.addEventListener("click", passCurrent);
+  if (btnLike2El) btnLike2El.addEventListener("click", () => likeCurrent());
+
+  // Dev feed toggle
+  if (btnToggleDevFeed && feedListEl) {
+    btnToggleDevFeed.addEventListener("click", () => {
+      feedListEl.hidden = !feedListEl.hidden;
+    });
+  }
+
+  attachSwipeHandlers();
     showError(`Verify/sign-in failed: ${e.message}`);
   } finally {
     btnVerify.disabled = false;
@@ -719,6 +798,9 @@ btnLoadFeed.addEventListener("click", async () => {
     setStatus(feedStatusEl, "Loading feed...");
     const r = await getFeed();
     allFeedItems = r.items || [];
+    setDeckFromFeed(allFeedItems);
+    // Keep old list renderer available (dev tab)
+    renderFeed(getFilteredItems(allFeedItems));
     populateFiltersFromItems(allFeedItems);
     applyFiltersAndRender();
     setStatus(feedStatusEl, `Loaded ${Array.isArray(r.items) ? r.items.length : 0} profiles ✅`);
@@ -831,6 +913,28 @@ btnLogout.addEventListener("click", () => {
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
+  // Tabs
+  if (tabButtons && tabButtons.length) {
+    tabButtons.forEach(btn => btn.addEventListener("click", () => setActiveTab(btn.getAttribute("data-tab"))));
+    setActiveTab("discover");
+  }
+
+  // Discover actions
+  if (btnPassEl) btnPassEl.addEventListener("click", passCurrent);
+  if (btnLikeEl) btnLikeEl.addEventListener("click", () => likeCurrent());
+  if (btnExpandEl) btnExpandEl.addEventListener("click", expandCurrent);
+  if (btnCollapseEl) btnCollapseEl.addEventListener("click", collapseSheet);
+  if (btnPass2El) btnPass2El.addEventListener("click", passCurrent);
+  if (btnLike2El) btnLike2El.addEventListener("click", () => likeCurrent());
+
+  // Dev feed toggle
+  if (btnToggleDevFeed && feedListEl) {
+    btnToggleDevFeed.addEventListener("click", () => {
+      feedListEl.hidden = !feedListEl.hidden;
+    });
+  }
+
+  attachSwipeHandlers();
 });
 
 (function init() {
@@ -913,6 +1017,28 @@ btnLogout.addEventListener("click", () => {
   if (btnApplyFilters) btnApplyFilters.addEventListener("click", applyFiltersAndRender);
   if (btnClearFilters) btnClearFilters.addEventListener("click", clearFilters);
   setAuthedUI();
+  // Tabs
+  if (tabButtons && tabButtons.length) {
+    tabButtons.forEach(btn => btn.addEventListener("click", () => setActiveTab(btn.getAttribute("data-tab"))));
+    setActiveTab("discover");
+  }
+
+  // Discover actions
+  if (btnPassEl) btnPassEl.addEventListener("click", passCurrent);
+  if (btnLikeEl) btnLikeEl.addEventListener("click", () => likeCurrent());
+  if (btnExpandEl) btnExpandEl.addEventListener("click", expandCurrent);
+  if (btnCollapseEl) btnCollapseEl.addEventListener("click", collapseSheet);
+  if (btnPass2El) btnPass2El.addEventListener("click", passCurrent);
+  if (btnLike2El) btnLike2El.addEventListener("click", () => likeCurrent());
+
+  // Dev feed toggle
+  if (btnToggleDevFeed && feedListEl) {
+    btnToggleDevFeed.addEventListener("click", () => {
+      feedListEl.hidden = !feedListEl.hidden;
+    });
+  }
+
+  attachSwipeHandlers();
   if (storage.idToken) setStatus(feedStatusEl, "Signed in from previous session. Click 'Load Feed'.");
   // Photo selection handlers (safe if Photos UI isn't present)
   if (btnClearPhotos) btnClearPhotos.addEventListener("click", () => {
@@ -966,3 +1092,226 @@ btnLogout.addEventListener("click", () => {
   if (btnCheckBackend) btnCheckBackend.addEventListener("click", checkBackend);
 
 })();
+
+
+// ====== Tabs ======
+function setActiveTab(tabName) {
+  tabButtons.forEach(btn => {
+    const isActive = btn.getAttribute("data-tab") === tabName;
+    btn.classList.toggle("active", isActive);
+  });
+  tabPanels.forEach(p => {
+    const show = p.getAttribute("data-panel") === tabName;
+    if (show) p.hidden = false;
+    else p.hidden = true;
+  });
+
+  // Hide dev feed list by default unless dev tab
+  if (feedListEl) {
+    feedListEl.hidden = tabName !== "dev";
+  }
+}
+
+// ====== Discover Deck ======
+function firstPhotoUrl(p) {
+  if (!p) return null;
+  const photos = p.photos;
+  if (Array.isArray(photos) && photos.length && typeof photos[0] === "string") return photos[0];
+  return null;
+}
+
+function safeText(v) {
+  if (v === null || v === undefined) return "";
+  return String(v);
+}
+
+function renderCollapsedCard(p) {
+  currentProfile = p || null;
+  if (!swipeCardEl || !swipeTitleEl || !swipePhotoEl) return;
+
+  if (!p) {
+    swipeTitleEl.textContent = "No more profiles";
+    if (swipeSubEl) swipeSubEl.textContent = "Try again later.";
+    swipePhotoEl.style.backgroundImage = "";
+    return;
+  }
+
+  const age = (p.age !== undefined && p.age !== null) ? p.age : "?";
+  const city = p.city || "";
+  const uid = p.uid || "(unknown)";
+  swipeTitleEl.textContent = `${uid}`;
+  if (swipeSubEl) swipeSubEl.textContent = `${age} • ${city}`.trim();
+
+  const photo = firstPhotoUrl(p);
+  if (photo) swipePhotoEl.style.backgroundImage = `url("${photo}")`;
+  else swipePhotoEl.style.backgroundImage = "";
+}
+
+function clearChildren(el) { if (!el) return; while (el.firstChild) el.removeChild(el.firstChild); }
+
+function renderExpandedSheet(p) {
+  if (!expandSheetEl) return;
+  if (!p) {
+    expandSheetEl.hidden = true;
+    isExpanded = false;
+    return;
+  }
+
+  // Show sheet
+  expandSheetEl.hidden = false;
+  isExpanded = true;
+
+  const age = (p.age !== undefined && p.age !== null) ? p.age : "?";
+  const city = p.city || "";
+  const uid = p.uid || "Profile";
+
+  if (sheetTitleEl) sheetTitleEl.textContent = uid;
+  if (sheetAgeEl) sheetAgeEl.textContent = safeText(age);
+  if (sheetCityEl) sheetCityEl.textContent = safeText(city);
+  if (sheetPlanEl) sheetPlanEl.textContent = safeText(p.plan || "");
+  if (sheetLastActiveEl) sheetLastActiveEl.textContent = p.lastActiveAt ? JSON.stringify(p.lastActiveAt) : "";
+
+  // Photos grid
+  clearChildren(sheetPhotosEl);
+  const photos = Array.isArray(p.photos) ? p.photos.filter(x => typeof x === "string") : [];
+  if (sheetPhotosEl) {
+    if (photos.length) {
+      photos.slice(0, 6).forEach((src, idx) => {
+        const img = document.createElement("img");
+        img.src = src;
+        img.alt = `${uid} photo ${idx + 1}`;
+        img.loading = "lazy";
+        sheetPhotosEl.appendChild(img);
+      });
+    } else {
+      const ph = document.createElement("div");
+      ph.className = "muted";
+      ph.textContent = "No photos yet.";
+      sheetPhotosEl.appendChild(ph);
+    }
+  }
+
+  // Kinks/interests (ONLY in expanded)
+  clearChildren(sheetInterestsEl);
+  const interests = Array.isArray(p.interests) ? p.interests : [];
+  if (sheetInterestsEl) {
+    if (interests.length) {
+      interests.slice(0, 24).forEach(tag => {
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = safeText(tag);
+        sheetInterestsEl.appendChild(chip);
+      });
+    } else {
+      const m = document.createElement("div");
+      m.className = "muted";
+      m.textContent = "(none)";
+      sheetInterestsEl.appendChild(m);
+    }
+  }
+
+  // About (optional)
+  if (sheetAboutEl) sheetAboutEl.textContent = safeText(p.bio || p.about || "");
+}
+
+function showNextProfile() {
+  if (!deckItems || deckItems.length === 0) {
+    renderCollapsedCard(null);
+    renderExpandedSheet(null);
+    return;
+  }
+  if (deckIndex < 0) deckIndex = 0;
+  if (deckIndex >= deckItems.length) {
+    renderCollapsedCard(null);
+    renderExpandedSheet(null);
+    return;
+  }
+  const p = deckItems[deckIndex];
+  renderCollapsedCard(p);
+  if (isExpanded) renderExpandedSheet(p);
+}
+
+function setDeckFromFeed(items) {
+  deckItems = Array.isArray(items) ? items.slice() : [];
+  deckIndex = 0;
+  isExpanded = false;
+  if (expandSheetEl) expandSheetEl.hidden = true;
+  showNextProfile();
+}
+
+function advanceDeck() {
+  deckIndex += 1;
+  isExpanded = false;
+  if (expandSheetEl) expandSheetEl.hidden = true;
+  showNextProfile();
+}
+
+async function likeCurrent() {
+  if (!currentProfile || !currentProfile.uid) return;
+  try {
+    await postLike(currentProfile.uid);
+  } catch (e) {
+    showError(`Like failed: ${e.message}`);
+    return;
+  }
+  advanceDeck();
+}
+
+function passCurrent() {
+  advanceDeck();
+}
+
+function expandCurrent() {
+  if (!currentProfile) return;
+  renderExpandedSheet(currentProfile);
+}
+
+function collapseSheet() {
+  if (expandSheetEl) expandSheetEl.hidden = true;
+  isExpanded = false;
+}
+
+// Touch gestures on swipe card
+function attachSwipeHandlers() {
+  if (!swipeCardEl) return;
+
+  swipeCardEl.addEventListener("touchstart", (e) => {
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!t) return;
+    touchStart = { x: t.clientX, y: t.clientY, time: Date.now() };
+  }, { passive: true });
+
+  swipeCardEl.addEventListener("touchend", (e) => {
+    const t = e.changedTouches && e.changedTouches[0];
+    if (!t || !touchStart) return;
+
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+
+    const absX = Math.abs(dx);
+    const absY = Math.abs(dy);
+
+    // Swipe-up to expand
+    if (absY > absX && dy < -50) {
+      expandCurrent();
+      touchStart = null;
+      return;
+    }
+
+    // Horizontal swipe pass/like
+    if (absX > absY && absX > 60) {
+      if (dx < 0) passCurrent();
+      else likeCurrent();
+    }
+
+    touchStart = null;
+  }, { passive: true });
+
+  // Keyboard shortcuts: Left=pass, Right=like, Up=expand, Esc=close
+  swipeCardEl.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowLeft") { e.preventDefault(); passCurrent(); }
+    if (e.key === "ArrowRight") { e.preventDefault(); likeCurrent(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); expandCurrent(); }
+    if (e.key === "Escape") { e.preventDefault(); collapseSheet(); }
+  });
+}
