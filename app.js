@@ -29,6 +29,14 @@ const btnSaveProfile = $("btnSaveProfile");
 const btnSetMiami = $("btnSetMiami");
 const btnSetOrlando = $("btnSetOrlando");
 const profileStatusEl = $("profileStatus");
+const profileStatusEl = $("profileStatus");
+
+const photoFilesEl = $("photoFiles");
+const btnSavePhotos = $("btnSavePhotos");
+const btnClearPhotos = $("btnClearPhotos");
+const photoStatusEl = $("photoStatus");
+const photoPreviewEl = $("photoPreview");
+
 
 const filterCityEl = $("filterCity");
 const filterInterestEl = $("filterInterest");
@@ -200,6 +208,68 @@ function captureDraft() {
   };
   saveDraft(d);
 }
+
+
+// Photo upload (MVP): store small data URLs in users/{uid}.photos[]
+let selectedPhotos = []; // data URLs
+
+function setPhotoStatus(msg) {
+  if (photoStatusEl) setStatus(photoStatusEl, msg);
+}
+
+function renderPhotoPreviews() {
+  if (!photoPreviewEl) return;
+  photoPreviewEl.innerHTML = "";
+  if (!selectedPhotos.length) return;
+
+  selectedPhotos.forEach((src, idx) => {
+    const wrap = document.createElement("div");
+    wrap.className = "photoItem";
+
+    const img = document.createElement("img");
+    img.src = src;
+    img.alt = `Selected photo ${idx + 1}`;
+    img.loading = "lazy";
+
+    const rm = document.createElement("button");
+    rm.type = "button";
+    rm.className = "secondary";
+    rm.textContent = "Remove";
+    rm.addEventListener("click", () => {
+      selectedPhotos.splice(idx, 1);
+      renderPhotoPreviews();
+      setPhotoStatus(`${selectedPhotos.length} selected.`);
+    });
+
+    wrap.appendChild(img);
+    wrap.appendChild(rm);
+    photoPreviewEl.appendChild(wrap);
+  });
+}
+
+async function fileToDataUrlResized(file, maxSide = 800, quality = 0.82) {
+  // Returns a JPEG data URL resized so the longest side is maxSide.
+  const bitmap = await createImageBitmap(file);
+  const { width, height } = bitmap;
+
+  let newW = width;
+  let newH = height;
+  const longest = Math.max(width, height);
+  if (longest > maxSide) {
+    const scale = maxSide / longest;
+    newW = Math.round(width * scale);
+    newH = Math.round(height * scale);
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = newW;
+  canvas.height = newH;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(bitmap, 0, 0, newW, newH);
+
+  return canvas.toDataURL("image/jpeg", quality);
+}
+
 
 
 
@@ -710,6 +780,10 @@ btnLogout.addEventListener("click", () => {
   if (threadListEl) threadListEl.innerHTML = "";
   if (threadStatusEl) setStatus(threadStatusEl, "");
   if (threadMetaEl) setStatus(threadMetaEl, "");
+  selectedPhotos = [];
+  if (photoFilesEl) photoFilesEl.value = "";
+  if (photoPreviewEl) photoPreviewEl.innerHTML = "";
+  if (photoStatusEl) setStatus(photoStatusEl, "");
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
@@ -789,6 +863,55 @@ btnLogout.addEventListener("click", () => {
       btnSaveProfile.disabled = false;
     }
   });
+
+  // Photo selection handlers
+  if (btnClearPhotos) btnClearPhotos.addEventListener("click", () => {
+    selectedPhotos = [];
+    if (photoFilesEl) photoFilesEl.value = "";
+    renderPhotoPreviews();
+    setPhotoStatus("Cleared.");
+  });
+
+  if (photoFilesEl) photoFilesEl.addEventListener("change", async () => {
+    clearError();
+    setPhotoStatus("Processing photos...");
+    try {
+      const files = Array.from(photoFilesEl.files || []);
+      if (!files.length) {
+        setPhotoStatus("");
+        return;
+      }
+      // Limit to 6 total
+      const toAdd = files.slice(0, Math.max(0, 6 - selectedPhotos.length));
+      for (const f of toAdd) {
+        const dataUrl = await fileToDataUrlResized(f, 800, 0.82);
+        selectedPhotos.push(dataUrl);
+      }
+      if (selectedPhotos.length > 6) selectedPhotos = selectedPhotos.slice(0, 6);
+      renderPhotoPreviews();
+      setPhotoStatus(`${selectedPhotos.length} selected.`);
+    } catch (e) {
+      setPhotoStatus("");
+      showError(`Photo processing failed: ${e.message}`);
+    }
+  });
+
+  if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
+    clearError();
+    btnSavePhotos.disabled = true;
+    try {
+      if (!selectedPhotos.length) throw new Error("No photos selected.");
+      setPhotoStatus("Saving photos...");
+      await updateProfile({ photos: selectedPhotos });
+      setPhotoStatus("Photos saved ✅");
+    } catch (e) {
+      setPhotoStatus("");
+      showError(`Photo save failed: ${e.message}`);
+    } finally {
+      btnSavePhotos.disabled = false;
+    }
+  });
+
 
 
   // Filter buttons (safe if filters section isn't present)
