@@ -283,9 +283,11 @@ async function refreshIdToken() {
 }
 
 async function getValidIdToken() {
-  const idToken = await getValidIdToken();
+  const idToken = storage.idToken;
+  if (!idToken) return null;
 
   const expAt = storage.idTokenExpiresAt || 0;
+
   // If we don't know expiry, just use what we have.
   if (!expAt) return idToken;
 
@@ -293,6 +295,7 @@ async function getValidIdToken() {
   if (Date.now() >= (expAt - 10_000)) {
     return refreshIdToken();
   }
+
   return idToken;
 }
 
