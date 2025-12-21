@@ -118,6 +118,18 @@ async function getFeed() {
   });
 }
 
+
+async function postLike(targetUid) {
+  const idToken = storage.idToken;
+  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  return jsonFetch(`${BACKEND_BASE_URL}/api/like`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${idToken}` },
+    body: JSON.stringify({ targetUid })
+  });
+}
+
+
 function renderFeed(items) {
   feedListEl.innerHTML = "";
   if (!items || items.length === 0) {
@@ -134,6 +146,46 @@ function renderFeed(items) {
     title.className = "profileTitle";
     title.textContent = `${p.uid} — ${p.age ?? "?"} — ${p.city ?? ""}`;
     li.appendChild(title);
+
+    const actions = document.createElement("div");
+    actions.className = "row";
+
+    const likeBtn = document.createElement("button");
+    likeBtn.type = "button";
+    likeBtn.textContent = "Like";
+
+    const likeStatus = document.createElement("div");
+    likeStatus.className = "muted";
+    likeStatus.style.marginTop = "6px";
+
+    likeBtn.addEventListener("click", async () => {
+      clearError();
+      likeBtn.disabled = true;
+      likeStatus.textContent = "Liking...";
+      try {
+        const r = await postLike(p.uid);
+        if (r && r.ok) {
+          if (r.isMutual) {
+            likeStatus.textContent = `Matched ✅ (matchId: ${r.matchId})`;
+          } else if (r.alreadyLiked) {
+            likeStatus.textContent = "Already liked ✅";
+          } else {
+            likeStatus.textContent = "Liked ✅";
+          }
+        } else {
+          likeStatus.textContent = "Like failed (unknown response).";
+        }
+      } catch (e) {
+        likeStatus.textContent = "";
+        showError(`Like failed: ${e.message}`);
+      } finally {
+        likeBtn.disabled = false;
+      }
+    });
+
+    actions.appendChild(likeBtn);
+    li.appendChild(actions);
+    li.appendChild(likeStatus);
 
     const kv = document.createElement("div");
     kv.className = "kv";
