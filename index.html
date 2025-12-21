@@ -14,55 +14,61 @@
       <h2>Login</h2>
       <p class="muted">Step 1: enter your email, then use the OTP code.</p>
 
-      <label>Email</label>
-      <input id="email" type="email" placeholder="test@example.com" />
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="test@example.com" autocomplete="email" />
 
       <div class="row">
-        <button id="btnStart">Send OTP</button>
-        <button id="btnLogout" class="secondary">Logout</button>
+        <button id="btnStart" type="button">Send OTP</button>
+        <button id="btnLogout" type="button" class="secondary">Logout</button>
       </div>
 
-      <div id="startResult" class="muted"></div>
+      <div id="startResult" class="muted" role="status" aria-live="polite"></div>
 
       <hr />
 
-      <label>OTP code</label>
-      <input id="otp" type="text" placeholder="6 digits" />
-      <button id="btnVerify">Verify + Sign In</button>
+      <label for="otp">OTP code</label>
+      <input id="otp" type="text" inputmode="numeric" placeholder="6 digits" autocomplete="one-time-code" />
 
-      <div id="authStatus" class="muted"></div>
-      <div id="errorBox" class="error" hidden></div>
-    </section>
+      <button id="btnVerify" type="button">Verify + Sign In</button>
 
+      <div id="authStatus" class="muted" role="status" aria-live="polite"></div>
+      <div id="errorBox" class="error" role="alert" aria-live="assertive" hidden></div>
+    
     <section class="card" aria-label="Filters">
       <h2>Filters</h2>
+      <p class="muted">These filters only affect what you see on the page (no backend changes).</p>
 
-      <label>City</label>
+      <label for="filterCity">City</label>
       <select id="filterCity">
         <option value="">All</option>
       </select>
 
-      <label>Interest</label>
+      <label for="filterInterest">Interest</label>
       <select id="filterInterest">
         <option value="">All</option>
       </select>
 
       <div class="row">
-        <button id="btnApplyFilters">Apply Filters</button>
-        <button id="btnClearFilters" class="secondary">Clear Filters</button>
+        <button id="btnApplyFilters" type="button">Apply Filters</button>
+        <button id="btnClearFilters" type="button" class="secondary">Clear Filters</button>
       </div>
+
+      <div id="filterStatus" class="muted" role="status" aria-live="polite"></div>
     </section>
+
+</section>
 
     <section class="card" aria-label="Feed">
       <h2>Feed</h2>
+      <p class="muted">You must be signed in to load the feed.</p>
 
       <div class="row">
-        <button id="btnLoadFeed">Load Feed</button>
-        <button id="btnCredits" class="secondary">Check Credits</button>
+        <button id="btnLoadFeed" type="button">Load Feed</button>
+        <button id="btnCredits" type="button" class="secondary">Check Credits</button>
       </div>
 
-      <div id="feedStatus" class="muted"></div>
-      <ul id="feedList" class="list"></ul>
+      <div id="feedStatus" class="muted" role="status" aria-live="polite"></div>
+      <ul id="feedList" class="list" aria-label="Profiles"></ul>
     </section>
   </main>
 
