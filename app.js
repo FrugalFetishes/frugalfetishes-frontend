@@ -104,6 +104,22 @@ const storage = {
   set idToken(v) {
     if (v) localStorage.setItem("ff_idToken", v);
     else localStorage.removeItem("ff_idToken");
+  },
+
+  get refreshToken() { return localStorage.getItem("ff_refreshToken"); },
+  set refreshToken(v) {
+    if (v) localStorage.setItem("ff_refreshToken", v);
+    else localStorage.removeItem("ff_refreshToken");
+  },
+
+  // Unix ms timestamp when idToken is expected to expire (client-estimated)
+  get idTokenExpiresAt() {
+    const v = localStorage.getItem("ff_idTokenExpiresAt");
+    return v ? Number(v) : 0;
+  },
+  set idTokenExpiresAt(v) {
+    if (v) localStorage.setItem("ff_idTokenExpiresAt", String(v));
+    else localStorage.removeItem("ff_idTokenExpiresAt");
   }
 };
 
@@ -149,23 +165,54 @@ function setAuthedUI() {
 }
 
 async function jsonFetch(url, options = {}) {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      ...(options.headers || {})
+  const attempt = async () => {
+    const res = await fetch(url, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    });
+
+    const text = await res.text();
+    let data = null;
+    try { data = text ? JSON.parse(text) : null; } catch (e) { /* ignore */ }
+
+    if (!res.ok) {
+      const msg = (data && (data.error || data.message)) ? (data.error || data.message) : text;
+      const err = new Error(msg || `Request failed (${res.status})`);
+      err.status = res.status;
+      throw err;
     }
-  });
+    return data;
+  };
 
-  const text = await res.text();
-  let data = null;
-  try { data = text ? JSON.parse(text) : null; } catch (e) { /* ignore */ }
-
-  if (!res.ok) {
-    const msg = (data && (data.error || data.message)) ? (data.error || data.message) : text;
-    throw new Error(msg || `Request failed (${res.status})`);
+  try {
+    return await attempt();
+  } catch (e) {
+    // If the backend says our Firebase ID token expired, refresh it once and retry.
+    const retried = options && options._retried;
+    const isExpired = looksLikeExpiredTokenError(e && e.message);
+    const hasBearer = options && options.headers && typeof options.headers.Authorization === "string";
+    if (!retried && isExpired && hasBearer && storage.refreshToken) {
+      try {
+        const newIdToken = await refreshIdToken();
+        options = {
+          ...options,
+          _retried: true,
+          headers: {
+            ...(options.headers || {}),
+            Authorization: `Bearer ${newIdToken}`
+          }
+        };
+        return await attempt();
+      } catch (refreshErr) {
+        // fall through to original error if refresh fails
+        throw refreshErr;
+      }
+    }
+    throw e;
   }
-  return data;
 }
 
 async function startAuth(email) {
@@ -190,9 +237,75 @@ async function exchangeCustomTokenForIdToken(customToken) {
   });
 }
 
+
+async function refreshIdToken() {
+  const rt = storage.refreshToken;
+  if (!rt) throw new Error("Missing refreshToken. Please sign in again.");
+
+  const url = `https://securetoken.googleapis.com/v1/token?key=${encodeURIComponent(FIREBASE_WEB_API_KEY)}`;
+
+  // Secure Token API expects x-www-form-urlencoded
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    refresh_token: rt
+  });
+
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body
+  });
+
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch (e) { /* ignore */ }
+
+  if (!res.ok) {
+    const msg = (data && (data.error && (data.error.message || data.error))) ? (data.error.message || data.error) : text;
+    throw new Error(msg || `Token refresh failed (${res.status})`);
+  }
+
+  // Response keys: id_token, refresh_token, expires_in (seconds)
+  const idToken = data && data.id_token;
+  const refreshToken = data && data.refresh_token;
+  const expiresIn = data && data.expires_in;
+
+  if (!idToken) throw new Error("Token refresh missing id_token.");
+
+  storage.idToken = idToken;
+  if (refreshToken) storage.refreshToken = refreshToken;
+  if (expiresIn) {
+    const ms = Number(expiresIn) * 1000;
+    // Refresh one minute before expiry
+    storage.idTokenExpiresAt = Date.now() + ms - 60_000;
+  }
+  return idToken;
+}
+
+async function getValidIdToken() {
+  const idToken = await getValidIdToken();
+
+  const expAt = storage.idTokenExpiresAt || 0;
+  // If we don't know expiry, just use what we have.
+  if (!expAt) return idToken;
+
+  // If within ~10 seconds of expAt, refresh now
+  if (Date.now() >= (expAt - 10_000)) {
+    return refreshIdToken();
+  }
+  return idToken;
+}
+
+function looksLikeExpiredTokenError(message) {
+  const m = (message || "").toLowerCase();
+  return m.includes("auth/id-token-expired")
+    || m.includes("id token has expired")
+    || m.includes("token-expired")
+    || m.includes("token has expired");
+}
+
 async function getCredits() {
-  const idToken = storage.idToken;
-  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/credits/balance`, {
     method: "GET",
     headers: { "Authorization": `Bearer ${idToken}` }
@@ -200,8 +313,7 @@ async function getCredits() {
 }
 
 async function getFeed() {
-  const idToken = storage.idToken;
-  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/feed`, {
     method: "GET",
     headers: { "Authorization": `Bearer ${idToken}` }
@@ -210,8 +322,7 @@ async function getFeed() {
 
 
 async function postLike(targetUid) {
-  const idToken = storage.idToken;
-  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/like`, {
     method: "POST",
     headers: { "Authorization": `Bearer ${idToken}` },
@@ -221,8 +332,7 @@ async function postLike(targetUid) {
 
 
 async function updateProfile(fields) {
-  const idToken = storage.idToken;
-  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/profile/update`, {
     method: "POST",
     headers: { "Authorization": `Bearer ${idToken}` },
@@ -342,8 +452,7 @@ async function fileToDataUrlResized(file, maxSide = 800, quality = 0.82) {
 
 
 async function getMatches() {
-  const idToken = storage.idToken;
-  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/matches`, {
     method: "GET",
     headers: { "Authorization": `Bearer ${idToken}` }
@@ -352,8 +461,7 @@ async function getMatches() {
 
 
 async function getThread(matchId, limit = 50) {
-  const idToken = storage.idToken;
-  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  const idToken = await getValidIdToken();
   if (!matchId) throw new Error("No match selected.");
   const qs = new URLSearchParams({ matchId, limit: String(limit) }).toString();
   return jsonFetch(`${BACKEND_BASE_URL}/api/messages/thread?${qs}`, {
@@ -363,8 +471,7 @@ async function getThread(matchId, limit = 50) {
 }
 
 async function sendMessage(matchId, text) {
-  const idToken = storage.idToken;
-  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  const idToken = await getValidIdToken();
   if (!matchId) throw new Error("No match selected.");
   if (!text || !text.trim()) throw new Error("Message text is empty.");
   return jsonFetch(`${BACKEND_BASE_URL}/api/messages/send`, {
@@ -728,11 +835,16 @@ btnVerify.addEventListener("click", async () => {
 
     if (idTokenFromVerify) {
       storage.idToken = idTokenFromVerify;
+      // If backend did not provide refresh token/expires, auto-refresh may not be available until next login.
+      storage.refreshToken = storage.refreshToken || null;
+      storage.idTokenExpiresAt = storage.idTokenExpiresAt || 0;
     } else {
       setStatus(authStatusEl, "Exchanging token...");
       const ex = await exchangeCustomTokenForIdToken(customToken);
       if (!ex || !ex.idToken) throw new Error("Token exchange missing idToken.");
       storage.idToken = ex.idToken;
+      if (ex.refreshToken) storage.refreshToken = ex.refreshToken;
+      if (ex.expiresIn) { const ms = Number(ex.expiresIn) * 1000; storage.idTokenExpiresAt = Date.now() + ms - 60_000; }
     }
 
 setAuthedUI();
@@ -761,6 +873,8 @@ setAuthedUI();
     setStatus(feedStatusEl, "Signed in. You can load the feed now.");
   } catch (e) {
     storage.idToken = null;
+  storage.refreshToken = null;
+  storage.idTokenExpiresAt = 0;
     setAuthedUI();
   // Tabs
   if (tabButtons && tabButtons.length) {
@@ -898,6 +1012,8 @@ if (btnSendMessage) {
 
 btnLogout.addEventListener("click", () => {
   storage.idToken = null;
+  storage.refreshToken = null;
+  storage.idTokenExpiresAt = 0;
   lastCodeId = null;
   setStatus(startResultEl, "");
   setStatus(feedStatusEl, "");
