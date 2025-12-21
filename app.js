@@ -29,6 +29,9 @@ const startResultEl = $("startResult");
 const authStatusEl = $("authStatus");
 const feedStatusEl = $("feedStatus");
 const feedListEl = $("feedList");
+const btnLoadMatches = $("btnLoadMatches");
+const matchesStatusEl = $("matchesStatus");
+const matchesListEl = $("matchesList");
 const errorBoxEl = $("errorBox");
 
 let lastCodeId = null;
@@ -134,6 +137,73 @@ async function postLike(targetUid) {
     headers: { "Authorization": `Bearer ${idToken}` },
     body: JSON.stringify({ targetUid })
   });
+}
+
+
+async function getMatches() {
+  const idToken = storage.idToken;
+  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  return jsonFetch(`${BACKEND_BASE_URL}/api/matches`, {
+    method: "GET",
+    headers: { "Authorization": `Bearer ${idToken}` }
+  });
+}
+
+function normalizeMatchesResponse(r) {
+  if (!r) return [];
+  if (Array.isArray(r.items)) return r.items;
+  if (Array.isArray(r.matches)) return r.matches;
+  if (Array.isArray(r.data)) return r.data;
+  if (Array.isArray(r)) return r;
+  return [];
+}
+
+function renderMatches(items) {
+  if (!matchesListEl) return;
+  matchesListEl.innerHTML = "";
+  if (!items || items.length === 0) {
+    const li = document.createElement("li");
+    li.textContent = "No matches yet.";
+    matchesListEl.appendChild(li);
+    return;
+  }
+
+  for (const m of items) {
+    const li = document.createElement("li");
+
+    const title = document.createElement("div");
+    title.className = "profileTitle";
+    const matchId = m.matchId || m.id || m._id || "(no matchId)";
+    const otherUid = m.otherUid || m.otherUserUid || m.other || m.withUid || "";
+    title.textContent = otherUid ? `Match with ${otherUid}` : `Match ${matchId}`;
+    li.appendChild(title);
+
+    const kv = document.createElement("div");
+    kv.className = "kv";
+
+    const add = (k, v) => {
+      const kdiv = document.createElement("div");
+      kdiv.className = "key";
+      kdiv.textContent = k;
+      const vdiv = document.createElement("div");
+      vdiv.textContent = v;
+      kv.appendChild(kdiv);
+      kv.appendChild(vdiv);
+    };
+
+    add("matchId", String(matchId));
+    if (otherUid) add("otherUid", String(otherUid));
+
+    // Try to show participants if present
+    const participants = m.participants || m.uids || m.users;
+    if (participants) add("participants", JSON.stringify(participants));
+
+    // Created time if present
+    if (m.createdAt) add("createdAt", JSON.stringify(m.createdAt));
+
+    li.appendChild(kv);
+    matchesListEl.appendChild(li);
+  }
 }
 
 
@@ -383,6 +453,29 @@ btnCredits.addEventListener("click", async () => {
   }
 });
 
+if (btnLoadMatches) {
+  btnLoadMatches.addEventListener("click", async () => {
+    clearError();
+    if (matchesStatusEl) setStatus(matchesStatusEl, "");
+    if (matchesListEl) matchesListEl.innerHTML = "";
+    btnLoadMatches.disabled = true;
+    try {
+      if (matchesStatusEl) setStatus(matchesStatusEl, "Loading matches...");
+      const r = await getMatches();
+      const items = normalizeMatchesResponse(r);
+      renderMatches(items);
+      if (matchesStatusEl) setStatus(matchesStatusEl, `Loaded ${items.length} matches ✅`);
+    } catch (e) {
+      if (matchesStatusEl) setStatus(matchesStatusEl, "");
+      showError(`Matches failed: ${e.message}`);
+    } finally {
+      btnLoadMatches.disabled = false;
+    }
+  });
+}
+
+
+
 btnLogout.addEventListener("click", () => {
   storage.idToken = null;
   lastCodeId = null;
@@ -390,6 +483,8 @@ btnLogout.addEventListener("click", () => {
   setStatus(feedStatusEl, "");
   allFeedItems = [];
   renderFeed([]);
+  if (matchesListEl) matchesListEl.innerHTML = "";
+  if (matchesStatusEl) setStatus(matchesStatusEl, "");
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
