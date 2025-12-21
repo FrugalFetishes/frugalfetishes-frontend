@@ -99,6 +99,7 @@ let deckIndex = 0;
 let deckItems = [];
 let currentProfile = null;
 let isExpanded = false;
+let actionLocked = false;
 let touchStart = null;
 
 // ====== Storage ======
@@ -1370,19 +1371,32 @@ function advanceDeck() {
 }
 
 async function likeCurrent() {
+  if (actionLocked) return;
   if (!currentProfile || !currentProfile.uid) return;
+
+  actionLocked = true;
   try {
     await postLike(currentProfile.uid);
+    advanceDeck();
   } catch (e) {
     showError(`Like failed: ${e.message}`);
-    return;
+  } finally {
+    actionLocked = false;
   }
-  advanceDeck();
 }
 
+
 function passCurrent() {
-  advanceDeck();
+  if (actionLocked) return;
+
+  actionLocked = true;
+  try {
+    advanceDeck();
+  } finally {
+    actionLocked = false;
+  }
 }
+
 
 function expandCurrent() {
   if (!currentProfile) return;
