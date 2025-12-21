@@ -277,6 +277,24 @@ function renderMatches(items) {
     title.textContent = otherUid ? `Match with ${otherUid}` : `Match ${matchId}`;
     li.appendChild(title);
 
+    const actions = document.createElement("div");
+    actions.className = "row";
+
+    const openBtn = document.createElement("button");
+    openBtn.type = "button";
+    openBtn.textContent = "Open Chat";
+    openBtn.addEventListener("click", () => {
+      selectedMatchId = String(matchId);
+      selectedOtherUid = otherUid ? String(otherUid) : null;
+      if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Selected: ${selectedOtherUid} (matchId: ${selectedMatchId})` : `Selected matchId: ${selectedMatchId}`);
+      if (threadStatusEl) setStatus(threadStatusEl, "Click 'Load Thread' to view messages.");
+      if (threadListEl) threadListEl.innerHTML = "";
+      if (messageTextEl) messageTextEl.focus();
+    });
+
+    actions.appendChild(openBtn);
+    li.appendChild(actions);
+
     const kv = document.createElement("div");
     kv.className = "kv";
 
