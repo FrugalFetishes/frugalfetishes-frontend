@@ -147,3 +147,113 @@ button:disabled {
   margin-top: 6px;
   width: 100%;
 }
+
+/* ===== FrugalFetishes MVP layout additions (safe additive) ===== */
+.topHeader { margin-bottom: 14px; }
+.brandRow { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.brand { font-size: 28px; margin: 8px 0 8px; }
+.authPill { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.smallBtn { padding: 8px 10px; font-size: 14px; border-radius: 10px; }
+
+.tabs { display:flex; gap:8px; flex-wrap:wrap; margin-top: 8px; }
+.tabBtn {
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--fg);
+  font-size: 14px;
+}
+.tabBtn.active {
+  border: 1px solid var(--btn);
+  background: var(--btn);
+  color: var(--btn-fg);
+}
+
+.panelHeader { display:flex; flex-direction:column; gap:8px; }
+
+.deckWrap { display:flex; flex-direction:column; gap:12px; margin-top: 10px; }
+.swipeCard {
+  position: relative;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: #fff;
+  overflow: hidden;
+  min-height: 420px;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-end;
+  touch-action: pan-y;
+}
+.swipePhoto {
+  position:absolute;
+  inset:0;
+  background: #f2f2f2;
+  background-size: cover;
+  background-position: center;
+  filter: none;
+}
+.swipeOverlay {
+  position: relative;
+  padding: 14px;
+  background: linear-gradient(0deg, rgba(0,0,0,0.62), rgba(0,0,0,0.0));
+  color: #fff;
+}
+.swipeTitle { font-weight: 800; font-size: 22px; }
+.swipeSub { margin-top: 6px; font-size: 14px; opacity: 0.95; }
+.swipeHint { position: relative; padding: 10px 14px 14px; background: #fff; margin:0; }
+
+.swipeActions { display:flex; gap:10px; flex-wrap:wrap; }
+.swipeActions button { min-width: 110px; }
+
+.sheet {
+  margin-top: 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: #fff;
+  padding: 12px;
+}
+.sheetHeader { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.sheetTitle { font-weight: 800; font-size: 18px; }
+.sheetGrid { display:grid; grid-template-columns: 1fr; gap: 14px; margin-top: 10px; }
+@media (min-width: 760px) {
+  .sheetGrid { grid-template-columns: 320px 1fr; }
+}
+.sheetPhotos {
+  display:grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.sheetPhotos img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display:block;
+}
+.sheetSection { margin-top: 12px; }
+.sheetSection h3 { margin: 0 0 8px; font-size: 16px; }
+.smallText { font-size: 13px; }
+
+.chipRow { display:flex; flex-wrap:wrap; gap:8px; }
+.chip {
+  border: 1px solid var(--border);
+  background: #fafafa;
+  padding: 8px 10px;
+  border-radius: 999px;
+  font-size: 14px;
+}
+.sheetFooter { display:flex; gap:10px; flex-wrap:wrap; margin-top: 14px; justify-content:flex-end; }
+
+.subGrid { display:grid; grid-template-columns: 1fr; gap: 12px; }
+@media (min-width: 760px) {
+  .subGrid { grid-template-columns: repeat(3, 1fr); }
+}
+.subCard {
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+  padding: 12px;
+}
+.subCard h3 { margin: 0 0 8px; }
+.subCard ul { margin: 0 0 12px; padding-left: 18px; }
