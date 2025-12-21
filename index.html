@@ -3,51 +3,141 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>FrugalFetishes — Minimal Web App</title>
+  <title>FrugalFetishes — MVP Web</title>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
-  <main class="container" aria-label="FrugalFetishes Minimal App">
-    <h1>FrugalFetishes</h1>
-
-    <section class="card" aria-label="Login">
-      <h2>Login</h2>
-      <p class="muted">Step 1: enter your email, then use the OTP code.</p>
-
-      <label for="email">Email</label>
-      <input id="email" type="email" placeholder="test@example.com" autocomplete="email" />
-
-      <div class="row">
-        <button id="btnStart" type="button">Send OTP</button>
-        <button id="btnLogout" type="button" class="secondary">Logout</button>
+  <main class="container" aria-label="FrugalFetishes MVP App">
+    <header class="topHeader">
+      <div class="brandRow">
+        <h1 class="brand">FrugalFetishes</h1>
+        <div class="authPill" aria-live="polite">
+          <span id="authStatus" class="muted"></span>
+          <button id="btnLogout" type="button" class="secondary smallBtn">Logout</button>
+        </div>
       </div>
 
-      <div id="startResult" class="muted" role="status" aria-live="polite"></div>
+      <nav class="tabs" aria-label="Primary navigation">
+        <button type="button" class="tabBtn active" data-tab="discover">Discover</button>
+        <button type="button" class="tabBtn" data-tab="matches">Matches</button>
+        <button type="button" class="tabBtn" data-tab="chat">Chat</button>
+        <button type="button" class="tabBtn" data-tab="profile">Profile</button>
+        <button type="button" class="tabBtn" data-tab="subscribe">Subscribe</button>
+        <button type="button" class="tabBtn" data-tab="dev">Dev Tools</button>
+      </nav>
 
-      <hr />
-
-      <label for="otp">OTP code</label>
-      <input id="otp" type="text" inputmode="numeric" placeholder="6 digits" autocomplete="one-time-code" />
-
-      <button id="btnVerify" type="button">Verify + Sign In</button>
-
-      <div id="authStatus" class="muted" role="status" aria-live="polite"></div>
       <div id="errorBox" class="error" role="alert" aria-live="assertive" hidden></div>
-    
+    </header>
 
-
-    <section class="card" aria-label="Backend Debug">
-      <h2>Backend Debug</h2>
-      <p class="muted">This shows which backend your frontend is actually calling.</p>
-      <div class="row">
-        <button id="btnCheckBackend" type="button" class="secondary">Check Backend</button>
+    <!-- DISCOVER -->
+    <section class="card tabPanel" data-panel="discover" aria-label="Discover">
+      <div class="panelHeader">
+        <h2>Discover</h2>
+        <div class="row">
+          <button id="btnLoadFeed" type="button">Load Feed</button>
+          <button id="btnCredits" type="button" class="secondary">Check Credits</button>
+        </div>
+        <div id="feedStatus" class="muted" role="status" aria-live="polite"></div>
       </div>
-      <div id="backendDebug" class="muted" role="status" aria-live="polite"></div>
+
+      <div class="deckWrap">
+        <div id="swipeCard" class="swipeCard" aria-label="Profile card" tabindex="0">
+          <div class="swipePhoto" id="swipePhoto" aria-label="Profile photo"></div>
+          <div class="swipeOverlay">
+            <div class="swipeTitle" id="swipeTitle">Load feed to start</div>
+            <div class="swipeSub" id="swipeSub"></div>
+
+            <!-- IMPORTANT: no kinks / tags on collapsed card -->
+          </div>
+          <div class="swipeHint muted">Swipe left/right or use buttons. Swipe up to expand.</div>
+        </div>
+
+        <div class="swipeActions" aria-label="Discover actions">
+          <button id="btnPass" type="button" class="secondary">Pass</button>
+          <button id="btnExpand" type="button" class="secondary">Expand</button>
+          <button id="btnLike" type="button">Like</button>
+        </div>
+      </div>
+
+      <!-- Expanded sheet (kinks / interests allowed ONLY here) -->
+      <div id="expandSheet" class="sheet" aria-label="Expanded profile" hidden>
+        <div class="sheetHeader">
+          <div class="sheetTitle" id="sheetTitle">Profile</div>
+          <button id="btnCollapse" type="button" class="secondary smallBtn">Close</button>
+        </div>
+
+        <div class="sheetGrid">
+          <div>
+            <div id="sheetPhotos" class="sheetPhotos" aria-label="Profile photos"></div>
+          </div>
+
+          <div>
+            <div class="kv">
+              <div class="key">Age</div><div id="sheetAge"></div>
+              <div class="key">City</div><div id="sheetCity"></div>
+              <div class="key">Last Active</div><div id="sheetLastActive"></div>
+              <div class="key">Plan</div><div id="sheetPlan"></div>
+            </div>
+
+            <div class="sheetSection">
+              <h3>Kinks / Interests</h3>
+              <div id="sheetInterests" class="chipRow" aria-label="Interests"></div>
+              <p class="muted smallText">Shown only in expanded view.</p>
+            </div>
+
+            <div class="sheetSection">
+              <h3>About</h3>
+              <div id="sheetAbout" class="muted"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="sheetFooter">
+          <button id="btnPass2" type="button" class="secondary">Pass</button>
+          <button id="btnLike2" type="button">Like</button>
+        </div>
+      </div>
+
+      <!-- Keep the old list-based feed for debugging (hidden unless Dev Tools tab) -->
+      <ul id="feedList" class="list" aria-label="Profiles (dev list)" hidden></ul>
     </section>
 
-    <section class="card" aria-label="Profile Editor">
+    <!-- MATCHES -->
+    <section class="card tabPanel" data-panel="matches" aria-label="Matches" hidden>
+      <h2>Matches</h2>
+      <p class="muted">Mutual likes.</p>
+      <div class="row">
+        <button id="btnLoadMatches" type="button">Load Matches</button>
+      </div>
+      <div id="matchesStatus" class="muted" role="status" aria-live="polite"></div>
+      <ul id="matchesList" class="list" aria-label="Matches"></ul>
+    </section>
+
+    <!-- CHAT -->
+    <section class="card tabPanel" data-panel="chat" aria-label="Chat" hidden>
+      <h2>Chat</h2>
+      <p class="muted">Select a match, load thread, send messages (costs 1 credit).</p>
+      <div class="row">
+        <button id="btnLoadThread" type="button">Load Thread</button>
+      </div>
+
+      <div id="threadMeta" class="muted" role="status" aria-live="polite"></div>
+
+      <label for="messageText">Message</label>
+      <input id="messageText" type="text" placeholder="Type a message…" />
+
+      <div class="row">
+        <button id="btnSendMessage" type="button">Send Message (costs 1 credit)</button>
+      </div>
+
+      <div id="threadStatus" class="muted" role="status" aria-live="polite"></div>
+      <ul id="threadList" class="list" aria-label="Message thread"></ul>
+    </section>
+
+    <!-- PROFILE -->
+    <section class="card tabPanel" data-panel="profile" aria-label="Profile" hidden>
       <h2>My Profile</h2>
-      <p class="muted">Update your profile fields (saved to Firestore via backend).</p>
+      <p class="muted">Update your profile fields.</p>
 
       <label for="profileDisplayName">Display Name</label>
       <input id="profileDisplayName" type="text" placeholder="Dom" />
@@ -73,11 +163,12 @@
         <button id="btnSetOrlando" type="button" class="secondary">Set Orlando</button>
       </div>
 
+      <div id="profileStatus" class="muted" role="status" aria-live="polite"></div>
 
       <hr />
 
       <h3>Photos</h3>
-      <p class="muted">Upload 1–6 photos. For now they are saved directly in your user doc as data URLs (MVP).</p>
+      <p class="muted">Upload 1–6 photos. (MVP: saved as data URLs in your user doc.)</p>
 
       <input id="photoFiles" type="file" accept="image/*" multiple />
       <div class="row">
@@ -87,80 +178,109 @@
 
       <div id="photoStatus" class="muted" role="status" aria-live="polite"></div>
       <div id="photoPreview" class="photoGrid" aria-label="Photo previews"></div>
-
-      <div id="profileStatus" class="muted" role="status" aria-live="polite"></div>
     </section>
 
-    <section class="card" aria-label="Filters">
-      <h2>Filters</h2>
-      <p class="muted">These filters only affect what you see on the page (no backend changes).</p>
+    <!-- SUBSCRIBE -->
+    <section class="card tabPanel" data-panel="subscribe" aria-label="Subscribe" hidden>
+      <h2>Subscribe</h2>
+      <p class="muted">Placeholder UI for: subscription + verification + paywall states.</p>
 
-      <label for="filterCity">City</label>
-      <select id="filterCity">
-        <option value="">All</option>
-      </select>
+      <div class="subGrid">
+        <div class="subCard">
+          <h3>Free</h3>
+          <ul>
+            <li>Browse basic feed</li>
+            <li>Limited likes</li>
+            <li>Credits required to message</li>
+          </ul>
+          <button type="button" class="secondary" id="btnSelectFree">Keep Free</button>
+        </div>
 
-      <label for="filterInterest">Interest</label>
-      <select id="filterInterest">
-        <option value="">All</option>
-      </select>
+        <div class="subCard">
+          <h3>Plus</h3>
+          <ul>
+            <li>More daily likes</li>
+            <li>Higher visibility</li>
+            <li>Fewer friction gates</li>
+          </ul>
+          <button type="button" id="btnSelectPlus">Choose Plus</button>
+        </div>
 
-      <div class="row">
-        <button id="btnApplyFilters" type="button">Apply Filters</button>
-        <button id="btnClearFilters" type="button" class="secondary">Clear Filters</button>
+        <div class="subCard">
+          <h3>Verified</h3>
+          <ul>
+            <li>Verified badge</li>
+            <li>Priority placement</li>
+            <li>Extra trust signals</li>
+          </ul>
+          <button type="button" id="btnSelectVerified">Get Verified</button>
+        </div>
       </div>
 
-      <div id="filterStatus" class="muted" role="status" aria-live="polite"></div>
+      <div class="muted" id="subscribeStatus" role="status" aria-live="polite"></div>
     </section>
 
-</section>
+    <!-- DEV TOOLS -->
+    <section class="card tabPanel" data-panel="dev" aria-label="Dev Tools" hidden>
+      <h2>Dev Tools</h2>
+      <p class="muted">Your original minimal client UI is kept here intact for debugging.</p>
 
+      <section class="card" aria-label="Login">
+        <h3>Login</h3>
+        <p class="muted">Step 1: enter your email, then use the OTP code.</p>
 
-    <section class="card" aria-label="Matches">
-      <h2>Matches</h2>
-      <p class="muted">This shows mutual likes.</p>
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="test@example.com" autocomplete="email" />
 
+        <div class="row">
+          <button id="btnStart" type="button">Send OTP</button>
+        </div>
+
+        <div id="startResult" class="muted" role="status" aria-live="polite"></div>
+
+        <hr />
+
+        <label for="otp">OTP code</label>
+        <input id="otp" type="text" inputmode="numeric" placeholder="6 digits" autocomplete="one-time-code" />
+
+        <button id="btnVerify" type="button">Verify + Sign In</button>
+      </section>
+
+      <section class="card" aria-label="Backend Debug">
+        <h3>Backend Debug</h3>
+        <p class="muted">This shows which backend your frontend is actually calling.</p>
+        <div class="row">
+          <button id="btnCheckBackend" type="button" class="secondary">Check Backend</button>
+        </div>
+        <div id="backendDebug" class="muted" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="card" aria-label="Filters">
+        <h3>Filters</h3>
+        <p class="muted">These filters only affect what you see (no backend changes).</p>
+
+        <label for="filterCity">City</label>
+        <select id="filterCity">
+          <option value="">All</option>
+        </select>
+
+        <label for="filterInterest">Interest</label>
+        <select id="filterInterest">
+          <option value="">All</option>
+        </select>
+
+        <div class="row">
+          <button id="btnApplyFilters" type="button">Apply Filters</button>
+          <button id="btnClearFilters" type="button" class="secondary">Clear Filters</button>
+        </div>
+
+        <div id="filterStatus" class="muted" role="status" aria-live="polite"></div>
+      </section>
+
+      <!-- dev feed list toggle -->
       <div class="row">
-        <button id="btnLoadMatches" type="button">Load Matches</button>
+        <button type="button" class="secondary" id="btnToggleDevFeed">Toggle Dev Feed List</button>
       </div>
-
-      <div id="matchesStatus" class="muted" role="status" aria-live="polite"></div>
-      <ul id="matchesList" class="list" aria-label="Matches"></ul>
-    </section>
-
-
-    <section class="card" aria-label="Messaging">
-      <h2>Messaging</h2>
-      <p class="muted">Select a match, then load and send messages.</p>
-
-      <div class="row">
-        <button id="btnLoadThread" type="button">Load Thread</button>
-      </div>
-
-      <div id="threadMeta" class="muted" role="status" aria-live="polite"></div>
-
-      <label for="messageText">Message</label>
-      <input id="messageText" type="text" placeholder="Type a message…" />
-
-      <div class="row">
-        <button id="btnSendMessage" type="button">Send Message (costs 1 credit)</button>
-      </div>
-
-      <div id="threadStatus" class="muted" role="status" aria-live="polite"></div>
-      <ul id="threadList" class="list" aria-label="Message thread"></ul>
-    </section>
-
-    <section class="card" aria-label="Feed">
-      <h2>Feed</h2>
-      <p class="muted">You must be signed in to load the feed.</p>
-
-      <div class="row">
-        <button id="btnLoadFeed" type="button">Load Feed</button>
-        <button id="btnCredits" type="button" class="secondary">Check Credits</button>
-      </div>
-
-      <div id="feedStatus" class="muted" role="status" aria-live="polite"></div>
-      <ul id="feedList" class="list" aria-label="Profiles"></ul>
     </section>
   </main>
 
