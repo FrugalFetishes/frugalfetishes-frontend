@@ -102,6 +102,19 @@ let isExpanded = false;
 let actionLocked = false;
 let touchStart = null;
 
+
+function getUidFromIdToken(idToken) {
+  try {
+    if (!idToken) return "";
+    const parts = String(idToken).split(".");
+    if (parts.length < 2) return "";
+    const payload = JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return String(payload.user_id || payload.sub || payload.uid || "");
+  } catch {
+    return "";
+  }
+}
+
 // ====== Storage ======
 const storage = {
   get idToken() { return localStorage.getItem("ff_idToken"); },
@@ -348,6 +361,35 @@ async function updateProfile(fields) {
   });
 }
 
+
+async function hydrateProfileFromServer() {
+  try {
+    if (!profileDisplayNameEl) return;
+    const resp = await getMyProfile();
+    if (!resp || resp.ok === false) return;
+    const profile = resp.profile || resp.user || null;
+    if (!profile) return;
+
+    if (profile.displayName && profileDisplayNameEl) profileDisplayNameEl.value = String(profile.displayName);
+    if (typeof profile.age === "number" && profileAgeEl) profileAgeEl.value = String(profile.age);
+    if (profile.city && profileCityEl) profileCityEl.value = String(profile.city);
+    if (Array.isArray(profile.interests) && profileInterestsEl) profileInterestsEl.value = profile.interests.join(", ");
+    if (profile.location && typeof profile.location.lat === "number" && profileLatEl) profileLatEl.value = String(profile.location.lat);
+    if (profile.location && typeof profile.location.lng === "number" && profileLngEl) profileLngEl.value = String(profile.location.lng);
+
+    // Save as draft for this uid
+    captureDraft();
+  } catch {}
+}
+
+async function getMyProfile() {
+  const idToken = await getValidIdToken();
+  return jsonFetch(`${BACKEND_BASE_URL}/api/profile/me`, {
+    method: "GET",
+    headers: { "Authorization": `Bearer ${idToken}` }
+  });
+}
+
 function parseInterests(raw) {
   if (!raw) return [];
   return raw
@@ -361,14 +403,21 @@ function setProfileStatus(msg) {
 }
 
 // Persist draft inputs locally so refresh doesn't wipe them.
-const draftKey = "ff_profileDraft_v1";
-function loadDraft() {
-  try { return JSON.parse(localStorage.getItem(draftKey) || "{}"); } catch { return {}; }
+function draftKeyForUid(uid) {
+  return `ff_profileDraft_v1_${uid || "anon"}`;
 }
-function saveDraft(d) {
-  try { localStorage.setItem(draftKey, JSON.stringify(d || {})); } catch {}
+
+function loadDraft(uid) {
+  const key = draftKeyForUid(uid);
+  try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return {}; }
+}
+function saveDraft(uid, d) {
+  const key = draftKeyForUid(uid);
+  try { localStorage.setItem(key, JSON.stringify(d || {})); } catch {}
 }
 function captureDraft() {
+  const uid = getUidFromIdToken(storage.idToken);
+
   const d = {
     displayName: profileDisplayNameEl ? profileDisplayNameEl.value : "",
     age: profileAgeEl ? profileAgeEl.value : "",
@@ -856,6 +905,7 @@ btnVerify.addEventListener("click", async () => {
     }
 
 setAuthedUI();
+  hydrateProfileFromServer();
   // Tabs
   if (tabButtons && tabButtons.length) {
     tabButtons.forEach(btn => btn.addEventListener("click", () => setActiveTab(btn.getAttribute("data-tab"))));
@@ -1065,7 +1115,8 @@ btnLogout.addEventListener("click", () => {
   if (!emailEl.value) emailEl.value = "test@example.com";
 
   // Profile editor: restore draft inputs (safe if section isn't present)
-  const d = loadDraft();
+  const uid = getUidFromIdToken(storage.idToken);
+  const d = loadDraft(uid);
   if (profileDisplayNameEl && d.displayName) profileDisplayNameEl.value = d.displayName;
   if (profileAgeEl && d.age) profileAgeEl.value = d.age;
   if (profileCityEl && d.city) profileCityEl.value = d.city;
