@@ -63,6 +63,21 @@
         <button id="btnSetOrlando" type="button" class="secondary">Set Orlando</button>
       </div>
 
+
+      <hr />
+
+      <h3>Photos</h3>
+      <p class="muted">Upload 1–6 photos. For now they are saved directly in your user doc as data URLs (MVP).</p>
+
+      <input id="photoFiles" type="file" accept="image/*" multiple />
+      <div class="row">
+        <button id="btnSavePhotos" type="button">Save Photos</button>
+        <button id="btnClearPhotos" type="button" class="secondary">Clear Selected</button>
+      </div>
+
+      <div id="photoStatus" class="muted" role="status" aria-live="polite"></div>
+      <div id="photoPreview" class="photoGrid" aria-label="Photo previews"></div>
+
       <div id="profileStatus" class="muted" role="status" aria-live="polite"></div>
     </section>
 
