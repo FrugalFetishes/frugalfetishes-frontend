@@ -19,6 +19,17 @@ const btnLoadFeed = $("btnLoadFeed");
 const btnCredits = $("btnCredits");
 const btnLogout = $("btnLogout");
 
+const profileDisplayNameEl = $("profileDisplayName");
+const profileAgeEl = $("profileAge");
+const profileCityEl = $("profileCity");
+const profileInterestsEl = $("profileInterests");
+const profileLatEl = $("profileLat");
+const profileLngEl = $("profileLng");
+const btnSaveProfile = $("btnSaveProfile");
+const btnSetMiami = $("btnSetMiami");
+const btnSetOrlando = $("btnSetOrlando");
+const profileStatusEl = $("profileStatus");
+
 const filterCityEl = $("filterCity");
 const filterInterestEl = $("filterInterest");
 const btnApplyFilters = $("btnApplyFilters");
@@ -146,6 +157,50 @@ async function postLike(targetUid) {
     body: JSON.stringify({ targetUid })
   });
 }
+
+
+async function updateProfile(fields) {
+  const idToken = storage.idToken;
+  if (!idToken) throw new Error("Not signed in (missing idToken).");
+  return jsonFetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${idToken}` },
+    body: JSON.stringify(fields)
+  });
+}
+
+function parseInterests(raw) {
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map(s => s.trim())
+    .filter(Boolean);
+}
+
+function setProfileStatus(msg) {
+  if (profileStatusEl) setStatus(profileStatusEl, msg);
+}
+
+// Persist draft inputs locally so refresh doesn't wipe them.
+const draftKey = "ff_profileDraft_v1";
+function loadDraft() {
+  try { return JSON.parse(localStorage.getItem(draftKey) || "{}"); } catch { return {}; }
+}
+function saveDraft(d) {
+  try { localStorage.setItem(draftKey, JSON.stringify(d || {})); } catch {}
+}
+function captureDraft() {
+  const d = {
+    displayName: profileDisplayNameEl ? profileDisplayNameEl.value : "",
+    age: profileAgeEl ? profileAgeEl.value : "",
+    city: profileCityEl ? profileCityEl.value : "",
+    interests: profileInterestsEl ? profileInterestsEl.value : "",
+    lat: profileLatEl ? profileLatEl.value : "",
+    lng: profileLngEl ? profileLngEl.value : "",
+  };
+  saveDraft(d);
+}
+
 
 
 async function getMatches() {
@@ -662,6 +717,79 @@ btnLogout.addEventListener("click", () => {
 
 (function init() {
   if (!emailEl.value) emailEl.value = "test@example.com";
+
+  // Profile editor: restore draft inputs (safe if section isn't present)
+  const d = loadDraft();
+  if (profileDisplayNameEl && d.displayName) profileDisplayNameEl.value = d.displayName;
+  if (profileAgeEl && d.age) profileAgeEl.value = d.age;
+  if (profileCityEl && d.city) profileCityEl.value = d.city;
+  if (profileInterestsEl && d.interests) profileInterestsEl.value = d.interests;
+  if (profileLatEl && d.lat) profileLatEl.value = d.lat;
+  if (profileLngEl && d.lng) profileLngEl.value = d.lng;
+
+  const draftInputs = [profileDisplayNameEl, profileAgeEl, profileCityEl, profileInterestsEl, profileLatEl, profileLngEl].filter(Boolean);
+  draftInputs.forEach(el => el.addEventListener("input", captureDraft));
+
+  if (btnSetMiami) btnSetMiami.addEventListener("click", () => {
+    if (profileCityEl) profileCityEl.value = "Miami";
+    if (profileLatEl) profileLatEl.value = "25.7617";
+    if (profileLngEl) profileLngEl.value = "-80.1918";
+    captureDraft();
+    setProfileStatus("Miami preset applied.");
+  });
+
+  if (btnSetOrlando) btnSetOrlando.addEventListener("click", () => {
+    if (profileCityEl) profileCityEl.value = "Orlando";
+    if (profileLatEl) profileLatEl.value = "28.5383";
+    if (profileLngEl) profileLngEl.value = "-81.3792";
+    captureDraft();
+    setProfileStatus("Orlando preset applied.");
+  });
+
+  if (btnSaveProfile) btnSaveProfile.addEventListener("click", async () => {
+    clearError();
+    btnSaveProfile.disabled = true;
+    try {
+      const payload = {};
+      const dn = profileDisplayNameEl ? profileDisplayNameEl.value.trim() : "";
+      const city = profileCityEl ? profileCityEl.value.trim() : "";
+      const ageRaw = profileAgeEl ? profileAgeEl.value : "";
+      const interestsRaw = profileInterestsEl ? profileInterestsEl.value : "";
+      const latRaw = profileLatEl ? profileLatEl.value : "";
+      const lngRaw = profileLngEl ? profileLngEl.value : "";
+
+      if (dn) payload.displayName = dn;
+      if (city) payload.city = city;
+
+      if (ageRaw !== "") {
+        const ageNum = Number(ageRaw);
+        if (!Number.isFinite(ageNum)) throw new Error("Age must be a number.");
+        payload.age = ageNum;
+      }
+
+      const interests = parseInterests(interestsRaw);
+      if (interests.length) payload.interests = interests;
+
+      if (latRaw !== "" || lngRaw !== "") {
+        const latNum = Number(latRaw);
+        const lngNum = Number(lngRaw);
+        if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) throw new Error("Location lat/lng must be numbers.");
+        payload.location = { lat: latNum, lng: lngNum };
+      }
+
+      if (Object.keys(payload).length === 0) throw new Error("Nothing to save. Fill at least one field.");
+
+      setProfileStatus("Saving profile...");
+      await updateProfile(payload);
+      setProfileStatus("Saved ✅ (lastActive/profileUpdated set server-side)");
+    } catch (e) {
+      setProfileStatus("");
+      showError(`Profile update failed: ${e.message}`);
+    } finally {
+      btnSaveProfile.disabled = false;
+    }
+  });
+
 
   // Filter buttons (safe if filters section isn't present)
   if (btnApplyFilters) btnApplyFilters.addEventListener("click", applyFiltersAndRender);
