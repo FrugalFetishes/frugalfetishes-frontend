@@ -29,14 +29,12 @@ const btnSaveProfile = $("btnSaveProfile");
 const btnSetMiami = $("btnSetMiami");
 const btnSetOrlando = $("btnSetOrlando");
 const profileStatusEl = $("profileStatus");
-const profileStatusEl = $("profileStatus");
 
 const photoFilesEl = $("photoFiles");
 const btnSavePhotos = $("btnSavePhotos");
 const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
 const photoPreviewEl = $("photoPreview");
-
 
 const filterCityEl = $("filterCity");
 const filterInterestEl = $("filterInterest");
@@ -249,11 +247,26 @@ function renderPhotoPreviews() {
 
 async function fileToDataUrlResized(file, maxSide = 800, quality = 0.82) {
   // Returns a JPEG data URL resized so the longest side is maxSide.
-  const bitmap = await createImageBitmap(file);
-  const { width, height } = bitmap;
+  // Uses FileReader + <img> to maximize browser compatibility.
+  const dataUrl = await new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onerror = () => reject(new Error("File read failed."));
+    r.onload = () => resolve(String(r.result || ""));
+    r.readAsDataURL(file);
+  });
 
+  const img = await new Promise((resolve, reject) => {
+    const i = new Image();
+    i.onload = () => resolve(i);
+    i.onerror = () => reject(new Error("Image load failed."));
+    i.src = dataUrl;
+  });
+
+  const width = img.width || 1;
+  const height = img.height || 1;
   let newW = width;
   let newH = height;
+
   const longest = Math.max(width, height);
   if (longest > maxSide) {
     const scale = maxSide / longest;
@@ -265,7 +278,7 @@ async function fileToDataUrlResized(file, maxSide = 800, quality = 0.82) {
   canvas.width = newW;
   canvas.height = newH;
   const ctx = canvas.getContext("2d");
-  ctx.drawImage(bitmap, 0, 0, newW, newH);
+  ctx.drawImage(img, 0, 0, newW, newH);
 
   return canvas.toDataURL("image/jpeg", quality);
 }
@@ -780,10 +793,6 @@ btnLogout.addEventListener("click", () => {
   if (threadListEl) threadListEl.innerHTML = "";
   if (threadStatusEl) setStatus(threadStatusEl, "");
   if (threadMetaEl) setStatus(threadMetaEl, "");
-  selectedPhotos = [];
-  if (photoFilesEl) photoFilesEl.value = "";
-  if (photoPreviewEl) photoPreviewEl.innerHTML = "";
-  if (photoStatusEl) setStatus(photoStatusEl, "");
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
@@ -864,7 +873,13 @@ btnLogout.addEventListener("click", () => {
     }
   });
 
-  // Photo selection handlers
+
+  // Filter buttons (safe if filters section isn't present)
+  if (btnApplyFilters) btnApplyFilters.addEventListener("click", applyFiltersAndRender);
+  if (btnClearFilters) btnClearFilters.addEventListener("click", clearFilters);
+  setAuthedUI();
+  if (storage.idToken) setStatus(feedStatusEl, "Signed in from previous session. Click 'Load Feed'.");
+  // Photo selection handlers (safe if Photos UI isn't present)
   if (btnClearPhotos) btnClearPhotos.addEventListener("click", () => {
     selectedPhotos = [];
     if (photoFilesEl) photoFilesEl.value = "";
@@ -881,11 +896,11 @@ btnLogout.addEventListener("click", () => {
         setPhotoStatus("");
         return;
       }
-      // Limit to 6 total
-      const toAdd = files.slice(0, Math.max(0, 6 - selectedPhotos.length));
+      const remaining = Math.max(0, 6 - selectedPhotos.length);
+      const toAdd = files.slice(0, remaining);
       for (const f of toAdd) {
-        const dataUrl = await fileToDataUrlResized(f, 800, 0.82);
-        selectedPhotos.push(dataUrl);
+        const resized = await fileToDataUrlResized(f, 800, 0.82);
+        selectedPhotos.push(resized);
       }
       if (selectedPhotos.length > 6) selectedPhotos = selectedPhotos.slice(0, 6);
       renderPhotoPreviews();
@@ -913,10 +928,4 @@ btnLogout.addEventListener("click", () => {
   });
 
 
-
-  // Filter buttons (safe if filters section isn't present)
-  if (btnApplyFilters) btnApplyFilters.addEventListener("click", applyFiltersAndRender);
-  if (btnClearFilters) btnClearFilters.addEventListener("click", clearFilters);
-  setAuthedUI();
-  if (storage.idToken) setStatus(feedStatusEl, "Signed in from previous session. Click 'Load Feed'.");
 })();
