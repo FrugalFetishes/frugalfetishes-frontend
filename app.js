@@ -80,7 +80,6 @@ let selectedInterests = new Set();
 
 
 const photoFilesEl = $("photoFiles");
-const btnSavePhotos = $("btnSavePhotos");
 const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
 const photoPreviewEl = $("photoPreview");
@@ -1591,8 +1590,7 @@ initBioCounter();
   });
 
   btnSaveProfile.addEventListener("click", async () => {
-  const photos = document.querySelectorAll(".photoThumb img");
-  if (!photos || photos.length === 0) {
+  if (!selectedPhotos || selectedPhotos.length === 0) {
     alert("Please add at least one photo to continue.");
     return;
   }
@@ -1602,7 +1600,7 @@ initBioCounter();
     try {
       const payload = {};
       const dn = profileDisplayNameEl ? profileDisplayNameEl.value.trim() : "";
-      const city = profileCityEl ? profileCityEl.value.trim() : "";
+      const zip = profileZipEl ? String(profileZipEl.value || "").trim() : "";
       const ageRaw = profileAgeEl ? profileAgeEl.value : "";
       syncInterestsHiddenInput();
       const interestsRaw = profileInterestsEl ? profileInterestsEl.value : "";
@@ -1610,7 +1608,7 @@ initBioCounter();
       const lngRaw = profileLngEl ? profileLngEl.value : "";
 
       if (dn) payload.displayName = dn;
-      if (city) payload.city = city;
+      if (zip) payload.zip = zip;
 
       const bio = profileBioEl ? profileBioEl.value.trim() : "";
       if (bio) payload.bio = bio;
@@ -1634,7 +1632,9 @@ initBioCounter();
       if (Object.keys(payload).length === 0) throw new Error("Nothing to save. Fill at least one field.");
 
       setProfileStatus("Saving profile...");
+      payload.photos = selectedPhotos;
       await updateProfile(payload);
+      setProfileStatus("Profile saved successfully ✅");
       setProfileStatus("Saved ✅ (lastActive/profileUpdated set server-side)");
     } catch (e) {
       setProfileStatus("");
@@ -1703,22 +1703,6 @@ initBioCounter();
     } catch (e) {
       setPhotoStatus("");
       showError(`Photo processing failed: ${e.message}`);
-    }
-  });
-
-  if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
-    clearError();
-    btnSavePhotos.disabled = true;
-    try {
-      if (!selectedPhotos.length) throw new Error("No photos selected.");
-      setPhotoStatus("Saving photos...");
-      await updateProfile({ photos: selectedPhotos });
-      setPhotoStatus("Photos saved ✅");
-    } catch (e) {
-      setPhotoStatus("");
-      showError(`Photo save failed: ${e.message}`);
-    } finally {
-      btnSavePhotos.disabled = false;
     }
   });
 
