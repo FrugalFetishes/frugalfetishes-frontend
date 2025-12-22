@@ -239,14 +239,14 @@ async function startAuth(email) {
   return jsonFetch(`${BACKEND_BASE_URL}/api/auth/start`, {
     method: "POST",
     headers: DEV_OTP_KEY ? { "x-dev-otp-key": DEV_OTP_KEY } : {},
-    body: JSON.stringify({ email: sanitizeEmail(email) })
+    body: { email: sanitizeEmail(email) }
   });
 }
 
 async function verifyAuth(email, codeId, otp) {
   return jsonFetch(`${BACKEND_BASE_URL}/api/auth/verify`, {
     method: "POST",
-    body: JSON.stringify({ email, codeId, otp })
+    body: { email: sanitizeEmail(email), codeId, otp }
   });
 }
 
@@ -602,7 +602,7 @@ async function devAddCredits(amount) {
   return jsonFetch(`${BACKEND_BASE_URL}/api/dev/credits/add`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ amount })
+    body: { amount }
   });
 }
 
@@ -1616,7 +1616,7 @@ btnLogout.addEventListener("click", () => {
             "Content-Type": "application/json",
             "x-dev-otp-key": devKey
           },
-          body: JSON.stringify({ amount })
+          body: { amount }
         });
 
         if (!data?.ok) {
