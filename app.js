@@ -600,14 +600,24 @@ async function getCreditsBalance() {
 }
 
 async function devAddCredits(amount) {
-  const headers = await getAuthHeader();
+  const token = (storage && storage.idToken) ? storage.idToken : "";
+  if (!token) throw new Error("Not logged in (missing token)");
+
+  const headers = {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`,
+    "authorization": `Bearer ${token}`,
+  };
   if (typeof DEV_OTP_KEY === "string" && DEV_OTP_KEY) headers["x-dev-otp-key"] = DEV_OTP_KEY;
-  return jsonFetch(`/api/dev/credits/add`, {
+
+  // Use absolute backend URL to avoid any routing ambiguity
+  return jsonFetch(`${BACKEND_BASE_URL}/api/dev/credits/add`, {
     method: "POST",
     headers,
-    body: { amount }
+    body: JSON.stringify({ amount })
   });
 }
+
 
 async function sendMessage(matchId, text, clientMessageId) {
   const idToken = await getValidIdToken();
