@@ -10,6 +10,7 @@ function setDevCreditsBalance(n) {
 
 async function refreshDevCreditsBalance() {
   try {
+    if (!storage || !storage.idToken) { setDevCreditsBalance(""); return; }
     const resp = await getCreditsBalance();
     if (resp && resp.ok !== false) {
       const bal = (typeof resp.credits === "number") ? resp.credits :
@@ -335,8 +336,9 @@ async function refreshIdToken() {
 
 
 async function getAuthHeader() {
-  const idToken = await getValidIdToken();
-  return { "Authorization": `Bearer ${idToken}` };
+  // Use current session token if already present
+  const token = storage && storage.idToken ? storage.idToken : await getValidIdToken();
+  return { "Authorization": `Bearer ${token}` };
 }
 
 async function getValidIdToken() {
