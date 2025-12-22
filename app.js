@@ -1,4 +1,28 @@
 
+function setDevCreditsStatus(msg) {
+  if (devCreditsStatusEl) devCreditsStatusEl.textContent = msg || "";
+}
+
+function setDevCreditsBalance(n) {
+  if (!devCreditsBalanceEl) return;
+  devCreditsBalanceEl.textContent = Number.isFinite(n) ? String(n) : String(n || "");
+}
+
+async function refreshDevCreditsBalance() {
+  try {
+    const resp = await getCreditsBalance();
+    if (resp && resp.ok !== false) {
+      const bal = (typeof resp.credits === "number") ? resp.credits :
+                  (typeof resp.balance === "number") ? resp.balance :
+                  (typeof resp.amount === "number") ? resp.amount : null;
+      if (bal !== null) setDevCreditsBalance(bal);
+    }
+  } catch (e) {
+    setDevCreditsStatus(`Balance failed: ${e.message}`);
+  }
+}
+
+
 function filterOutSelf(items) {
   const myUid = getUidFromIdToken(storage.idToken);
   if (!myUid) return items;
@@ -309,6 +333,12 @@ async function refreshIdToken() {
   return idToken;
 }
 
+
+async function getAuthHeader() {
+  const idToken = await getValidIdToken();
+  return { "Authorization": `Bearer ${idToken}` };
+}
+
 async function getValidIdToken() {
   const idToken = storage.idToken;
   if (!idToken) return null;
@@ -584,6 +614,23 @@ async function getThread(matchId, limit = 50) {
   return jsonFetch(`${BACKEND_BASE_URL}/api/messages/thread?${qs}`, {
     method: "GET",
     headers: { "Authorization": `Bearer ${idToken}` }
+  });
+}
+
+
+async function getCreditsBalance() {
+  const headers = await getAuthHeader();
+  return jsonFetch(`${BACKEND_BASE_URL}/api/credits/balance`, { method: "GET", headers });
+}
+
+async function devAddCredits(amount) {
+  const headers = await getAuthHeader();
+  // DEV-only key (same one used for dev OTP)
+  if (typeof DEV_OTP_KEY === "string" && DEV_OTP_KEY) headers["x-dev-otp-key"] = DEV_OTP_KEY;
+  return jsonFetch(`${BACKEND_BASE_URL}/api/dev/credits/add`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ amount })
   });
 }
 
