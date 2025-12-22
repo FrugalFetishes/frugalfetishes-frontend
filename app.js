@@ -1044,7 +1044,7 @@ function clearFilters() {
 btnStart.addEventListener("click", async () => {
   clearError();
   setStatus(startResultEl, "");
-  const emailRaw = loginEmailEl ? loginEmailEl.value : "";
+  const emailRaw = emailEl ? emailEl.value : "";
   const email = sanitizeEmail(emailRaw);
   if (!isValidEmail(email)) { setStatus(authStatusEl, `Invalid email: ${email}`); return; }
   if (!email) return showError("Enter an email first.");
