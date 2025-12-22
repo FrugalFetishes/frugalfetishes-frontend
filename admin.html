@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>FrugalFetishes — Admin Dashboard</title>
+  <link rel="stylesheet" href="./admin.css" />
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar" aria-label="Admin navigation">
+      <div class="brand">
+        <div class="logo">FF</div>
+        <div class="brandText">
+          <div class="brandName">FrugalFetishes</div>
+          <div class="brandSub">Admin</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="navItem active" data-view="dashboard" type="button">Dashboard</button>
+        <button class="navItem" data-view="users" type="button">Users</button>
+        <button class="navItem" data-view="credits" type="button">Credits</button>
+        <button class="navItem" data-view="system" type="button">System</button>
+      </nav>
+
+      <div class="sidebarFooter">
+        <div class="pill" id="envPill">Backend: (checking…)</div>
+        <div class="pill muted" id="buildPill">buildId: —</div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="topLeft">
+          <div class="pageTitle" id="pageTitle">Dashboard</div>
+          <div class="pageSub" id="pageSub">Admin-only tools for FrugalFetishes</div>
+        </div>
+
+        <div class="topRight">
+          <div class="authBadge" id="authBadge">
+            <span class="dot" id="authDot"></span>
+            <span id="authText">Not signed in</span>
+          </div>
+
+          <button class="btn ghost" id="btnLogout" type="button" disabled>Login</button>
+        </div>
+      </header>
+
+      <section class="content">
+        <!-- AUTH CARD -->
+        <div class="card" id="authCard">
+          <div class="cardHeader">
+            <div class="cardTitle">Admin Login</div>
+            <div class="cardHint">Use email + OTP. Admin access is limited to <b>frugalfetishes@outlook.com</b>.</div>
+          </div>
+
+          <div class="authGrid">
+            <div class="field">
+              <label for="emailInput">Email</label>
+              <input id="emailInput" type="email" placeholder="frugalfetishes@outlook.com" autocomplete="username" />
+            </div>
+
+            <div class="field">
+              <label>&nbsp;</label>
+              <button class="btn" id="btnSendOtp" type="button">Send OTP</button>
+            </div>
+
+            <div class="field">
+              <label for="otpInput">OTP Code</label>
+              <input id="otpInput" type="text" inputmode="numeric" placeholder="Enter OTP" autocomplete="one-time-code" />
+            </div>
+
+            <div class="field">
+              <label>&nbsp;</label>
+              <button class="btn" id="btnVerify" type="button">Verify + Sign In</button>
+            </div>
+          </div>
+
+          <div class="status" id="authStatus">—</div>
+        </div>
+
+        <!-- DASHBOARD VIEW -->
+        <div class="view" id="view-dashboard">
+          <div class="kpiGrid">
+            <div class="kpi card">
+              <div class="kpiLabel">Total Users</div>
+              <div class="kpiValue" id="kpiUsers">—</div>
+              <div class="kpiSub">From /api/admin/users</div>
+            </div>
+            <div class="kpi card">
+              <div class="kpiLabel">Credits (Sum)</div>
+              <div class="kpiValue" id="kpiCredits">—</div>
+              <div class="kpiSub">Sum of users’ credits</div>
+            </div>
+            <div class="kpi card">
+              <div class="kpiLabel">Admin Mode</div>
+              <div class="kpiValue" id="kpiAdminMode">—</div>
+              <div class="kpiSub">Unlimited messaging (admin only)</div>
+            </div>
+          </div>
+
+          <div class="grid2">
+            <div class="card">
+              <div class="cardHeader">
+                <div class="cardTitle">Quick Actions</div>
+                <div class="cardHint">Most-used admin tools</div>
+              </div>
+
+              <div class="quickActions">
+                <button class="btn" id="btnRefreshUsers" type="button" disabled>Refresh Users</button>
+                <button class="btn ghost" id="btnGoCredits" type="button">Go to Credits</button>
+              </div>
+
+              <div class="status" id="quickStatus">—</div>
+            </div>
+
+            <div class="card">
+              <div class="cardHeader">
+                <div class="cardTitle">System</div>
+                <div class="cardHint">Backend connectivity</div>
+              </div>
+
+              <div class="sysRow">
+                <div class="sysLabel">Health</div>
+                <div class="sysValue" id="sysHealth">—</div>
+              </div>
+              <div class="sysRow">
+                <div class="sysLabel">Firebase</div>
+                <div class="sysValue" id="sysFirebase">—</div>
+              </div>
+              <div class="sysRow">
+                <div class="sysLabel">buildId</div>
+                <div class="sysValue mono" id="sysBuildId">—</div>
+              </div>
+
+              <div class="status" id="sysStatus">—</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- USERS VIEW -->
+        <div class="view" id="view-users" hidden>
+          <div class="card">
+            <div class="cardHeader row">
+              <div>
+                <div class="cardTitle">Users</div>
+                <div class="cardHint">Browse users and current credit balances</div>
+              </div>
+              <div class="rowRight">
+                <input class="search" id="userSearch" type="text" placeholder="Search by name / uid" />
+                <button class="btn" id="btnReloadUsers" type="button" disabled>Reload</button>
+              </div>
+            </div>
+
+            <div class="tableWrap">
+              <table class="table" aria-label="Users table">
+                <thead>
+                  <tr>
+                    <th style="width: 34%;">Name</th>
+                    <th style="width: 40%;">UID</th>
+                    <th style="width: 16%;">Credits</th>
+                    <th style="width: 10%;">Action</th>
+                  </tr>
+                </thead>
+                <tbody id="usersTbody">
+                  <tr><td colspan="4" class="muted">Sign in to load users.</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="status" id="usersStatus">—</div>
+          </div>
+        </div>
+
+        <!-- CREDITS VIEW -->
+        <div class="view" id="view-credits" hidden>
+          <div class="card">
+            <div class="cardHeader row">
+              <div>
+                <div class="cardTitle">Grant Credits</div>
+                <div class="cardHint">Pick a user, choose amount, grant credits</div>
+              </div>
+              <div class="rowRight">
+                <button class="btn ghost" id="btnCreditsReload" type="button" disabled>Reload Users</button>
+              </div>
+            </div>
+
+            <div class="creditsGrid">
+              <div class="field">
+                <label for="creditUserSelect">User</label>
+                <select id="creditUserSelect"></select>
+              </div>
+
+              <div class="field">
+                <label for="creditAmountSelect">Amount</label>
+                <select id="creditAmountSelect">
+                  <option value="1">+1</option>
+                  <option value="10">+10</option>
+                  <option value="100" selected>+100</option>
+                  <option value="1000">+1000</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label>&nbsp;</label>
+                <button class="btn" id="btnGrantCredits" type="button" disabled>Grant Credits</button>
+              </div>
+            </div>
+
+            <div class="status" id="creditsStatus">—</div>
+          </div>
+        </div>
+
+        <!-- SYSTEM VIEW -->
+        <div class="view" id="view-system" hidden>
+          <div class="card">
+            <div class="cardHeader">
+              <div class="cardTitle">System & Diagnostics</div>
+              <div class="cardHint">Admin endpoints & helpful status</div>
+            </div>
+
+            <div class="sysRow">
+              <div class="sysLabel">Admin Users Endpoint</div>
+              <div class="sysValue mono">GET /api/admin/users</div>
+            </div>
+            <div class="sysRow">
+              <div class="sysLabel">Grant Credits Endpoint</div>
+              <div class="sysValue mono">POST /api/admin/credits/grant</div>
+            </div>
+
+            <div class="status" id="diagStatus">—</div>
+          </div>
+        </div>
+
+      </section>
+    </main>
+  </div>
+
+  <script src="./admin.js"></script>
+</body>
+</html>
