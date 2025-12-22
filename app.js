@@ -737,7 +737,7 @@ function renderFeed(items) {
 
     const title = document.createElement("div");
     title.className = "profileTitle";
-    title.textContent = `${p.uid} — ${p.age ?? "?"} — ${p.city ?? ""}`;
+    title.textContent = `${p.displayName} — ${p.age ?? "?"} — ${p.city ?? ""}`;
     li.appendChild(title);
 
     // Photo (optional): if profile has photos array of URLs, show first one. Otherwise show placeholder.
@@ -1356,7 +1356,7 @@ function renderCollapsedCard(p) {
   const age = (p.age !== undefined && p.age !== null) ? p.age : "?";
   const city = p.city || "";
   const uid = p.uid || "(unknown)";
-  swipeTitleEl.textContent = `${uid}`;
+  swipeTitleEl.textContent = currentProfile && currentProfile.displayName ? String(currentProfile.displayName) : "";
   if (swipeSubEl) swipeSubEl.textContent = `${age} • ${city}`.trim();
 
   const photo = firstPhotoUrl(p);
@@ -1382,7 +1382,7 @@ function renderExpandedSheet(p) {
   const city = p.city || "";
   const uid = p.uid || "Profile";
 
-  if (sheetTitleEl) sheetTitleEl.textContent = uid;
+  if (sheetTitleEl) sheetTitleEl.textContent = (currentProfile && currentProfile.displayName) ? String(currentProfile.displayName) : "";
   if (sheetAgeEl) sheetAgeEl.textContent = safeText(age);
   if (sheetCityEl) sheetCityEl.textContent = safeText(city);
   if (sheetPlanEl) sheetPlanEl.textContent = safeText(p.plan || "");
