@@ -216,55 +216,23 @@ function setAuthedUI() {
 }
 
 async function jsonFetch(url, options = {}) {
-  const attempt = async () => {
-    const fullUrl = (typeof url === "string" && url.startsWith("/")) ? `${BACKEND_BASE_URL}${url}` : url;
-    const res = await fetch(fullUrl, {
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers || {})
-      }
-    });
-
-    const text = await res.text();
-    let data = null;
-    try { data = text ? JSON.parse(text) : null; } catch (e) { /* ignore */ }
-
-    if (!res.ok) {
-      const msg = (data && (data.error || data.message)) ? (data.error || data.message) : text;
-      const err = new Error(msg || `Request failed (${res.status})`);
-      err.status = res.status;
-      throw err;
-    }
-    return data;
-  };
-
-  try {
-    return await attempt();
-  } catch (e) {
-    // If the backend says our Firebase ID token expired, refresh it once and retry.
-    const retried = options && options._retried;
-    const isExpired = looksLikeExpiredTokenError(e && e.message);
-    const hasBearer = options && options.headers && typeof options.headers.Authorization === "string";
-    if (!retried && isExpired && hasBearer && storage.refreshToken) {
-      try {
-        const newIdToken = await refreshIdToken();
-        options = {
-          ...options,
-          _retried: true,
-          headers: {
-            ...(options.headers || {}),
-            Authorization: `Bearer ${newIdToken}`
-          }
-        };
-        return await attempt();
-      } catch (refreshErr) {
-        // fall through to original error if refresh fails
-        throw refreshErr;
-      }
-    }
-    throw e;
+  const opts = Object.assign({ headers: {} }, options || {});
+  if (opts.body && typeof opts.body === "object" && !(opts.body instanceof FormData)) {
+    opts.body = JSON.stringify(opts.body);
+    opts.headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
   }
+
+  const res = await fetch(url, opts);
+  const text = await res.text();
+  let data = null;
+  try { data = text ? JSON.parse(text) : null; } catch { data = null; }
+
+  if (!res.ok) {
+    const snippet = text ? text.slice(0, 180) : "";
+    const errMsg = (data && (data.error || data.message)) ? (data.error || data.message) : snippet;
+    throw new Error(`HTTP ${res.status} @ ${url} :: ${errMsg}`);
+  }
+  return data !== null ? data : (text ? { ok: true, text } : { ok: true });
 }
 
 async function startAuth(email) {
