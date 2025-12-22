@@ -174,30 +174,76 @@
     <!-- PROFILE -->
     <section class="card tabPanel" data-panel="profile" aria-label="Profile" hidden>
       <h2>My Profile</h2>
-      <p class="muted">Update your profile fields.</p>
+      <p class="muted">Make your profile feel real: add a photo, pick interests, write a short bio.</p>
 
-      <label for="profileDisplayName">Display Name</label>
-      <input id="profileDisplayName" type="text" placeholder="Dom" />
+      <div class="twoCol">
+        <div>
+          <label for="profileDisplayName">Display Name</label>
+          <input id="profileDisplayName" type="text" placeholder="Dom" autocomplete="nickname" />
 
-      <label for="profileAge">Age</label>
-      <input id="profileAge" type="number" min="18" max="99" placeholder="28" />
+          <label for="profileAge">Age</label>
+          <input id="profileAge" type="number" min="18" max="99" placeholder="28" />
+        </div>
 
-      <label for="profileCity">City</label>
-      <input id="profileCity" type="text" placeholder="Miami" />
+        <div>
+          <label for="profileCity">City</label>
+          <input id="profileCity" type="text" placeholder="Miami" autocomplete="address-level2" />
 
-      <label for="profileInterests">Interests (comma-separated)</label>
-      <input id="profileInterests" type="text" placeholder="latex, feet" />
+          <label>Location</label>
+          <div class="row rowWrap">
+            <button id="btnUseLocation" type="button" class="btn btnPrimary">Use My Location</button>
+            <button id="btnClearLocation" type="button" class="btn secondary">Clear</button>
+            <button id="btnSetMiami" type="button" class="btn secondary">Set Miami</button>
+            <button id="btnSetOrlando" type="button" class="btn secondary">Set Orlando</button>
+          </div>
+          <div id="locationStatus" class="muted" role="status" aria-live="polite"></div>
 
-      <label>Location</label>
-      <div class="row">
-        <input id="profileLat" type="number" step="0.0001" placeholder="lat" />
-        <input id="profileLng" type="number" step="0.0001" placeholder="lng" />
+          <details class="advanced">
+            <summary>Advanced: manual lat/lng</summary>
+            <div class="row">
+              <input id="profileLat" type="number" step="0.0001" placeholder="lat" />
+              <input id="profileLng" type="number" step="0.0001" placeholder="lng" />
+            </div>
+          </details>
+        </div>
       </div>
 
-      <div class="row">
-        <button id="btnSaveProfile" type="button">Save Profile</button>
-        <button id="btnSetMiami" type="button" class="secondary">Set Miami</button>
-        <button id="btnSetOrlando" type="button" class="secondary">Set Orlando</button>
+      <label>Interests & Kinks</label>
+      <div class="muted small">Tap to select. These are used for matching and filters.</div>
+
+      <div id="interestChips" class="chipGrid" aria-label="Interest chips">
+        <button type="button" class="chip" data-value="vanilla">Vanilla</button>
+        <button type="button" class="chip" data-value="curious">Curious</button>
+        <button type="button" class="chip" data-value="dom">Dom</button>
+        <button type="button" class="chip" data-value="sub">Sub</button>
+        <button type="button" class="chip" data-value="switch">Switch</button>
+        <button type="button" class="chip" data-value="roleplay">Role Play</button>
+        <button type="button" class="chip" data-value="power-play">Power Play</button>
+        <button type="button" class="chip" data-value="bondage">Bondage</button>
+        <button type="button" class="chip" data-value="bdsm">BDSM</button>
+        <button type="button" class="chip" data-value="latex">Latex</button>
+        <button type="button" class="chip" data-value="leather">Leather</button>
+        <button type="button" class="chip" data-value="lace">Lace</button>
+        <button type="button" class="chip" data-value="feet">Feet</button>
+      </div>
+
+      <div class="row rowWrap" style="margin-top:10px;">
+        <input id="profileInterestCustom" type="text" placeholder="Add a custom interest (optional)" />
+        <button id="btnAddInterest" type="button" class="btn secondary">Add</button>
+      </div>
+
+      <!-- Keep the original field for backend compatibility (auto-filled by chips) -->
+      <input id="profileInterests" type="hidden" />
+
+      <label for="profileBio">Bio</label>
+      <textarea id="profileBio" rows="4" placeholder="A few lines about you... (keep it fun)"></textarea>
+      <div class="rowBetween">
+        <div class="muted small">Keep it short and specific.</div>
+        <div class="muted small"><span id="bioCount">0</span>/240</div>
+      </div>
+
+      <div class="row rowWrap" style="margin-top:12px;">
+        <button id="btnSaveProfile" type="button" class="btn btnPrimary">Save Profile</button>
       </div>
 
       <div id="profileStatus" class="muted" role="status" aria-live="polite"></div>
@@ -208,9 +254,9 @@
       <p class="muted">Upload 1–6 photos. (MVP: saved as data URLs in your user doc.)</p>
 
       <input id="photoFiles" type="file" accept="image/*" multiple />
-      <div class="row">
-        <button id="btnSavePhotos" type="button">Save Photos</button>
-        <button id="btnClearPhotos" type="button" class="secondary">Clear Selected</button>
+      <div class="row rowWrap">
+        <button id="btnSavePhotos" type="button" class="btn">Save Photos</button>
+        <button id="btnClearPhotos" type="button" class="btn secondary">Clear Selected</button>
       </div>
 
       <div id="photoStatus" class="muted" role="status" aria-live="polite"></div>
