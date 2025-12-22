@@ -1622,10 +1622,12 @@ btnLogout.addEventListener("click", () => {
       setStatus("Adding credits...");
 
       try {
+        const authHeaders = await getAuthHeader();
+
         const data = await jsonFetch(`/api/dev/credits/add`, {
           method: "POST",
           headers: {
-            ...getAuthHeader(),
+            ...authHeaders,
             "Content-Type": "application/json",
             "x-dev-otp-key": devKey
           },
