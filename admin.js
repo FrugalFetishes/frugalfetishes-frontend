@@ -9,6 +9,7 @@ const storage = { idToken: null, loginEmail: "", lastCodeId: null };
 const authText = $("authText");
 const authDot = $("authDot");
 const btnLogout = $("btnLogout");
+const btnOpenApp = $("btnOpenApp");
 const authStatus = $("authStatus");
 const emailInput = $("emailInput");
 const otpInput = $("otpInput");
@@ -135,14 +136,7 @@ async function startOtp(){
     storage.lastCodeId = data.codeId || data.codeID || data.codeid || null;
     let msg = "OTP started ✅";
     if (storage.lastCodeId) msg += `  codeId: ${storage.lastCodeId}`;
-    if (data.devOtp) {
-      msg += `  devOtp: ${data.devOtp} (test-only)`;
-      const otpEl = document.getElementById("otpInput");
-      if (otpEl && storage.loginEmail === ADMIN_EMAIL) {
-        otpEl.value = String(data.devOtp);
-        otpEl.focus();
-      }
-    }
+    if (data.devOtp) msg += `  devOtp: ${data.devOtp} (test-only)`;
     authStatus.textContent = msg;
   } catch(e){
     authStatus.textContent = `OTP start failed: ${String(e.message || e)}`;
@@ -320,6 +314,10 @@ btnGoCredits.addEventListener("click", () => showView("credits"));
 btnSendOtp.addEventListener("click", startOtp);
 btnVerify.addEventListener("click", verifyOtp);
 btnLogout.addEventListener("click", () => { if (storage.idToken) logout(); else showView("dashboard"); });
+
+btnOpenApp.addEventListener("click", () => {
+  window.open("/", "_blank", "noopener");
+});
 
 btnRefreshUsers.addEventListener("click", refreshUsers);
 btnReloadUsers.addEventListener("click", refreshUsers);
