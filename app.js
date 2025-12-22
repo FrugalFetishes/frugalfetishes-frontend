@@ -1591,6 +1591,12 @@ initBioCounter();
   });
 
   btnSaveProfile.addEventListener("click", async () => {
+  const photos = document.querySelectorAll(".photoThumb img");
+  if (!photos || photos.length === 0) {
+    alert("Please add at least one photo to continue.");
+    return;
+  }
+
     clearError();
     btnSaveProfile.disabled = true;
     try {
