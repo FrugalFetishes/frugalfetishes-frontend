@@ -667,6 +667,7 @@ function normalizeThreadResponse(r) {
 }
 
 
+
 function renderThread(messages) {
   if (!threadListEl) return;
   threadListEl.innerHTML = "";
@@ -694,45 +695,61 @@ function renderThread(messages) {
     const fromUid = String(msg.fromUid || msg.from || msg.senderUid || "");
     const isMine = myUid && fromUid && (fromUid === myUid);
 
-    // Avatar (use selectedOtherUid photo for incoming; your own is optional)
-    // Avatar: show ONLY for the other person's messages, and only if we actually have a photo URL.
+    const avatar = document.createElement("div");
+    avatar.style.width = "36px";
+    avatar.style.height = "36px";
+    avatar.style.borderRadius = "10px";
+    avatar.style.overflow = "hidden";
+    avatar.style.flex = "0 0 36px";
+    avatar.style.background = "#eee";
+
+    const img = document.createElement("img");
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.objectFit = "cover";
+    img.alt = "avatar";
+
     if (!isMine && selectedOtherUid) {
       const cached = publicProfileCache.get(selectedOtherUid);
-      const photoUrl = cached?.photoUrl || cached?.photo || null;
-
-      if (photoUrl) {
-        const avatar = document.createElement("div");
-        avatar.style.width = "36px";
-        avatar.style.height = "36px";
-        avatar.style.borderRadius = "10px";
-        avatar.style.overflow = "hidden";
-        avatar.style.flex = "0 0 36px";
-        avatar.style.background = "#eee";
-
-        const img = document.createElement("img");
-        img.style.width = "100%";
-        img.style.height = "100%";
-        img.style.objectFit = "cover";
-        img.alt = "avatar";
-        img.src = photoUrl;
-
-        avatar.appendChild(img);
-        row.appendChild(avatar);
-      }
+      if (cached && cached.photoUrl) img.src = cached.photoUrl;
     }
+    if (img.src) avatar.appendChild(img);
+
+    const bubbleWrap = document.createElement("div");
+    bubbleWrap.style.flex = "1";
+
+    const header = document.createElement("div");
+    header.className = "kv";
+
+    const ms = msg._ms || null;
+    const when = ms ? new Date(ms).toLocaleString() : "";
+
+    header.textContent = isMine ? (when ? `You • ${when}` : "You") : (when ? `${fromUid} • ${when}` : fromUid);
+    bubbleWrap.appendChild(header);
+
+    const bubble = document.createElement("div");
+    bubble.style.padding = "10px 12px";
+    bubble.style.borderRadius = "12px";
+    bubble.style.maxWidth = "600px";
+    bubble.style.display = "inline-block";
+    bubble.style.background = isMine ? "#111" : "#f2f2f2";
+    bubble.style.color = isMine ? "#fff" : "#111";
+    bubble.textContent = String(msg.text || msg.message || "");
+    bubbleWrap.appendChild(bubble);
+
+    if (isMine) {
+      row.style.flexDirection = "row-reverse";
+      bubbleWrap.style.textAlign = "right";
+      header.style.textAlign = "right";
+    }
+
+    row.appendChild(avatar);
     row.appendChild(bubbleWrap);
     li.appendChild(row);
     threadListEl.appendChild(li);
-
-    // Async resolve names after render
-    if (!isMine && fromUid) {
-      resolveDisplayName(fromUid).then((nm) => {
-        const name = nm || fromUid;
-        header.textContent = when ? `${name} • ${when}` : `${name}`;
-      });
-    }
   }
 }
+
 
 
 
