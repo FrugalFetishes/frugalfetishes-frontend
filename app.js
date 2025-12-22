@@ -71,9 +71,29 @@ function isAdminUser() {
 }
 
 function applyAdminVisibility() {
-  const devPanel = document.querySelector('[data-panel="dev"]') || document.getElementById("panelDev");
-  if (!devPanel) return;
-  devPanel.style.display = isAdminUser() ? "" : "none";
+  // Keep the Dev panel visible so the user can always log in / verify backend.
+  // Only hide the admin-only controls inside it.
+  const isAdmin = isAdminUser();
+
+  // Elements that should be admin-only (best-effort by known ids/classes)
+  const adminOnlyNodes = [
+    document.getElementById("devCreditsCard"),
+    document.getElementById("devCreditsSection"),
+    document.getElementById("devCreditsTools"),
+    document.getElementById("devToolsAdminOnly")
+  ].filter(Boolean);
+
+  // Also hide any buttons wired for adding credits if present
+  const creditButtons = Array.from(document.querySelectorAll('[data-dev-action="add-credits"], #btnDevAddCredits, #btnAddCredits100, #devAddCredits100'));
+
+  for (const node of adminOnlyNodes) node.style.display = isAdmin ? "" : "none";
+  for (const btn of creditButtons) btn.style.display = isAdmin ? "" : "none";
+
+  // If the Dev Credits UI is present but user isn't admin, show a short message in the status area.
+  if (!isAdmin) {
+    const status = document.getElementById("devCreditsStatus");
+    if (status) status.textContent = "Admin-only. Log in as frugalfetishes@outlook.com to use Dev Credits.";
+  }
 }
 
 // ====== DOM ======
@@ -1610,7 +1630,11 @@ btnLogout.addEventListener("click", () => {
 // Dev Tools: Add Credits (testing)
 (function setupDevAddCredits() {
   try {
-    if (!isAdminUser()) return;
+    if (!isAdminUser()) {
+      const status = document.getElementById("devCreditsStatus");
+      if (status) status.textContent = "Admin-only. Log in as frugalfetishes@outlook.com to use Dev Credits.";
+      return;
+    }
     // Avoid duplicating the UI if hot-reload runs again
     if (document.getElementById("btnDevAddCredits")) return;
 
