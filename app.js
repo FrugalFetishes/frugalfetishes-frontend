@@ -217,10 +217,14 @@ function setAuthedUI() {
 
 async function jsonFetch(url, options = {}) {
   if (typeof url === "string" && url.startsWith("/api/")) url = `${BACKEND_BASE_URL}${url}`;
+
   const opts = Object.assign({ headers: {} }, options || {});
-  if (opts.body && typeof opts.body === "object" && !(opts.body instanceof FormData)) {
+  opts.headers = Object.assign({}, opts.headers || {});
+
+  // If body is a plain object, send JSON and keep existing headers (like Authorization)
+  if (opts.body && typeof opts.body === "object" && !(opts.body instanceof FormData) && !(opts.body instanceof Blob)) {
+    opts.headers = Object.assign({ "Content-Type": "application/json" }, opts.headers);
     opts.body = JSON.stringify(opts.body);
-    opts.headers = Object.assign({ "Content-Type": "application/json" }, opts.headers || {});
   }
 
   const res = await fetch(url, opts);
@@ -305,9 +309,9 @@ async function refreshIdToken() {
 
 
 async function getAuthHeader() {
-  // Prefer the in-memory token set after Verify OTP
-  const token = storage && storage.idToken ? storage.idToken : null;
-  return token ? { "Authorization": `Bearer ${token}` } : {};
+  // Prefer the active session token; otherwise refresh via getValidIdToken()
+  const token = (storage && storage.idToken) ? storage.idToken : await getValidIdToken();
+  return { "Authorization": `Bearer ${token}` };
 }
 
 
@@ -597,9 +601,8 @@ async function getCreditsBalance() {
 
 async function devAddCredits(amount) {
   const headers = await getAuthHeader();
-  // DEV-only key (same one used for dev OTP)
   if (typeof DEV_OTP_KEY === "string" && DEV_OTP_KEY) headers["x-dev-otp-key"] = DEV_OTP_KEY;
-  return jsonFetch(`${BACKEND_BASE_URL}/api/dev/credits/add`, {
+  return jsonFetch(`/api/dev/credits/add`, {
     method: "POST",
     headers,
     body: { amount }
