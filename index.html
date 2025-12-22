@@ -4,10 +4,47 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FrugalFetishes — MVP Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20251222184412" />
+  <link rel="stylesheet" href="./styles.css?v=20251222190816" />
 </head>
 <body>
   <main class="container" aria-label="FrugalFetishes MVP App">
+<div id="landingView" class="landing">
+    <div class="landingHero">
+      <div class="landingBrand">
+        <img class="brandImg" src="./frugalfetishes.png" alt="FrugalFetishes" />
+        <div class="landingTagline">Find your match — the FrugalFetishes way.</div>
+      </div>
+
+      <div class="landingCard" aria-label="Login">
+        <div class="landingTitle">Welcome</div>
+        <div class="landingSub">Log in with your email to continue.</div>
+
+        <label for="email">Email</label>
+        <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
+
+        <div class="row rowWrap" style="margin-top:10px;">
+          <button id="btnStart" type="button" class="btn btnPrimary">Send OTP</button>
+        </div>
+        <div id="startResult" class="status" role="status" aria-live="polite"></div>
+
+        <div style="height:10px;"></div>
+
+        <label for="otp">OTP code</label>
+        <input id="otp" type="text" inputmode="numeric" placeholder="123456" />
+
+        <div class="row rowWrap" style="margin-top:10px;">
+          <button id="btnVerify" type="button" class="btn">Verify + Sign In</button>
+        </div>
+        <div id="verifyResult" class="status" role="status" aria-live="polite"></div>
+
+        <div class="small" style="margin-top:10px;">
+          Tip: During dev, you may see the OTP printed on screen.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<div id="appView" class="appView">
     <header class="topHeader">
       <div class="brandRow">
         <h1 class="brand">FrugalFetishes</h1>
@@ -148,14 +185,7 @@
       <label for="profileCity">City</label>
       <input id="profileCity" type="text" placeholder="Miami" />
 
-      
-
-      <div class="row rowWrap" style="margin-top:10px;">
-        <button id="btnUseLocation" type="button" class="btn btnPrimary">Use My Location</button>
-        <button id="btnClearLocation" type="button" class="btn btnGhost">Clear Location</button>
-      </div>
-      <div id="locationStatus" class="muted" role="status" aria-live="polite" style="margin-top:8px;"></div>
-<label for="profileInterests">Interests (comma-separated)</label>
+      <label for="profileInterests">Interests (comma-separated)</label>
       <input id="profileInterests" type="text" placeholder="latex, feet" />
 
       <label>Location</label>
@@ -271,6 +301,6 @@
   </div>
 </main>
 
-  <script src="./app.js?v=20251222184412"></script>
+  <script src="./app.js?v=20251222190816"></script>
 </body>
 </html>
