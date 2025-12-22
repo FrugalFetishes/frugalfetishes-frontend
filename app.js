@@ -722,13 +722,8 @@ async function renderMatches(matches) {
     title.className = "profileTitle";
     title.textContent = name;
     titleWrap.appendChild(title);
-
-    const meta = document.createElement("div");
-    meta.className = "kv";
-    meta.textContent = matchId ? `Match: ${matchId}` : "";
-    titleWrap.appendChild(meta);
-
-    rowTop.appendChild(titleWrap);
+    // (hide match id in UI)
+rowTop.appendChild(titleWrap);
     li.appendChild(rowTop);
 
     const btn = document.createElement("button");
@@ -737,7 +732,7 @@ async function renderMatches(matches) {
     btn.addEventListener("click", () => {
       selectedMatchId = matchId || "";
       selectedOtherUid = otherUid || "";
-      if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Chat with ${name} • ${selectedMatchId}` : `Chat • ${selectedMatchId}`);
+      if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Chat with ${name}` : `Chat`);
       // Switch to chat tab using existing tab system
       if (typeof setActiveTab === "function") setActiveTab("chat");
       else {
@@ -1026,7 +1021,10 @@ setAuthedUI();
       const msgs = normalizeThreadResponse(resp);
       renderThread(msgs);
       setStatus(threadStatusEl, `Messages: ${msgs.length}`);
-      if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Chat with ${selectedOtherUid} • ${selectedMatchId}` : `Chat • ${selectedMatchId}`);
+      if (threadMetaEl) {
+      const nm = selectedOtherUid ? await resolveDisplayName(selectedOtherUid) : "";
+      setStatus(threadMetaEl, nm ? `Chat with ${nm}` : `Chat`);
+    }
     } catch (e) {
       setStatus(threadStatusEl, `Thread failed: ${e.message}`);
     }
