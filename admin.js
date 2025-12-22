@@ -1,15 +1,20 @@
 /* FrugalFetishes Admin Dashboard (no frameworks) */
+
 const ADMIN_EMAIL = "frugalfetishes@outlook.com";
-const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
 
 const $ = (id) => document.getElementById(id);
 
-const storage = { idToken: null, loginEmail: "", lastCodeId: null };
+const storage = {
+  idToken: null,
+  loginEmail: "",
+  lastCodeId: null
+};
 
+// Elements
+const authBadge = $("authBadge");
 const authText = $("authText");
 const authDot = $("authDot");
 const btnLogout = $("btnLogout");
-const btnOpenApp = $("btnOpenApp");
 const authStatus = $("authStatus");
 const emailInput = $("emailInput");
 const otpInput = $("otpInput");
@@ -22,7 +27,6 @@ const sysHealth = $("sysHealth");
 const sysFirebase = $("sysFirebase");
 const sysBuildId = $("sysBuildId");
 const sysStatus = $("sysStatus");
-const sysBackendUrl = $("sysBackendUrl");
 
 const pageTitle = $("pageTitle");
 const pageSub = $("pageSub");
@@ -44,26 +48,35 @@ const btnCreditsReload = $("btnCreditsReload");
 
 const diagStatus = $("diagStatus");
 
+// Views
 const views = ["dashboard","users","credits","system"];
 function showView(view){
   for (const v of views){
     const el = $(`view-${v}`);
-    if (el) el.hidden = v !== view;
+    if (!el) continue;
+    el.hidden = v !== view;
   }
   for (const btn of document.querySelectorAll(".navItem")){
     btn.classList.toggle("active", btn.dataset.view === view);
   }
   pageTitle.textContent = view.charAt(0).toUpperCase() + view.slice(1);
-  pageSub.textContent =
-    view === "dashboard" ? "Admin-only tools for FrugalFetishes"
-    : view === "users" ? "Browse users and balances"
-    : view === "credits" ? "Grant credits to users"
-    : "Endpoints & diagnostics";
+  pageSub.textContent = view === "dashboard"
+    ? "Admin-only tools for FrugalFetishes"
+    : view === "users"
+      ? "Browse users and balances"
+      : view === "credits"
+        ? "Grant credits to users"
+        : "Endpoints & diagnostics";
 }
 
 function setAuthUi(){
   const signedIn = !!storage.idToken;
   const email = storage.loginEmail || "";
+  if (String(email||'').trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
+    setAuthStatus('Admin login is only for ' + ADMIN_EMAIL);
+    return;
+  }
+
   authText.textContent = signedIn ? (email ? `Signed in: ${email}` : "Signed in") : "Not signed in";
   authDot.style.background = signedIn ? "rgba(34,197,94,.85)" : "rgba(255,0,90,.35)";
   authDot.style.boxShadow = signedIn ? "0 0 0 4px rgba(34,197,94,.16)" : "0 0 0 4px rgba(255,0,90,.10)";
@@ -75,6 +88,11 @@ function setAuthUi(){
   btnReloadUsers.disabled = !isAdmin;
   btnCreditsReload.disabled = !isAdmin;
   btnGrantCredits.disabled = !isAdmin;
+
+  if (signedIn && !isAdmin){
+    // Immediate lockout (admin-only panel)
+    authStatus.textContent = "Access denied. This dashboard is admin-only.";
+  }
 }
 
 function requireAdmin(){
@@ -83,10 +101,7 @@ function requireAdmin(){
 }
 
 async function jsonFetch(path, opts = {}){
-  const url = String(path || "").startsWith("http")
-    ? String(path)
-    : (BACKEND_BASE_URL.replace(/\/$/, "") + String(path));
-  const res = await fetch(url, {
+  const res = await fetch(path, {
     method: opts.method || "GET",
     headers: opts.headers || {},
     body: opts.body ? JSON.stringify(opts.body) : undefined
@@ -100,32 +115,35 @@ async function jsonFetch(path, opts = {}){
 }
 
 async function getAuthHeader(){
-  return storage.idToken ? { "Authorization": `Bearer ${storage.idToken}` } : {};
+  if (!storage.idToken) return {};
+  return { "Authorization": `Bearer ${storage.idToken}` };
 }
 
 async function checkHealth(){
   try{
-    if (envPill) envPill.textContent = `Backend: ${BACKEND_BASE_URL} (checking…)`;
-    if (sysBackendUrl) sysBackendUrl.textContent = BACKEND_BASE_URL;
-
+    envPill.textContent = "Backend: checking…";
     const data = await jsonFetch("/api/health");
-    if (envPill) envPill.textContent = `Backend: ${BACKEND_BASE_URL} (OK)`;
-    if (buildPill) buildPill.textContent = `buildId: ${data.buildId || "—"}`;
-    if (sysHealth) sysHealth.textContent = data.status || "ok";
-    if (sysFirebase) sysFirebase.textContent = data.firebase || "—";
-    if (sysBuildId) sysBuildId.textContent = data.buildId || "—";
-    if (sysStatus) sysStatus.textContent = "Health check OK.";
+    envPill.textContent = "Backend: OK";
+    buildPill.textContent = `buildId: ${data.buildId || "—"}`;
+    sysHealth.textContent = data.status || "ok";
+    sysFirebase.textContent = data.firebase || "—";
+    sysBuildId.textContent = data.buildId || "—";
+    sysStatus.textContent = "Health check OK.";
   } catch(e){
-    if (envPill) envPill.textContent = `Backend: ${BACKEND_BASE_URL} (ERROR)`;
-    if (sysStatus) sysStatus.textContent = `Health failed: ${String(e.message || e)}`;
+    envPill.textContent = "Backend: ERROR";
+    sysStatus.textContent = `Health failed: ${String(e.message || e)}`;
   }
 }
 
 async function startOtp(){
   const email = String(emailInput.value || "").trim();
-  if (!email){ authStatus.textContent = "Enter an email."; return; }
+  if (!email){
+    authStatus.textContent = "Enter an email.";
+    return;
+  }
   storage.loginEmail = email;
   setAuthUi();
+
   authStatus.textContent = "Starting OTP…";
   try{
     const data = await jsonFetch("/api/auth/start", {
@@ -136,14 +154,7 @@ async function startOtp(){
     storage.lastCodeId = data.codeId || data.codeID || data.codeid || null;
     let msg = "OTP started ✅";
     if (storage.lastCodeId) msg += `  codeId: ${storage.lastCodeId}`;
-    if (data.devOtp) {
-    msg += `  devOtp: ${data.devOtp} (test-only)`;
-    const otpEl = document.getElementById("otpInput");
-    if (otpEl && storage.loginEmail === ADMIN_EMAIL) {
-      otpEl.value = String(data.devOtp);
-      otpEl.focus();
-    }
-  }
+    if (data.devOtp) msg += `  devOtp: ${data.devOtp} (test-only)`;
     authStatus.textContent = msg;
   } catch(e){
     authStatus.textContent = `OTP start failed: ${String(e.message || e)}`;
@@ -153,9 +164,13 @@ async function startOtp(){
 async function verifyOtp(){
   const email = String(emailInput.value || "").trim();
   const otp = String(otpInput.value || "").trim();
-  if (!email || !otp){ authStatus.textContent = "Enter email and OTP."; return; }
+  if (!email || !otp){
+    authStatus.textContent = "Enter email and OTP.";
+    return;
+  }
   storage.loginEmail = email;
   setAuthUi();
+
   authStatus.textContent = "Verifying…";
   try{
     const data = await jsonFetch("/api/auth/verify", {
@@ -164,8 +179,14 @@ async function verifyOtp(){
       body: { email, codeId: storage.lastCodeId, otp }
     });
     storage.idToken = data.idToken || null;
-    if (!storage.idToken){ authStatus.textContent = "Verify succeeded but no idToken returned."; setAuthUi(); return; }
 
+    if (!storage.idToken){
+      authStatus.textContent = "Verify succeeded but no idToken returned.";
+      setAuthUi();
+      return;
+    }
+
+    // Admin lock
     if (!requireAdmin()){
       storage.idToken = null;
       authStatus.textContent = "Access denied. This dashboard is admin-only.";
@@ -187,6 +208,7 @@ function logout(){
   storage.lastCodeId = null;
   authStatus.textContent = "Logged out.";
   setAuthUi();
+  // Clear admin data
   usersTbody.innerHTML = '<tr><td colspan="4" class="muted">Sign in to load users.</td></tr>';
   creditUserSelect.innerHTML = "";
   $("kpiUsers").textContent = "—";
@@ -228,6 +250,7 @@ function renderUsersTable(users){
     btn.disabled = !requireAdmin();
     btn.addEventListener("click", () => {
       showView("credits");
+      // select user
       const opt = Array.from(creditUserSelect.options).find(o => o.value === u.uid);
       if (opt) creditUserSelect.value = u.uid;
       creditsStatus.textContent = `Ready to grant credits to ${u.displayName || u.uid}.`;
@@ -294,10 +317,16 @@ async function refreshUsers(){
 }
 
 async function grantCredits(){
-  if (!requireAdmin()){ creditsStatus.textContent = "Admin only."; return; }
+  if (!requireAdmin()){
+    creditsStatus.textContent = "Admin only.";
+    return;
+  }
   const targetUid = String(creditUserSelect.value || "").trim();
   const amount = Number(creditAmountSelect.value || 0);
-  if (!targetUid || !amount){ creditsStatus.textContent = "Pick a user and amount."; return; }
+  if (!targetUid || !amount){
+    creditsStatus.textContent = "Pick a user and amount.";
+    return;
+  }
   creditsStatus.textContent = "Granting…";
   try{
     const headers = await getAuthHeader();
@@ -313,26 +342,30 @@ async function grantCredits(){
   }
 }
 
+// Navigation click handlers
 for (const btn of document.querySelectorAll(".navItem")){
   btn.addEventListener("click", () => showView(btn.dataset.view));
 }
 btnGoCredits.addEventListener("click", () => showView("credits"));
 
+// Auth
 btnSendOtp.addEventListener("click", startOtp);
 btnVerify.addEventListener("click", verifyOtp);
-btnLogout.addEventListener("click", () => { if (storage.idToken) logout(); else showView("dashboard"); });
-
-btnOpenApp.addEventListener("click", () => {
-  window.open("/", "_blank", "noopener");
+btnLogout.addEventListener("click", () => {
+  if (storage.idToken) logout();
+  else showView("dashboard");
 });
 
+// Users
 btnRefreshUsers.addEventListener("click", refreshUsers);
 btnReloadUsers.addEventListener("click", refreshUsers);
 btnCreditsReload.addEventListener("click", refreshUsers);
 userSearch.addEventListener("input", () => renderUsersTable(cachedUsers));
 
+// Credits
 btnGrantCredits.addEventListener("click", grantCredits);
 
+// Init
 showView("dashboard");
 setAuthUi();
 checkHealth();
