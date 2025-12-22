@@ -101,7 +101,7 @@ let allFeedItems = [];
 let selectedMatchId = null;
 let selectedOtherUid = null;
 
-const publicProfileCache = new Map();
+const publicProfileCache = new Map(); // uid -> { displayName, photoUrl }
 // ====== Discover Deck UI (new; additive) ======
 let deckIndex = 0;
 let deckItems = [];
@@ -649,18 +649,31 @@ function normalizeMatchesResponse(r) {
 }
 
 
-async function resolveDisplayName(uid) {
-  if (!uid) return "";
+
+
+async function resolvePublicProfile(uid) {
+  if (!uid) return { displayName: "", photoUrl: "" };
   if (publicProfileCache.has(uid)) return publicProfileCache.get(uid);
+
   try {
     const resp = await getPublicProfile(uid);
-    const name = resp && resp.profile && resp.profile.displayName ? String(resp.profile.displayName) : "";
-    publicProfileCache.set(uid, name || uid);
-    return name || uid;
+    const p = resp && resp.profile ? resp.profile : null;
+    const displayName = p && p.displayName ? String(p.displayName) : "";
+    const photos = p && Array.isArray(p.photos) ? p.photos : [];
+    const photoUrl = photos.length ? String(photos[0]) : "";
+    const out = { displayName: displayName || uid, photoUrl };
+    publicProfileCache.set(uid, out);
+    return out;
   } catch {
-    publicProfileCache.set(uid, uid);
-    return uid;
+    const out = { displayName: uid, photoUrl: "" };
+    publicProfileCache.set(uid, out);
+    return out;
   }
+}
+
+async function resolveDisplayName(uid) {
+  const p = await resolvePublicProfile(uid);
+  return p.displayName || uid;
 }
 
 async function renderMatches(matches) {
@@ -682,17 +695,41 @@ async function renderMatches(matches) {
     const otherUid = String(m.otherUid || m.other || m.partnerUid || "");
     const matchId = String(m.matchId || m.id || "");
 
-    const name = await resolveDisplayName(otherUid);
+    const pub = await resolvePublicProfile(otherUid);
+    const name = pub.displayName || otherUid || "(match)";
+    const thumb = pub.photoUrl || "";
+
+    const rowTop = document.createElement("div");
+    rowTop.style.display = "flex";
+    rowTop.style.gap = "10px";
+    rowTop.style.alignItems = "center";
+
+    if (thumb) {
+      const img = document.createElement("img");
+      img.src = thumb;
+      img.alt = name;
+      img.style.width = "44px";
+      img.style.height = "44px";
+      img.style.borderRadius = "10px";
+      img.style.objectFit = "cover";
+      rowTop.appendChild(img);
+    }
+
+    const titleWrap = document.createElement("div");
+    titleWrap.style.flex = "1";
 
     const title = document.createElement("div");
     title.className = "profileTitle";
-    title.textContent = name || otherUid || "(match)";
-    li.appendChild(title);
+    title.textContent = name;
+    titleWrap.appendChild(title);
 
     const meta = document.createElement("div");
     meta.className = "kv";
     meta.textContent = matchId ? `Match: ${matchId}` : "";
-    li.appendChild(meta);
+    titleWrap.appendChild(meta);
+
+    rowTop.appendChild(titleWrap);
+    li.appendChild(rowTop);
 
     const btn = document.createElement("button");
     btn.className = "btn primary";
@@ -700,8 +737,14 @@ async function renderMatches(matches) {
     btn.addEventListener("click", () => {
       selectedMatchId = matchId || "";
       selectedOtherUid = otherUid || "";
-      if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Chat with ${selectedOtherUid} • ${selectedMatchId}` : `Chat • ${selectedMatchId}`);
-      showTab("chat");
+      if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Chat with ${name} • ${selectedMatchId}` : `Chat • ${selectedMatchId}`);
+      // Switch to chat tab using existing tab system
+      if (typeof setActiveTab === "function") setActiveTab("chat");
+      else {
+        // fallback: click the chat tab button
+        const chatBtn = document.querySelector('.tabBtn[data-tab="chat"]');
+        if (chatBtn) chatBtn.click();
+      }
     });
     li.appendChild(btn);
 
