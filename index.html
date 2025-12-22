@@ -111,7 +111,7 @@
           <div>
             <div class="kv">
               <div class="key">Age</div><div id="sheetAge"></div>
-              <div class="key">City</div><div id="sheetCity"></div>
+              <div class="key">ZIP Code</div><div id="sheetZIP Code"></div>
               <div class="key">Last Active</div><div id="sheetLastActive"></div>
               <div class="key">Plan</div><div id="sheetPlan"></div>
             </div>
@@ -186,8 +186,9 @@
         </div>
 
         <div>
-          <label for="profileCity">City</label>
-          <input id="profileCity" type="text" placeholder="Miami" autocomplete="address-level2" />
+          <label for="profileZip">ZIP Code</label>
+<input id="profileZip" type="text" inputmode="numeric" placeholder="e.g. 90210" />
+<div class="zipNote">Used only for matching distance. Not shown publicly.</div>
 
           <label>Location</label>
           <div class="row rowWrap">
@@ -319,8 +320,8 @@
         <h3>Filters</h3>
         <p class="muted">These filters only affect what you see (no backend changes).</p>
 
-        <label for="filterCity">City</label>
-        <select id="filterCity">
+        <label for="filterZIP Code">ZIP Code</label>
+        <select id="filterZIP Code">
           <option value="">All</option>
         </select>
 
