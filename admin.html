@@ -1,242 +1,373 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FrugalFetishes — Admin Dashboard</title>
-  <link rel="stylesheet" href="./admin.css" />
-</head>
-<body>
-  <div class="app">
-    <aside class="sidebar" aria-label="Admin navigation">
-      <div class="brand">
-        <div class="logo">FF</div>
-        <div class="brandText">
-          <div class="brandName">FrugalFetishes</div>
-          <div class="brandSub">Admin</div>
-        </div>
-      </div>
+/* FrugalFetishes Admin Dashboard (no frameworks) */
 
-      <nav class="nav">
-        <button class="navItem active" data-view="dashboard" type="button">Dashboard</button>
-        <button class="navItem" data-view="users" type="button">Users</button>
-        <button class="navItem" data-view="credits" type="button">Credits</button>
-        <button class="navItem" data-view="system" type="button">System</button>
-      </nav>
+const ADMIN_EMAIL = "frugalfetishes@outlook.com";
 
-      <div class="sidebarFooter">
-        <div class="pill" id="envPill">Backend: (checking…)</div>
-        <div class="pill muted" id="buildPill">buildId: —</div>
-      </div>
-    </aside>
+// Backend API base URL
+const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
 
-    <main class="main">
-      <header class="topbar">
-        <div class="topLeft">
-          <div class="pageTitle" id="pageTitle">Dashboard</div>
-          <div class="pageSub" id="pageSub">Admin-only tools for FrugalFetishes</div>
-        </div>
 
-        <div class="topRight">
-          <div class="authBadge" id="authBadge">
-            <span class="dot" id="authDot"></span>
-            <span id="authText">Not signed in</span>
-          </div>
+const $ = (id) => document.getElementById(id);
 
-          <button class="btn ghost" id="btnLogout" type="button" disabled>Login</button>
-        </div>
-      </header>
+const storage = {
+  idToken: null,
+  loginEmail: "",
+  lastCodeId: null
+};
 
-      <section class="content">
-        <!-- AUTH CARD -->
-        <div class="card" id="authCard">
-          <div class="cardHeader">
-            <div class="cardTitle">Admin Login</div>
-            <div class="cardHint">Use email + OTP. Admin access is limited to <b>frugalfetishes@outlook.com</b>.</div>
-          </div>
+// Elements
+const authBadge = $("authBadge");
+const authText = $("authText");
+const authDot = $("authDot");
+const btnLogout = $("btnLogout");
+const authStatus = $("authStatus");
+const emailInput = $("emailInput");
+const otpInput = $("otpInput");
+const btnSendOtp = $("btnSendOtp");
+const btnVerify = $("btnVerify");
 
-          <div class="authGrid">
-            <div class="field">
-              <label for="emailInput">Email</label>
-              <input id="emailInput" type="email" placeholder="frugalfetishes@outlook.com" autocomplete="username" />
-            </div>
+const envPill = $("envPill");
+const buildPill = $("buildPill");
+const sysHealth = $("sysHealth");
+const sysFirebase = $("sysFirebase");
+const sysBuildId = $("sysBuildId");
+const sysStatus = $("sysStatus");
 
-            <div class="field">
-              <label>&nbsp;</label>
-              <button class="btn" id="btnSendOtp" type="button">Send OTP</button>
-            </div>
+const pageTitle = $("pageTitle");
+const pageSub = $("pageSub");
 
-            <div class="field">
-              <label for="otpInput">OTP Code</label>
-              <input id="otpInput" type="text" inputmode="numeric" placeholder="Enter OTP" autocomplete="one-time-code" />
-            </div>
+const btnRefreshUsers = $("btnRefreshUsers");
+const btnGoCredits = $("btnGoCredits");
+const quickStatus = $("quickStatus");
 
-            <div class="field">
-              <label>&nbsp;</label>
-              <button class="btn" id="btnVerify" type="button">Verify + Sign In</button>
-            </div>
-          </div>
+const usersTbody = $("usersTbody");
+const usersStatus = $("usersStatus");
+const userSearch = $("userSearch");
+const btnReloadUsers = $("btnReloadUsers");
 
-          <div class="status" id="authStatus">—</div>
-        </div>
+const creditUserSelect = $("creditUserSelect");
+const creditAmountSelect = $("creditAmountSelect");
+const btnGrantCredits = $("btnGrantCredits");
+const creditsStatus = $("creditsStatus");
+const btnCreditsReload = $("btnCreditsReload");
 
-        <!-- DASHBOARD VIEW -->
-        <div class="view" id="view-dashboard">
-          <div class="kpiGrid">
-            <div class="kpi card">
-              <div class="kpiLabel">Total Users</div>
-              <div class="kpiValue" id="kpiUsers">—</div>
-              <div class="kpiSub">From /api/admin/users</div>
-            </div>
-            <div class="kpi card">
-              <div class="kpiLabel">Credits (Sum)</div>
-              <div class="kpiValue" id="kpiCredits">—</div>
-              <div class="kpiSub">Sum of users’ credits</div>
-            </div>
-            <div class="kpi card">
-              <div class="kpiLabel">Admin Mode</div>
-              <div class="kpiValue" id="kpiAdminMode">—</div>
-              <div class="kpiSub">Unlimited messaging (admin only)</div>
-            </div>
-          </div>
+const diagStatus = $("diagStatus");
 
-          <div class="grid2">
-            <div class="card">
-              <div class="cardHeader">
-                <div class="cardTitle">Quick Actions</div>
-                <div class="cardHint">Most-used admin tools</div>
-              </div>
+// Views
+const views = ["dashboard","users","credits","system"];
+function showView(view){
+  for (const v of views){
+    const el = $(`view-${v}`);
+    if (!el) continue;
+    el.hidden = v !== view;
+  }
+  for (const btn of document.querySelectorAll(".navItem")){
+    btn.classList.toggle("active", btn.dataset.view === view);
+  }
+  pageTitle.textContent = view.charAt(0).toUpperCase() + view.slice(1);
+  pageSub.textContent = view === "dashboard"
+    ? "Admin-only tools for FrugalFetishes"
+    : view === "users"
+      ? "Browse users and balances"
+      : view === "credits"
+        ? "Grant credits to users"
+        : "Endpoints & diagnostics";
+}
 
-              <div class="quickActions">
-                <button class="btn" id="btnRefreshUsers" type="button" disabled>Refresh Users</button>
-                <button class="btn ghost" id="btnGoCredits" type="button">Go to Credits</button>
-              </div>
+function setAuthUi(){
+  const signedIn = !!storage.idToken;
+  const email = storage.loginEmail || "";
+  authText.textContent = signedIn ? (email ? `Signed in: ${email}` : "Signed in") : "Not signed in";
+  authDot.style.background = signedIn ? "rgba(34,197,94,.85)" : "rgba(255,0,90,.35)";
+  authDot.style.boxShadow = signedIn ? "0 0 0 4px rgba(34,197,94,.16)" : "0 0 0 4px rgba(255,0,90,.10)";
+  btnLogout.disabled = false;
+  btnLogout.textContent = signedIn ? "Logout" : "Login";
 
-              <div class="status" id="quickStatus">—</div>
-            </div>
+  const isAdmin = signedIn && (email.toLowerCase().trim() === ADMIN_EMAIL);
+  btnRefreshUsers.disabled = !isAdmin;
+  btnReloadUsers.disabled = !isAdmin;
+  btnCreditsReload.disabled = !isAdmin;
+  btnGrantCredits.disabled = !isAdmin;
 
-            <div class="card">
-              <div class="cardHeader">
-                <div class="cardTitle">System</div>
-                <div class="cardHint">Backend connectivity</div>
-              </div>
+  if (signedIn && !isAdmin){
+    // Immediate lockout (admin-only panel)
+    authStatus.textContent = "Access denied. This dashboard is admin-only.";
+  }
+}
 
-              <div class="sysRow">
-                <div class="sysLabel">Health</div>
-                <div class="sysValue" id="sysHealth">—</div>
-              </div>
-              <div class="sysRow">
-                <div class="sysLabel">Firebase</div>
-                <div class="sysValue" id="sysFirebase">—</div>
-              </div>
-              <div class="sysRow">
-                <div class="sysLabel">buildId</div>
-                <div class="sysValue mono" id="sysBuildId">—</div>
-              </div>
+function requireAdmin(){
+  const email = (storage.loginEmail || "").toLowerCase().trim();
+  return !!storage.idToken && email === ADMIN_EMAIL;
+}
 
-              <div class="status" id="sysStatus">—</div>
-            </div>
-          </div>
-        </div>
+async function jsonFetch(path, opts = {}){
+    const url = String(path || "").startsWith("http")
+    ? String(path)
+    : (BACKEND_BASE_URL.replace(/\/$/, "") + String(path));
+  const res = await fetch(url, {
+    method: opts.method || "GET",
+    headers: opts.headers || {},
+    body: opts.body ? JSON.stringify(opts.body) : undefined
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok){
+    const msg = (data && data.error) ? data.error : `HTTP ${res.status}`;
+    throw new Error(msg + " @ " + (typeof url !== "undefined" ? url : path));
+  }
+  return data;
+}
 
-        <!-- USERS VIEW -->
-        <div class="view" id="view-users" hidden>
-          <div class="card">
-            <div class="cardHeader row">
-              <div>
-                <div class="cardTitle">Users</div>
-                <div class="cardHint">Browse users and current credit balances</div>
-              </div>
-              <div class="rowRight">
-                <input class="search" id="userSearch" type="text" placeholder="Search by name / uid" />
-                <button class="btn" id="btnReloadUsers" type="button" disabled>Reload</button>
-              </div>
-            </div>
+async function getAuthHeader(){
+  if (!storage.idToken) return {};
+  return { "Authorization": `Bearer ${storage.idToken}` };
+}
 
-            <div class="tableWrap">
-              <table class="table" aria-label="Users table">
-                <thead>
-                  <tr>
-                    <th style="width: 34%;">Name</th>
-                    <th style="width: 40%;">UID</th>
-                    <th style="width: 16%;">Credits</th>
-                    <th style="width: 10%;">Action</th>
-                  </tr>
-                </thead>
-                <tbody id="usersTbody">
-                  <tr><td colspan="4" class="muted">Sign in to load users.</td></tr>
-                </tbody>
-              </table>
-            </div>
+async function checkHealth(){
+  try{
+    envPill.textContent = "Backend: " + BACKEND_BASE_URL + " (checking…)";
+    const data = await jsonFetch("/api/health");
+    envPill.textContent = "Backend: OK";
+    buildPill.textContent = `buildId: ${data.buildId || "—"}`;
+    sysHealth.textContent = data.status || "ok";
+    sysFirebase.textContent = data.firebase || "—";
+    sysBuildId.textContent = data.buildId || "—";
+    sysStatus.textContent = "Health check OK.";
+  } catch(e){
+    envPill.textContent = "Backend: ERROR";
+    sysStatus.textContent = `Health failed: ${String(e.message || e)}`;
+  }
+}
 
-            <div class="status" id="usersStatus">—</div>
-          </div>
-        </div>
+async function startOtp(){
+  const email = String(emailInput.value || "").trim();
+  if (!email){
+    authStatus.textContent = "Enter an email.";
+    return;
+  }
+  storage.loginEmail = email;
+  setAuthUi();
 
-        <!-- CREDITS VIEW -->
-        <div class="view" id="view-credits" hidden>
-          <div class="card">
-            <div class="cardHeader row">
-              <div>
-                <div class="cardTitle">Grant Credits</div>
-                <div class="cardHint">Pick a user, choose amount, grant credits</div>
-              </div>
-              <div class="rowRight">
-                <button class="btn ghost" id="btnCreditsReload" type="button" disabled>Reload Users</button>
-              </div>
-            </div>
+  authStatus.textContent = "Starting OTP…";
+  try{
+    const data = await jsonFetch("/api/auth/start", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: { email }
+    });
+    storage.lastCodeId = data.codeId || data.codeID || data.codeid || null;
+    let msg = "OTP started ✅";
+    if (storage.lastCodeId) msg += `  codeId: ${storage.lastCodeId}`;
+    if (data.devOtp) msg += `  devOtp: ${data.devOtp} (test-only)`;
+    authStatus.textContent = msg;
+  } catch(e){
+    authStatus.textContent = `OTP start failed: ${String(e.message || e)}`;
+  }
+}
 
-            <div class="creditsGrid">
-              <div class="field">
-                <label for="creditUserSelect">User</label>
-                <select id="creditUserSelect"></select>
-              </div>
+async function verifyOtp(){
+  const email = String(emailInput.value || "").trim();
+  const otp = String(otpInput.value || "").trim();
+  if (!email || !otp){
+    authStatus.textContent = "Enter email and OTP.";
+    return;
+  }
+  storage.loginEmail = email;
+  setAuthUi();
 
-              <div class="field">
-                <label for="creditAmountSelect">Amount</label>
-                <select id="creditAmountSelect">
-                  <option value="1">+1</option>
-                  <option value="10">+10</option>
-                  <option value="100" selected>+100</option>
-                  <option value="1000">+1000</option>
-                </select>
-              </div>
+  authStatus.textContent = "Verifying…";
+  try{
+    const data = await jsonFetch("/api/auth/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: { email, codeId: storage.lastCodeId, otp }
+    });
+    storage.idToken = data.idToken || null;
 
-              <div class="field">
-                <label>&nbsp;</label>
-                <button class="btn" id="btnGrantCredits" type="button" disabled>Grant Credits</button>
-              </div>
-            </div>
+    if (!storage.idToken){
+      authStatus.textContent = "Verify succeeded but no idToken returned.";
+      setAuthUi();
+      return;
+    }
 
-            <div class="status" id="creditsStatus">—</div>
-          </div>
-        </div>
+    // Admin lock
+    if (!requireAdmin()){
+      storage.idToken = null;
+      authStatus.textContent = "Access denied. This dashboard is admin-only.";
+      setAuthUi();
+      return;
+    }
 
-        <!-- SYSTEM VIEW -->
-        <div class="view" id="view-system" hidden>
-          <div class="card">
-            <div class="cardHeader">
-              <div class="cardTitle">System & Diagnostics</div>
-              <div class="cardHint">Admin endpoints & helpful status</div>
-            </div>
+    authStatus.textContent = "Signed in ✅";
+    setAuthUi();
+    await refreshUsers();
+  } catch(e){
+    authStatus.textContent = `Verify failed: ${String(e.message || e)}`;
+  }
+}
 
-            <div class="sysRow">
-              <div class="sysLabel">Admin Users Endpoint</div>
-              <div class="sysValue mono">GET /api/admin/users</div>
-            </div>
-            <div class="sysRow">
-              <div class="sysLabel">Grant Credits Endpoint</div>
-              <div class="sysValue mono">POST /api/admin/credits/grant</div>
-            </div>
+function logout(){
+  storage.idToken = null;
+  storage.loginEmail = "";
+  storage.lastCodeId = null;
+  authStatus.textContent = "Logged out.";
+  setAuthUi();
+  // Clear admin data
+  usersTbody.innerHTML = '<tr><td colspan="4" class="muted">Sign in to load users.</td></tr>';
+  creditUserSelect.innerHTML = "";
+  $("kpiUsers").textContent = "—";
+  $("kpiCredits").textContent = "—";
+  $("kpiAdminMode").textContent = "—";
+}
 
-            <div class="status" id="diagStatus">—</div>
-          </div>
-        </div>
+let cachedUsers = [];
+function renderUsersTable(users){
+  const q = String(userSearch.value || "").toLowerCase().trim();
+  const filtered = q
+    ? users.filter(u => String(u.uid || "").toLowerCase().includes(q) || String(u.displayName || "").toLowerCase().includes(q))
+    : users;
 
-      </section>
-    </main>
-  </div>
+  if (!filtered.length){
+    usersTbody.innerHTML = '<tr><td colspan="4" class="muted">No users found.</td></tr>';
+    return;
+  }
 
-  <script src="./admin.js"></script>
-</body>
-</html>
+  usersTbody.innerHTML = "";
+  for (const u of filtered){
+    const tr = document.createElement("tr");
+
+    const name = document.createElement("td");
+    name.textContent = (u.displayName || "").trim() || "—";
+
+    const uid = document.createElement("td");
+    uid.className = "mono";
+    uid.textContent = u.uid || "—";
+
+    const credits = document.createElement("td");
+    credits.textContent = String(u.credits ?? 0);
+
+    const action = document.createElement("td");
+    const btn = document.createElement("button");
+    btn.className = "btn ghost";
+    btn.style.padding = "7px 10px";
+    btn.textContent = "Grant";
+    btn.disabled = !requireAdmin();
+    btn.addEventListener("click", () => {
+      showView("credits");
+      // select user
+      const opt = Array.from(creditUserSelect.options).find(o => o.value === u.uid);
+      if (opt) creditUserSelect.value = u.uid;
+      creditsStatus.textContent = `Ready to grant credits to ${u.displayName || u.uid}.`;
+    });
+    action.appendChild(btn);
+
+    tr.appendChild(name);
+    tr.appendChild(uid);
+    tr.appendChild(credits);
+    tr.appendChild(action);
+    usersTbody.appendChild(tr);
+  }
+}
+
+function renderUsersSelect(users){
+  creditUserSelect.innerHTML = "";
+  if (!users.length){
+    const opt = document.createElement("option");
+    opt.value = "";
+    opt.textContent = "No users loaded";
+    creditUserSelect.appendChild(opt);
+    return;
+  }
+  for (const u of users){
+    const opt = document.createElement("option");
+    opt.value = u.uid;
+    const name = (u.displayName || "").trim() || u.uid;
+    opt.textContent = `${name} (${u.credits ?? 0})`;
+    creditUserSelect.appendChild(opt);
+  }
+}
+
+function renderKpis(users){
+  $("kpiUsers").textContent = String(users.length);
+  const sum = users.reduce((acc,u) => acc + Number(u.credits ?? 0), 0);
+  $("kpiCredits").textContent = String(sum);
+  $("kpiAdminMode").textContent = requireAdmin() ? "ON" : "OFF";
+}
+
+async function refreshUsers(){
+  if (!requireAdmin()){
+    quickStatus.textContent = "Admin only. Sign in as frugalfetishes@outlook.com.";
+    return;
+  }
+  usersStatus.textContent = "Loading users…";
+  quickStatus.textContent = "Loading users…";
+  creditsStatus.textContent = "—";
+  try{
+    const headers = await getAuthHeader();
+    const data = await jsonFetch("/api/admin/users", { method:"GET", headers });
+    cachedUsers = Array.isArray(data.users) ? data.users : [];
+    renderUsersTable(cachedUsers);
+    renderUsersSelect(cachedUsers);
+    renderKpis(cachedUsers);
+    usersStatus.textContent = `Loaded ${cachedUsers.length} users.`;
+    quickStatus.textContent = `Loaded ${cachedUsers.length} users.`;
+    diagStatus.textContent = "Admin endpoints OK.";
+  } catch(e){
+    const msg = `Users load failed: ${String(e.message || e)}`;
+    usersStatus.textContent = msg;
+    quickStatus.textContent = msg;
+    diagStatus.textContent = msg;
+  }
+}
+
+async function grantCredits(){
+  if (!requireAdmin()){
+    creditsStatus.textContent = "Admin only.";
+    return;
+  }
+  const targetUid = String(creditUserSelect.value || "").trim();
+  const amount = Number(creditAmountSelect.value || 0);
+  if (!targetUid || !amount){
+    creditsStatus.textContent = "Pick a user and amount.";
+    return;
+  }
+  creditsStatus.textContent = "Granting…";
+  try{
+    const headers = await getAuthHeader();
+    const data = await jsonFetch("/api/admin/credits/grant", {
+      method: "POST",
+      headers: { ...headers, "Content-Type":"application/json" },
+      body: { targetUid, amount }
+    });
+    creditsStatus.textContent = data.ok ? `Granted +${amount}.` : "Grant failed.";
+    await refreshUsers();
+  } catch(e){
+    creditsStatus.textContent = `Grant failed: ${String(e.message || e)}`;
+  }
+}
+
+// Navigation click handlers
+for (const btn of document.querySelectorAll(".navItem")){
+  btn.addEventListener("click", () => showView(btn.dataset.view));
+}
+btnGoCredits.addEventListener("click", () => showView("credits"));
+
+// Auth
+btnSendOtp.addEventListener("click", startOtp);
+btnVerify.addEventListener("click", verifyOtp);
+btnLogout.addEventListener("click", () => {
+  if (storage.idToken) logout();
+  else showView("dashboard");
+});
+
+// Users
+btnRefreshUsers.addEventListener("click", refreshUsers);
+btnReloadUsers.addEventListener("click", refreshUsers);
+btnCreditsReload.addEventListener("click", refreshUsers);
+userSearch.addEventListener("input", () => renderUsersTable(cachedUsers));
+
+// Credits
+btnGrantCredits.addEventListener("click", grantCredits);
+
+// Init
+showView("dashboard");
+setAuthUi();
+checkHealth();
