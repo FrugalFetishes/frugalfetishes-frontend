@@ -101,6 +101,7 @@ let allFeedItems = [];
 let selectedMatchId = null;
 let selectedOtherUid = null;
 
+const publicProfileCache = new Map();
 // ====== Discover Deck UI (new; additive) ======
 let deckIndex = 0;
 let deckItems = [];
@@ -431,6 +432,15 @@ async function hydrateProfileFromServer() {
   } catch {}
 }
 
+
+async function getPublicProfile(uid) {
+  const idToken = await getValidIdToken();
+  return jsonFetch(`${BACKEND_BASE_URL}/api/profile/public/${encodeURIComponent(uid)}`, {
+    method: "GET",
+    headers: { "Authorization": `Bearer ${idToken}` }
+  });
+}
+
 async function getMyProfile() {
   const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/profile/me`, {
@@ -638,68 +648,63 @@ function normalizeMatchesResponse(r) {
   return [];
 }
 
-function renderMatches(items) {
+
+async function resolveDisplayName(uid) {
+  if (!uid) return "";
+  if (publicProfileCache.has(uid)) return publicProfileCache.get(uid);
+  try {
+    const resp = await getPublicProfile(uid);
+    const name = resp && resp.profile && resp.profile.displayName ? String(resp.profile.displayName) : "";
+    publicProfileCache.set(uid, name || uid);
+    return name || uid;
+  } catch {
+    publicProfileCache.set(uid, uid);
+    return uid;
+  }
+}
+
+async function renderMatches(matches) {
   if (!matchesListEl) return;
   matchesListEl.innerHTML = "";
-  if (!items || items.length === 0) {
+
+  const list = Array.isArray(matches) ? matches : [];
+  if (list.length === 0) {
     const li = document.createElement("li");
     li.textContent = "No matches yet.";
     matchesListEl.appendChild(li);
     return;
   }
 
-  for (const m of items) {
+  for (const m of list) {
     const li = document.createElement("li");
+    li.className = "matchRow";
+
+    const otherUid = String(m.otherUid || m.other || m.partnerUid || "");
+    const matchId = String(m.matchId || m.id || "");
+
+    const name = await resolveDisplayName(otherUid);
 
     const title = document.createElement("div");
     title.className = "profileTitle";
-    const matchId = m.matchId || m.id || m._id || "(no matchId)";
-    const otherUid = m.otherUid || m.otherUserUid || m.other || m.withUid || "";
-    title.textContent = otherUid ? `Match with ${otherUid}` : `Match ${matchId}`;
+    title.textContent = name || otherUid || "(match)";
     li.appendChild(title);
 
-    const actions = document.createElement("div");
-    actions.className = "row";
+    const meta = document.createElement("div");
+    meta.className = "kv";
+    meta.textContent = matchId ? `Match: ${matchId}` : "";
+    li.appendChild(meta);
 
-    const openBtn = document.createElement("button");
-    openBtn.type = "button";
-    openBtn.textContent = "Open Chat";
-    openBtn.addEventListener("click", () => {
-      selectedMatchId = String(matchId);
-      selectedOtherUid = otherUid ? String(otherUid) : null;
-      if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Selected: ${selectedOtherUid} (matchId: ${selectedMatchId})` : `Selected matchId: ${selectedMatchId}`);
-      if (threadStatusEl) setStatus(threadStatusEl, "Click 'Load Thread' to view messages.");
-      if (threadListEl) threadListEl.innerHTML = "";
-      if (messageTextEl) messageTextEl.focus();
+    const btn = document.createElement("button");
+    btn.className = "btn primary";
+    btn.textContent = "Open Chat";
+    btn.addEventListener("click", () => {
+      selectedMatchId = matchId || "";
+      selectedOtherUid = otherUid || "";
+      if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Chat with ${selectedOtherUid} • ${selectedMatchId}` : `Chat • ${selectedMatchId}`);
+      showTab("chat");
     });
+    li.appendChild(btn);
 
-    actions.appendChild(openBtn);
-    li.appendChild(actions);
-
-    const kv = document.createElement("div");
-    kv.className = "kv";
-
-    const add = (k, v) => {
-      const kdiv = document.createElement("div");
-      kdiv.className = "key";
-      kdiv.textContent = k;
-      const vdiv = document.createElement("div");
-      vdiv.textContent = v;
-      kv.appendChild(kdiv);
-      kv.appendChild(vdiv);
-    };
-
-    add("matchId", String(matchId));
-    if (otherUid) add("otherUid", String(otherUid));
-
-    // Try to show participants if present
-    const participants = m.participants || m.uids || m.users;
-    if (participants) add("participants", JSON.stringify(participants));
-
-    // Created time if present
-    if (m.createdAt) add("createdAt", JSON.stringify(m.createdAt));
-
-    li.appendChild(kv);
     matchesListEl.appendChild(li);
   }
 }
@@ -959,7 +964,7 @@ setAuthedUI();
     try {
       const resp = await getMatches();
       const items = resp && (resp.items || resp.matches || resp.data || resp.rows) ? (resp.items || resp.matches || resp.data || resp.rows) : [];
-      renderMatches(items);
+      await renderMatches(items);
       setStatus(matchesStatusEl, `Matches loaded: ${Array.isArray(items) ? items.length : 0}`);
     } catch (e) {
       setStatus(matchesStatusEl, `Matches failed: ${e.message}`);
@@ -1098,7 +1103,7 @@ if (btnLoadMatches) {
       if (matchesStatusEl) setStatus(matchesStatusEl, "Loading matches...");
       const r = await getMatches();
       const items = normalizeMatchesResponse(r);
-      renderMatches(items);
+      await renderMatches(items);
       if (matchesStatusEl) setStatus(matchesStatusEl, `Loaded ${items.length} matches ✅`);
     } catch (e) {
       if (matchesStatusEl) setStatus(matchesStatusEl, "");
