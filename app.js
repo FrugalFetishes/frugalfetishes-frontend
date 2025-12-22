@@ -352,6 +352,29 @@ async function postLike(targetUid) {
 }
 
 
+
+function validateProfileRequired(d) {
+  const errors = [];
+  const displayName = String((d && d.displayName) || "").trim();
+  const age = Number((d && d.age) || NaN);
+  const city = String((d && d.city) || "").trim();
+  const interests = Array.isArray(d && d.interests)
+    ? d.interests
+    : String((d && d.interests) || "").split(",").map(s => s.trim()).filter(Boolean);
+  const photos = Array.isArray(d && d.photos) ? d.photos : [];
+  const lat = d && d.location && typeof d.location.lat === "number" ? d.location.lat : Number(d && d.locationLat);
+  const lng = d && d.location && typeof d.location.lng === "number" ? d.location.lng : Number(d && d.locationLng);
+
+  if (!displayName) errors.push("Display name is required.");
+  if (!Number.isFinite(age) || age < 18) errors.push("Age is required (18+).");
+  if (!city) errors.push("City is required.");
+  if (!interests || interests.length < 1) errors.push("At least 1 interest is required.");
+  if (!photos || photos.length < 1) errors.push("At least 1 photo is required.");
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) errors.push("Location (lat/lng) is required.");
+
+  return { ok: errors.length === 0, errors };
+}
+
 async function updateProfile(fields) {
   const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/profile/update`, {
