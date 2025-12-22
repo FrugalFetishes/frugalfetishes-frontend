@@ -101,6 +101,7 @@ let allFeedItems = [];
 let selectedMatchId = null;
 let selectedOtherUid = null;
 let isSendingMessage = false;
+let uiWired = false;
 const publicProfileCache = new Map(); // uid -> { displayName, photoUrl }
 // ====== Discover Deck UI (new; additive) ======
 let deckIndex = 0;
@@ -586,16 +587,21 @@ async function getThread(matchId, limit = 50) {
   });
 }
 
-async function sendMessage(matchId, text) {
+async function sendMessage(matchId, text, clientMessageId) {
   const idToken = await getValidIdToken();
   if (!matchId) throw new Error("No match selected.");
-  if (!text || !text.trim()) throw new Error("Message text is empty.");
+  if (!text || !String(text).trim()) throw new Error("Message text is empty.");
+
+  const body = { matchId, text: String(text).trim() };
+  if (clientMessageId) body.clientMessageId = String(clientMessageId);
+
   return jsonFetch(`${BACKEND_BASE_URL}/api/messages/send`, {
     method: "POST",
     headers: { "Authorization": `Bearer ${idToken}` },
-    body: JSON.stringify({ matchId, text: text.trim() })
+    body: JSON.stringify(body)
   });
 }
+
 
 
 function parseMessageTime(ts) {
@@ -635,12 +641,31 @@ function parseMessageTime(ts) {
 
 function normalizeThreadResponse(r) {
   if (!r) return [];
-  if (Array.isArray(r.items)) return r.items;
-  if (Array.isArray(r.messages)) return r.messages;
-  if (Array.isArray(r.data)) return r.data;
-  if (Array.isArray(r)) return r;
-  return [];
+  const raw =
+    (Array.isArray(r.items) && r.items) ||
+    (Array.isArray(r.messages) && r.messages) ||
+    (Array.isArray(r.data) && r.data) ||
+    (Array.isArray(r) && r) ||
+    [];
+
+  return raw.map((m) => {
+    const msg = m || {};
+    let ms = null;
+    const t = msg.createdAt ?? msg.timestamp ?? msg.sentAt ?? msg.time;
+    if (typeof t === "number") ms = t;
+    else if (typeof t === "string") {
+      const d = Date.parse(t);
+      if (!Number.isNaN(d)) ms = d;
+    } else if (t && typeof t === "object") {
+      // Firestore Timestamp JSON from admin SDK often serializes as {_seconds,_nanoseconds}
+      if (typeof t._seconds === "number") ms = t._seconds * 1000 + Math.floor((t._nanoseconds || 0) / 1e6);
+      else if (typeof t.seconds === "number") ms = t.seconds * 1000 + Math.floor((t.nanoseconds || 0) / 1e6);
+    }
+    msg._ms = ms;
+    return msg;
+  });
 }
+
 
 function renderThread(messages) {
   if (!threadListEl) return;
@@ -670,60 +695,31 @@ function renderThread(messages) {
     const isMine = myUid && fromUid && (fromUid === myUid);
 
     // Avatar (use selectedOtherUid photo for incoming; your own is optional)
-    const avatar = document.createElement("div");
-    avatar.style.width = "36px";
-    avatar.style.height = "36px";
-    avatar.style.borderRadius = "10px";
-    avatar.style.overflow = "hidden";
-    avatar.style.flex = "0 0 36px";
-    avatar.style.background = "#eee";
-
-    const img = document.createElement("img");
-    img.style.width = "100%";
-    img.style.height = "100%";
-    img.style.objectFit = "cover";
-    img.alt = "avatar";
-
+    // Avatar: show ONLY for the other person's messages, and only if we actually have a photo URL.
     if (!isMine && selectedOtherUid) {
       const cached = publicProfileCache.get(selectedOtherUid);
-      if (cached && cached.photoUrl) img.src = cached.photoUrl;
+      const photoUrl = cached?.photoUrl || cached?.photo || null;
+
+      if (photoUrl) {
+        const avatar = document.createElement("div");
+        avatar.style.width = "36px";
+        avatar.style.height = "36px";
+        avatar.style.borderRadius = "10px";
+        avatar.style.overflow = "hidden";
+        avatar.style.flex = "0 0 36px";
+        avatar.style.background = "#eee";
+
+        const img = document.createElement("img");
+        img.style.width = "100%";
+        img.style.height = "100%";
+        img.style.objectFit = "cover";
+        img.alt = "avatar";
+        img.src = photoUrl;
+
+        avatar.appendChild(img);
+        row.appendChild(avatar);
+      }
     }
-    if (img.src) avatar.appendChild(img);
-
-    const bubbleWrap = document.createElement("div");
-    bubbleWrap.style.flex = "1";
-
-    const header = document.createElement("div");
-    header.className = "kv";
-
-    const ms = msg._ms || null;
-    const when = ms ? new Date(ms).toLocaleString() : "";
-
-    // We resolve names async by optimistic display now, then update
-    const whoSpan = document.createElement("span");
-    whoSpan.textContent = isMine ? "You" : (fromUid || "(unknown)");
-
-    header.textContent = when ? `${whoSpan.textContent} • ${when}` : `${whoSpan.textContent}`;
-    bubbleWrap.appendChild(header);
-
-    const bubble = document.createElement("div");
-    bubble.style.padding = "10px 12px";
-    bubble.style.borderRadius = "12px";
-    bubble.style.maxWidth = "600px";
-    bubble.style.display = "inline-block";
-    bubble.style.background = isMine ? "#111" : "#f2f2f2";
-    bubble.style.color = isMine ? "#fff" : "#111";
-    bubble.textContent = String(msg.text || msg.message || "");
-    bubbleWrap.appendChild(bubble);
-
-    // Align mine to right
-    if (isMine) {
-      row.style.flexDirection = "row-reverse";
-      bubbleWrap.style.textAlign = "right";
-      header.style.textAlign = "right";
-    }
-
-    row.appendChild(avatar);
     row.appendChild(bubbleWrap);
     li.appendChild(row);
     threadListEl.appendChild(li);
@@ -1133,34 +1129,46 @@ setAuthedUI();
   }
 
   async function sendMessageUI() {
-    if (isSendingMessage) return;
-    isSendingMessage = true;
-    if (btnSendMessage) btnSendMessage.disabled = true;
-    if (!threadStatusEl) return;
-    if (!selectedMatchId) {
-      setStatus(threadStatusEl, "Select a match first.");
-      return;
-    }
-    const text = messageTextEl ? String(messageTextEl.value || "").trim() : "";
-    if (!text) {
-      setStatus(threadStatusEl, "Type a message first.");
-      return;
-    }
-    setStatus(threadStatusEl, "Sending...");
-    try {
-          await sendMessage(selectedMatchId, text);
-      if (messageTextEl) messageTextEl.value = "";
-          await loadThreadUI();
-    } catch (e) {
-      setStatus(threadStatusEl, `Send failed: ${e.message}`);
-        if (btnSendMessage) btnSendMessage.disabled = false;
-    isSendingMessage = false;
-  }
+  if (isSendingMessage) return;
+  if (!threadStatusEl) return;
+
+  if (!selectedMatchId) {
+    setStatus(threadStatusEl, "Select a match first.");
+    return;
   }
 
-  if (btnLoadMatches) btnLoadMatches.addEventListener("click", loadMatchesUI);
-  if (btnLoadThread) btnLoadThread.addEventListener("click", loadThreadUI);
-  if (btnSendMessage) btnSendMessage.addEventListener("click", sendMessageUI);
+  const text = messageTextEl ? String(messageTextEl.value || "").trim() : "";
+  if (!text) {
+    setStatus(threadStatusEl, "Type a message first.");
+    return;
+  }
+
+  // clientMessageId makes the backend send endpoint idempotent.
+  const clientMessageId = `${Date.now()}_${Math.random().toString(16).slice(2)}`;
+
+  isSendingMessage = true;
+  if (btnSendMessage) btnSendMessage.disabled = true;
+
+  try {
+    setStatus(threadStatusEl, "Sending...");
+    await sendMessage(selectedMatchId, text, clientMessageId);
+
+    if (messageTextEl) messageTextEl.value = "";
+    setStatus(threadStatusEl, "Sent ✅ (credits decremented server-side)");
+    // Refresh thread after send
+    await loadThread(selectedMatchId);
+  } catch (err) {
+    console.error("sendMessageUI error:", err);
+    setStatus(threadStatusEl, `Send failed: ${err?.message || err}`);
+  } finally {
+    isSendingMessage = false;
+    if (btnSendMessage) btnSendMessage.disabled = false;
+  }
+}
+
+if (!uiWired) {
+  uiWired = true;
+  btnSendMessage.addEventListener("click", sendMessageUI);
 
   if (messageTextEl) {
     messageTextEl.addEventListener("keydown", (e) => {
@@ -1171,7 +1179,9 @@ setAuthedUI();
     });
   }
 
-  attachSwipeHandlers();
+    attachSwipeHandlers();
+}
+
     setStatus(feedStatusEl, "Signed in. You can load the feed now.");
   } catch (e) {
     storage.idToken = null;
