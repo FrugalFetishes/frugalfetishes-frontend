@@ -1,4 +1,7 @@
 
+let devCreditsStatusEl = null;
+let devCreditsBalanceEl = null;
+
 function setDevCreditsStatus(msg) {
   if (devCreditsStatusEl) devCreditsStatusEl.textContent = msg || "";
 }
@@ -1603,10 +1606,9 @@ btnLogout.addEventListener("click", () => {
 
     const btn100 = document.getElementById("btnDevAddCredits");
     const btn1000 = document.getElementById("btnDevAddCredits1000");
-    const statusEl = document.getElementById("devCreditsStatus");
-
-    const setStatus = (msg) => {
-      if (statusEl) statusEl.textContent = msg;
+    devCreditsStatusEl = document.getElementById("devCreditsStatus");
+const setStatus = (msg) => {
+      if (devCreditsStatusEl) devCreditsStatusEl.textContent = msg;
     };
 
     const doAdd = async (amount) => {
