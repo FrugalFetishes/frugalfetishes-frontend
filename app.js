@@ -599,60 +599,35 @@ function normalizeThreadResponse(r) {
 function renderThread(messages) {
   if (!threadListEl) return;
   threadListEl.innerHTML = "";
-  if (!messages || messages.length === 0) {
+
+  const list = Array.isArray(messages) ? messages : [];
+  if (list.length === 0) {
     const li = document.createElement("li");
     li.textContent = "No messages yet.";
     threadListEl.appendChild(li);
     return;
   }
 
-  for (const msg of messages) {
+  for (const msg of list) {
     const li = document.createElement("li");
 
     const title = document.createElement("div");
     title.className = "profileTitle";
-    const from = msg.fromUid || msg.from || msg.senderUid || "(unknown)";
-    title.textContent = `From: ${from}`;
+    const from = String(msg.fromUid || msg.from || msg.senderUid || "(unknown)");
+    const ts = msg.createdAt || msg.sentAt || msg.at || null;
+    const when = ts ? new Date(ts).toLocaleString() : "";
+    title.textContent = when ? `From: ${from} • ${when}` : `From: ${from}`;
     li.appendChild(title);
 
-    const actions = document.createElement("div");
-    actions.className = "row";
+    const body = document.createElement("div");
+    body.className = "kv";
+    body.textContent = String(msg.text || msg.message || "");
+    li.appendChild(body);
 
-    const openBtn = document.createElement("button");
-    openBtn.type = "button";
-    openBtn.textContent = "Open Chat";
-    openBtn.addEventListener("click", () => {
-      selectedMatchId = String(matchId);
-      selectedOtherUid = otherUid ? String(otherUid) : null;
-      if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Selected: ${selectedOtherUid} (matchId: ${selectedMatchId})` : `Selected matchId: ${selectedMatchId}`);
-      if (threadStatusEl) setStatus(threadStatusEl, "Click 'Load Thread' to view messages.");
-      if (threadListEl) threadListEl.innerHTML = "";
-      if (messageTextEl) messageTextEl.focus();
-    });
-
-    actions.appendChild(openBtn);
-    li.appendChild(actions);
-
-    const kv = document.createElement("div");
-    kv.className = "kv";
-
-    const add = (k, v) => {
-      const kdiv = document.createElement("div");
-      kdiv.className = "key";
-      kdiv.textContent = k;
-      const vdiv = document.createElement("div");
-      vdiv.textContent = v;
-      kv.appendChild(kdiv);
-      kv.appendChild(vdiv);
-    };
-
-    add("Text", msg.text || "");
-    if (msg.createdAt) add("createdAt", JSON.stringify(msg.createdAt));
-
-    li.appendChild(kv);
     threadListEl.appendChild(li);
   }
 }
+
 
 function normalizeMatchesResponse(r) {
   if (!r) return [];
@@ -973,6 +948,73 @@ setAuthedUI();
   if (btnToggleDevFeed && feedListEl) {
     btnToggleDevFeed.addEventListener("click", () => {
       feedListEl.hidden = !feedListEl.hidden;
+    });
+  }
+
+
+  // ====== Matches + Chat wiring ======
+  async function loadMatchesUI() {
+    if (!matchesStatusEl) return;
+    setStatus(matchesStatusEl, "Loading matches...");
+    try {
+      const resp = await getMatches();
+      const items = resp && (resp.items || resp.matches || resp.data || resp.rows) ? (resp.items || resp.matches || resp.data || resp.rows) : [];
+      renderMatches(items);
+      setStatus(matchesStatusEl, `Matches loaded: ${Array.isArray(items) ? items.length : 0}`);
+    } catch (e) {
+      setStatus(matchesStatusEl, `Matches failed: ${e.message}`);
+    }
+  }
+
+  async function loadThreadUI() {
+    if (!threadStatusEl) return;
+    if (!selectedMatchId) {
+      setStatus(threadStatusEl, "Select a match first.");
+      return;
+    }
+    setStatus(threadStatusEl, "Loading thread...");
+    try {
+      const resp = await getThread(selectedMatchId, 50);
+      const msgs = normalizeThreadResponse(resp);
+      renderThread(msgs);
+      setStatus(threadStatusEl, `Messages: ${msgs.length}`);
+      if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Chat with ${selectedOtherUid} • ${selectedMatchId}` : `Chat • ${selectedMatchId}`);
+    } catch (e) {
+      setStatus(threadStatusEl, `Thread failed: ${e.message}`);
+    }
+  }
+
+  async function sendMessageUI() {
+    if (!threadStatusEl) return;
+    if (!selectedMatchId) {
+      setStatus(threadStatusEl, "Select a match first.");
+      return;
+    }
+    const text = messageTextEl ? String(messageTextEl.value || "").trim() : "";
+    if (!text) {
+      setStatus(threadStatusEl, "Type a message first.");
+      return;
+    }
+    setStatus(threadStatusEl, "Sending...");
+    try {
+      await sendMessage(selectedMatchId, text);
+      if (messageTextEl) messageTextEl.value = "";
+      await loadThreadUI();
+    } catch (e) {
+      setStatus(threadStatusEl, `Send failed: ${e.message}`);
+    }
+  }
+
+  if (btnLoadMatches) btnLoadMatches.addEventListener("click", loadMatchesUI);
+  if (btnLoadThread) btnLoadThread.addEventListener("click", loadThreadUI);
+  if (btnSendMessage) btnSendMessage.addEventListener("click", sendMessageUI);
+
+  if (messageTextEl) {
+    messageTextEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessageUI();
+      }
     });
   }
 
