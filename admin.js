@@ -72,11 +72,15 @@ function showView(view){
 function setAuthUi(){
   const signedIn = !!storage.idToken;
   const email = storage.loginEmail || "";
+  const authCard = $('authCard');
+  if (authCard) authCard.style.display = '';
   if (String(email||'').trim().toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
     setAuthStatus('Admin login is only for ' + ADMIN_EMAIL);
     return;
   }
 
+
+  if (authCard) authCard.style.display = signedIn ? 'none' : '';
   authText.textContent = signedIn ? (email ? `Signed in: ${email}` : "Signed in") : "Not signed in";
   authDot.style.background = signedIn ? "rgba(34,197,94,.85)" : "rgba(255,0,90,.35)";
   authDot.style.boxShadow = signedIn ? "0 0 0 4px rgba(34,197,94,.16)" : "0 0 0 4px rgba(255,0,90,.10)";
