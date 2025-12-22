@@ -139,10 +139,13 @@ async function startOtp(){
     if (data.devOtp) {
     msg += `  devOtp: ${data.devOtp} (test-only)`;
     const otpEl = document.getElementById("otpInput");
-    if (otpEl && storage.loginEmail === ADMIN_EMAIL) {
+    if (otpEl) {
       otpEl.value = String(data.devOtp);
       otpEl.focus();
     }
+  } else {
+    msg += "  (No devOtp returned)";
+  }
   }
     authStatus.textContent = msg;
   } catch(e){
