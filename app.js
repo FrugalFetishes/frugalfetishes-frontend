@@ -46,6 +46,36 @@ const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
 const DEV_OTP_KEY = "ff-dev";
 const FIREBASE_WEB_API_KEY = "AIzaSyBcMM5dAFqbQXcN0ltT4Py6SeA5Fzg-nD8";
 
+// ====== ADMIN (Dev Tools access) ======
+// Only these emails can see Dev Tools in the UI.
+const ADMIN_EMAIL_ALLOWLIST = ["frugalfetishes@outlook.com"];
+
+function getEmailFromIdToken(idToken) {
+  try {
+    if (!idToken || typeof idToken !== "string") return "";
+    const parts = idToken.split(".");
+    if (parts.length < 2) return "";
+    // base64url decode
+    const b64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const jsonStr = decodeURIComponent(atob(b64).split("").map(c => "%"+("00"+c.charCodeAt(0).toString(16)).slice(-2)).join("")); 
+    const payload = JSON.parse(jsonStr);
+    return (payload && (payload.email || payload.user_id || "")) || "";
+  } catch (_) {
+    return "";
+  }
+}
+
+function isAdminUser() {
+  const email = getEmailFromIdToken(storage.idToken);
+  return !!email && ADMIN_EMAIL_ALLOWLIST.includes(email);
+}
+
+function applyAdminVisibility() {
+  const devPanel = document.querySelector('[data-panel="dev"]') || document.getElementById("panelDev");
+  if (!devPanel) return;
+  devPanel.style.display = isAdminUser() ? "" : "none";
+}
+
 // ====== DOM ======
 const $ = (id) => document.getElementById(id);
 
@@ -1574,9 +1604,13 @@ btnLogout.addEventListener("click", () => {
 
   if (btnCheckBackend) btnCheckBackend.addEventListener("click", checkBackend);
 
+  // Hide Dev Tools unless admin
+  applyAdminVisibility();
+
 // Dev Tools: Add Credits (testing)
 (function setupDevAddCredits() {
   try {
+    if (!isAdminUser()) return;
     // Avoid duplicating the UI if hot-reload runs again
     if (document.getElementById("btnDevAddCredits")) return;
 
