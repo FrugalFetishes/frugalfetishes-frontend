@@ -1,3 +1,10 @@
+
+function filterOutSelf(items) {
+  const myUid = getUidFromIdToken(storage.idToken);
+  if (!myUid) return items;
+  return Array.isArray(items) ? items.filter(p => p && p.uid && p.uid !== myUid) : items;
+}
+
 /* Minimal web client for FrugalFetishes backend
  * - No frameworks
  * - Stores idToken in localStorage
