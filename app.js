@@ -216,6 +216,7 @@ function setAuthedUI() {
 }
 
 async function jsonFetch(url, options = {}) {
+  if (typeof url === "string" && url.startsWith("/api/")) url = `${BACKEND_BASE_URL}${url}`;
   const opts = Object.assign({ headers: {} }, options || {});
   if (opts.body && typeof opts.body === "object" && !(opts.body instanceof FormData)) {
     opts.body = JSON.stringify(opts.body);
@@ -234,7 +235,6 @@ async function jsonFetch(url, options = {}) {
   }
   return data !== null ? data : (text ? { ok: true, text } : { ok: true });
 }
-
 async function startAuth(email) {
   return jsonFetch(`${BACKEND_BASE_URL}/api/auth/start`, {
     method: "POST",
