@@ -148,7 +148,7 @@
     diagBackend.textContent = BACKEND_BASE_URL;
     backendLabel.textContent = `Backend: ${BACKEND_BASE_URL}`;
     try {
-      const res = await fetch(`${BACKEND_BASE_URL}/health`, { method: "GET" });
+      const res = await fetch(`${BACKEND_BASE_URL}/api/health`, { method: "GET" });
       const json = await res.json().catch(() => ({}));
       const ok = res.ok && json && json.status === "ok";
       backendDot.classList.toggle("ok", !!ok);
