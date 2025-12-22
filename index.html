@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FrugalFetishes — MVP Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20251222182920" />
+  <link rel="stylesheet" href="./styles.css?v=20251222184412" />
 </head>
 <body>
   <main class="container" aria-label="FrugalFetishes MVP App">
@@ -232,27 +232,6 @@
       <h2>Dev Tools</h2>
       <p class="muted">Your original minimal client UI is kept here intact for debugging.</p>
 
-      <section class="card" aria-label="Login">
-        <h3>Login</h3>
-        <p class="muted">Step 1: enter your email, then use the OTP code.</p>
-
-        <label for="email">Email</label>
-        <input id="email" type="email" placeholder="test@example.com" autocomplete="email" />
-
-        <div class="row">
-          <button id="btnStart" type="button">Send OTP</button>
-        </div>
-
-        <div id="startResult" class="muted" role="status" aria-live="polite"></div>
-
-        <hr />
-
-        <label for="otp">OTP code</label>
-        <input id="otp" type="text" inputmode="numeric" placeholder="6 digits" autocomplete="one-time-code" />
-
-        <button id="btnVerify" type="button">Verify + Sign In</button>
-      </section>
-
       <section class="card" aria-label="Backend Debug">
         <h3>Backend Debug</h3>
         <p class="muted">This shows which backend your frontend is actually calling.</p>
@@ -289,8 +268,9 @@
         <button type="button" class="secondary" id="btnToggleDevFeed">Toggle Dev Feed List</button>
       </div>
     </section>
-  </main>
+  </div>
+</main>
 
-  <script src="./app.js?v=20251222182920"></script>
+  <script src="./app.js?v=20251222184412"></script>
 </body>
 </html>
