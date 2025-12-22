@@ -135,7 +135,14 @@ async function startOtp(){
     storage.lastCodeId = data.codeId || data.codeID || data.codeid || null;
     let msg = "OTP started ✅";
     if (storage.lastCodeId) msg += `  codeId: ${storage.lastCodeId}`;
-    if (data.devOtp) msg += `  devOtp: ${data.devOtp} (test-only)`;
+    if (data.devOtp) {
+      msg += `  devOtp: ${data.devOtp} (test-only)`;
+      const otpEl = document.getElementById("otpInput");
+      if (otpEl && storage.loginEmail === ADMIN_EMAIL) {
+        otpEl.value = String(data.devOtp);
+        otpEl.focus();
+      }
+    }
     authStatus.textContent = msg;
   } catch(e){
     authStatus.textContent = `OTP start failed: ${String(e.message || e)}`;
