@@ -59,9 +59,9 @@ const backendDebugEl = $("backendDebug");
 
 const profileDisplayNameEl = $("profileDisplayName");
 const profileAgeEl = $("profileAge");
-const profileCityEl = $("profileCity");
 const profileInterestsEl = $("profileInterests");
 const profileLatEl = $("profileLat");
+  const profileZipEl = $("profileZip");
 const profileLngEl = $("profileLng");
 const btnSaveProfile = $("btnSaveProfile");
   const btnUseLocation = $("btnUseLocation");
@@ -1569,7 +1569,7 @@ initBioCounter();
           if (profileLatEl) profileLatEl.value = String(lat);
           if (profileLngEl) profileLngEl.value = String(lng);
           if (profileCityEl && !String(profileCityEl.value || "").trim()) {
-            profileCityEl.value = "Near me";
+            if (profileZipEl && !profileZipEl.value) profileZipEl.value = "";
           }
           if (locationStatusEl) locationStatusEl.textContent = `Location set ✅ (lat ${lat}, lng ${lng})`;
         },
