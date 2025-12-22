@@ -239,7 +239,7 @@ async function startAuth(email) {
   return jsonFetch(`${BACKEND_BASE_URL}/api/auth/start`, {
     method: "POST",
     headers: DEV_OTP_KEY ? { "x-dev-otp-key": DEV_OTP_KEY } : {},
-    body: JSON.stringify({ email })
+    body: JSON.stringify({ email: sanitizeEmail(email) })
   });
 }
 
@@ -1044,7 +1044,9 @@ function clearFilters() {
 btnStart.addEventListener("click", async () => {
   clearError();
   setStatus(startResultEl, "");
-  const email = (emailEl.value || "").trim();
+  const emailRaw = loginEmailEl ? loginEmailEl.value : "";
+  const email = sanitizeEmail(emailRaw);
+  if (!isValidEmail(email)) { setStatus(authStatusEl, `Invalid email: ${email}`); return; }
   if (!email) return showError("Enter an email first.");
 
   btnStart.disabled = true;
@@ -1882,3 +1884,14 @@ function attachSwipeHandlers() {
     if (e.key === "Escape") { e.preventDefault(); collapseSheet(); }
   });
 }
+function sanitizeEmail(raw) {
+  const email = String(raw || "").trim().toLowerCase();
+  return email;
+}
+
+function isValidEmail(email) {
+  // simple, practical validation
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""));
+}
+
+
