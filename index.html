@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FrugalFetishes — MVP Web</title>
-  <link rel="stylesheet" href="./styles.css?v=20251222180439" />
+  <link rel="stylesheet" href="./styles.css?v=20251222182920" />
 </head>
 <body>
   <main class="container" aria-label="FrugalFetishes MVP App">
@@ -148,7 +148,14 @@
       <label for="profileCity">City</label>
       <input id="profileCity" type="text" placeholder="Miami" />
 
-      <label for="profileInterests">Interests (comma-separated)</label>
+      
+
+      <div class="row rowWrap" style="margin-top:10px;">
+        <button id="btnUseLocation" type="button" class="btn btnPrimary">Use My Location</button>
+        <button id="btnClearLocation" type="button" class="btn btnGhost">Clear Location</button>
+      </div>
+      <div id="locationStatus" class="muted" role="status" aria-live="polite" style="margin-top:8px;"></div>
+<label for="profileInterests">Interests (comma-separated)</label>
       <input id="profileInterests" type="text" placeholder="latex, feet" />
 
       <label>Location</label>
@@ -284,6 +291,6 @@
     </section>
   </main>
 
-  <script src="./app.js?v=20251222180439"></script>
+  <script src="./app.js?v=20251222182920"></script>
 </body>
 </html>
