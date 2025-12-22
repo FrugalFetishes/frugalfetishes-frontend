@@ -2,6 +2,10 @@
 
 const ADMIN_EMAIL = "frugalfetishes@outlook.com";
 
+// Backend API base URL
+const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
+
+
 const $ = (id) => document.getElementById(id);
 
 const storage = {
@@ -96,7 +100,10 @@ function requireAdmin(){
 }
 
 async function jsonFetch(path, opts = {}){
-  const res = await fetch(path, {
+    const url = String(path || "").startsWith("http")
+    ? String(path)
+    : (BACKEND_BASE_URL.replace(/\/$/, "") + String(path));
+  const res = await fetch(url, {
     method: opts.method || "GET",
     headers: opts.headers || {},
     body: opts.body ? JSON.stringify(opts.body) : undefined
@@ -104,7 +111,7 @@ async function jsonFetch(path, opts = {}){
   const data = await res.json().catch(() => ({}));
   if (!res.ok){
     const msg = (data && data.error) ? data.error : `HTTP ${res.status}`;
-    throw new Error(msg);
+    throw new Error(msg + " @ " + (typeof url !== "undefined" ? url : path));
   }
   return data;
 }
@@ -116,7 +123,7 @@ async function getAuthHeader(){
 
 async function checkHealth(){
   try{
-    envPill.textContent = "Backend: checking…";
+    envPill.textContent = "Backend: " + BACKEND_BASE_URL + " (checking…)";
     const data = await jsonFetch("/api/health");
     envPill.textContent = "Backend: OK";
     buildPill.textContent = `buildId: ${data.buildId || "—"}`;
