@@ -125,7 +125,6 @@ function applyAdminVisibility() {
     const status = document.getElementById("devCreditsStatus");
     if (status) status.textContent = "Admin-only. Log in as frugalfetishes@outlook.com to use Dev Credits.";
   }
-}
   if (isAdmin) {
     // Build admin credit controls dynamically (so we don't need HTML changes)
     ensureAdminCreditsUi();
@@ -1576,7 +1575,7 @@ btnLogout.addEventListener("click", () => {
   storage.refreshToken = null;
   storage.idTokenExpiresAt = 0;
   lastCodeId = null;
-  storage.loginEmail = \"\";
+  storage.loginEmail = "";
   setAuthUiState();
   applyAdminVisibility();
   setStatus(startResultEl, "");
