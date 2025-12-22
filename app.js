@@ -100,7 +100,7 @@ let lastCodeId = null;
 let allFeedItems = [];
 let selectedMatchId = null;
 let selectedOtherUid = null;
-
+let isSendingMessage = false;
 const publicProfileCache = new Map(); // uid -> { displayName, photoUrl }
 // ====== Discover Deck UI (new; additive) ======
 let deckIndex = 0;
@@ -597,6 +597,42 @@ async function sendMessage(matchId, text) {
   });
 }
 
+
+function parseMessageTime(ts) {
+  if (!ts) return null;
+
+  // If it's already a number or string date
+  if (typeof ts === "number") return ts;
+  if (typeof ts === "string") {
+    const t = Date.parse(ts);
+    return isNaN(t) ? null : t;
+  }
+
+  // Firestore Timestamp shapes
+  // { seconds: 123, nanoseconds: 0 } or { _seconds: 123, _nanoseconds: 0 }
+  const seconds = (typeof ts.seconds === "number") ? ts.seconds :
+                  (typeof ts._seconds === "number") ? ts._seconds : null;
+  const nanos = (typeof ts.nanoseconds === "number") ? ts.nanoseconds :
+                (typeof ts._nanoseconds === "number") ? ts._nanoseconds : 0;
+
+  if (seconds !== null) {
+    return (seconds * 1000) + Math.floor((nanos || 0) / 1e6);
+  }
+
+  // Some backends send { at: { ...timestamp } }
+  if (typeof ts === "object") {
+    // try common fields
+    for (const key of ["createdAt", "sentAt", "at", "time", "timestamp"]) {
+      if (ts[key]) {
+        const v = parseMessageTime(ts[key]);
+        if (v) return v;
+      }
+    }
+  }
+
+  return null;
+}
+
 function normalizeThreadResponse(r) {
   if (!r) return [];
   if (Array.isArray(r.items)) return r.items;
@@ -618,25 +654,90 @@ function renderThread(messages) {
     return;
   }
 
+  const myUid = getUidFromIdToken(storage.idToken);
+
   for (const msg of list) {
     const li = document.createElement("li");
+    li.style.listStyle = "none";
+    li.style.margin = "10px 0";
 
-    const title = document.createElement("div");
-    title.className = "profileTitle";
-    const from = String(msg.fromUid || msg.from || msg.senderUid || "(unknown)");
-    const ts = msg.createdAt || msg.sentAt || msg.at || null;
-    const when = ts ? new Date(ts).toLocaleString() : "";
-    title.textContent = when ? `From: ${from} • ${when}` : `From: ${from}`;
-    li.appendChild(title);
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.gap = "10px";
+    row.style.alignItems = "flex-start";
 
-    const body = document.createElement("div");
-    body.className = "kv";
-    body.textContent = String(msg.text || msg.message || "");
-    li.appendChild(body);
+    const fromUid = String(msg.fromUid || msg.from || msg.senderUid || "");
+    const isMine = myUid && fromUid && (fromUid === myUid);
 
+    // Avatar (use selectedOtherUid photo for incoming; your own is optional)
+    const avatar = document.createElement("div");
+    avatar.style.width = "36px";
+    avatar.style.height = "36px";
+    avatar.style.borderRadius = "10px";
+    avatar.style.overflow = "hidden";
+    avatar.style.flex = "0 0 36px";
+    avatar.style.background = "#eee";
+
+    const img = document.createElement("img");
+    img.style.width = "100%";
+    img.style.height = "100%";
+    img.style.objectFit = "cover";
+    img.alt = "avatar";
+
+    if (!isMine && selectedOtherUid) {
+      const cached = publicProfileCache.get(selectedOtherUid);
+      if (cached && cached.photoUrl) img.src = cached.photoUrl;
+    }
+    if (img.src) avatar.appendChild(img);
+
+    const bubbleWrap = document.createElement("div");
+    bubbleWrap.style.flex = "1";
+
+    const header = document.createElement("div");
+    header.className = "kv";
+
+    const ms = msg._ms || null;
+    const when = ms ? new Date(ms).toLocaleString() : "";
+
+    // We resolve names async by optimistic display now, then update
+    const whoSpan = document.createElement("span");
+    whoSpan.textContent = isMine ? "You" : (fromUid || "(unknown)");
+
+    header.textContent = when ? `${whoSpan.textContent} • ${when}` : `${whoSpan.textContent}`;
+    bubbleWrap.appendChild(header);
+
+    const bubble = document.createElement("div");
+    bubble.style.padding = "10px 12px";
+    bubble.style.borderRadius = "12px";
+    bubble.style.maxWidth = "600px";
+    bubble.style.display = "inline-block";
+    bubble.style.background = isMine ? "#111" : "#f2f2f2";
+    bubble.style.color = isMine ? "#fff" : "#111";
+    bubble.textContent = String(msg.text || msg.message || "");
+    bubbleWrap.appendChild(bubble);
+
+    // Align mine to right
+    if (isMine) {
+      row.style.flexDirection = "row-reverse";
+      bubbleWrap.style.textAlign = "right";
+      header.style.textAlign = "right";
+    }
+
+    row.appendChild(avatar);
+    row.appendChild(bubbleWrap);
+    li.appendChild(row);
     threadListEl.appendChild(li);
+
+    // Async resolve names after render
+    if (!isMine && fromUid) {
+      resolveDisplayName(fromUid).then((nm) => {
+        const name = nm || fromUid;
+        header.textContent = when ? `${name} • ${when}` : `${name}`;
+      });
+    }
   }
 }
+
 
 
 function normalizeMatchesResponse(r) {
@@ -1023,6 +1124,7 @@ setAuthedUI();
       setStatus(threadStatusEl, `Messages: ${msgs.length}`);
       if (threadMetaEl) {
       const nm = selectedOtherUid ? await resolveDisplayName(selectedOtherUid) : "";
+      await resolvePublicProfile(selectedOtherUid);
       setStatus(threadMetaEl, nm ? `Chat with ${nm}` : `Chat`);
     }
     } catch (e) {
@@ -1031,6 +1133,9 @@ setAuthedUI();
   }
 
   async function sendMessageUI() {
+    if (isSendingMessage) return;
+    isSendingMessage = true;
+    if (btnSendMessage) btnSendMessage.disabled = true;
     if (!threadStatusEl) return;
     if (!selectedMatchId) {
       setStatus(threadStatusEl, "Select a match first.");
@@ -1043,12 +1148,14 @@ setAuthedUI();
     }
     setStatus(threadStatusEl, "Sending...");
     try {
-      await sendMessage(selectedMatchId, text);
+          await sendMessage(selectedMatchId, text);
       if (messageTextEl) messageTextEl.value = "";
-      await loadThreadUI();
+          await loadThreadUI();
     } catch (e) {
       setStatus(threadStatusEl, `Send failed: ${e.message}`);
-    }
+        if (btnSendMessage) btnSendMessage.disabled = false;
+    isSendingMessage = false;
+  }
   }
 
   if (btnLoadMatches) btnLoadMatches.addEventListener("click", loadMatchesUI);
