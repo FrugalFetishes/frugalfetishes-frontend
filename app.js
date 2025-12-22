@@ -1537,7 +1537,95 @@ btnLogout.addEventListener("click", () => {
 
   if (btnCheckBackend) btnCheckBackend.addEventListener("click", checkBackend);
 
+// Dev Tools: Add Credits (testing)
+(function setupDevAddCredits() {
+  try {
+    // Avoid duplicating the UI if hot-reload runs again
+    if (document.getElementById("btnDevAddCredits")) return;
+
+    const devPanel =
+      document.querySelector('[data-panel="dev"]') ||
+      document.getElementById("panelDev") ||
+      document.body;
+
+    const card = document.createElement("div");
+    card.className = "card";
+    card.style.marginTop = "10px";
+    card.innerHTML = `
+      <h3>Dev Credits</h3>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button id="btnDevAddCredits" type="button">Add +100 Credits</button>
+        <button id="btnDevAddCredits1000" type="button">Add +1000 Credits</button>
+      </div>
+      <div id="devCreditsStatus" class="muted" style="margin-top:6px;"></div>
+    `;
+
+    // Place it under Backend Debug if possible
+    if (backendDebugEl && backendDebugEl.parentElement) {
+      backendDebugEl.parentElement.appendChild(card);
+    } else {
+      devPanel.appendChild(card);
+    }
+
+    const btn100 = document.getElementById("btnDevAddCredits");
+    const btn1000 = document.getElementById("btnDevAddCredits1000");
+    const statusEl = document.getElementById("devCreditsStatus");
+
+    const setStatus = (msg) => {
+      if (statusEl) statusEl.textContent = msg;
+    };
+
+    const doAdd = async (amount) => {
+      if (!storage.idToken) {
+        setStatus("Login first (need token).");
+        return;
+      }
+
+      const devKey = localStorage.getItem("ffDevKey") || "ff-dev";
+
+      btn100.disabled = true;
+      btn1000.disabled = true;
+      setStatus("Adding credits...");
+
+      try {
+        const data = await jsonFetch(`/api/dev/credits/add`, {
+          method: "POST",
+          headers: {
+            ...getAuthHeader(),
+            "Content-Type": "application/json",
+            "x-dev-otp-key": devKey
+          },
+          body: JSON.stringify({ amount })
+        });
+
+        if (!data?.ok) {
+          setStatus(`Failed: ${data?.error || "unknown"}`);
+        } else {
+          setStatus(`✅ Added ${data.added}. New balance: ${data.credits}`);
+        }
+
+        // Refresh the "Check Credits" display if you're on that flow
+        if (btnCredits) {
+          // don't await; just refresh in background
+          try { btnCredits.click(); } catch (e) {}
+        }
+      } catch (err) {
+        setStatus(`Failed: ${err?.message || String(err)}`);
+      } finally {
+        btn100.disabled = false;
+        btn1000.disabled = false;
+      }
+    };
+
+    btn100.addEventListener("click", () => doAdd(100));
+    btn1000.addEventListener("click", () => doAdd(1000));
+  } catch (e) {
+    // ignore
+  }
 })();
+
+})();
+
 
 
 // ====== Tabs ======
