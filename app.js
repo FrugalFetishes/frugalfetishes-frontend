@@ -217,7 +217,8 @@ function setAuthedUI() {
 
 async function jsonFetch(url, options = {}) {
   const attempt = async () => {
-    const res = await fetch(url, {
+    const fullUrl = (typeof url === "string" && url.startsWith("/")) ? `${BACKEND_BASE_URL}${url}` : url;
+    const res = await fetch(fullUrl, {
       ...options,
       headers: {
         "Content-Type": "application/json",
@@ -336,10 +337,11 @@ async function refreshIdToken() {
 
 
 async function getAuthHeader() {
-  // Use current session token if already present
-  const token = storage && storage.idToken ? storage.idToken : await getValidIdToken();
-  return { "Authorization": `Bearer ${token}` };
+  // Prefer the in-memory token set after Verify OTP
+  const token = storage && storage.idToken ? storage.idToken : null;
+  return token ? { "Authorization": `Bearer ${token}` } : {};
 }
+
 
 async function getValidIdToken() {
   const idToken = storage.idToken;
@@ -1650,8 +1652,9 @@ btnLogout.addEventListener("click", () => {
         if (!data?.ok) {
           setStatus(`Failed: ${data?.error || "unknown"}`);
         } else {
-          setStatus(`✅ Added ${data.added}. New balance: ${data.credits}`);
+          setStatus(`✅ Added ${amount}. New balance: ${data.credits}`);
         }
+        await refreshDevCreditsBalance();
 
         // Refresh the "Check Credits" display if you're on that flow
         if (btnCredits) {
