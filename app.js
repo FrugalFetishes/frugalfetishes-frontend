@@ -71,6 +71,14 @@ const btnSetMiami = $("btnSetMiami");
 const btnSetOrlando = $("btnSetOrlando");
 const profileStatusEl = $("profileStatus");
 
+const profileBioEl = $("profileBio");
+const bioCountEl = $("bioCount");
+const interestChipsEl = $("interestChips");
+const profileInterestCustomEl = $("profileInterestCustom");
+const btnAddInterest = $("btnAddInterest");
+let selectedInterests = new Set();
+
+
 const photoFilesEl = $("photoFiles");
 const btnSavePhotos = $("btnSavePhotos");
 const btnClearPhotos = $("btnClearPhotos");
@@ -428,6 +436,9 @@ async function hydrateProfileFromServer() {
     if (typeof profile.age === "number" && profileAgeEl) profileAgeEl.value = String(profile.age);
     if (profile.city && profileCityEl) profileCityEl.value = String(profile.city);
     if (Array.isArray(profile.interests) && profileInterestsEl) profileInterestsEl.value = profile.interests.join(", ");
+    if (profileBioEl && typeof profile.bio === "string") profileBioEl.value = profile.bio;
+    if (bioCountEl && profileBioEl) bioCountEl.textContent = String((profileBioEl.value || "").length);
+    initInterestChipsFromValue(profileInterestsEl ? profileInterestsEl.value : "");
     if (profile.location && typeof profile.location.lat === "number" && profileLatEl) profileLatEl.value = String(profile.location.lat);
     if (profile.location && typeof profile.location.lng === "number" && profileLngEl) profileLngEl.value = String(profile.location.lng);
     // Photos: prefer profile.photos, fallback to user.photos
@@ -509,6 +520,80 @@ function captureDraft() {
     lng: profileLngEl ? profileLngEl.value : "",
   };
   saveDraft(d);
+}
+
+
+function syncInterestsHiddenInput() {
+  if (!profileInterestsEl) return;
+  profileInterestsEl.value = Array.from(selectedInterests).join(", ");
+}
+
+function setChipSelected(btn, on) {
+  if (!btn) return;
+  btn.classList.toggle("isSelected", !!on);
+}
+
+function initInterestChipsFromValue(value) {
+  selectedInterests = new Set();
+  const raw = String(value || "");
+  raw.split(",").map(s => s.trim()).filter(Boolean).forEach(v => selectedInterests.add(v));
+  if (interestChipsEl) {
+    interestChipsEl.querySelectorAll(".chip").forEach((btn) => {
+      const v = btn.getAttribute("data-value") || "";
+      setChipSelected(btn, selectedInterests.has(v));
+    });
+  }
+  syncInterestsHiddenInput();
+}
+
+function initInterestChips() {
+  if (!interestChipsEl) return;
+
+  // bootstrap from hidden input if present
+  if (profileInterestsEl && profileInterestsEl.value) initInterestChipsFromValue(profileInterestsEl.value);
+
+  interestChipsEl.querySelectorAll(".chip").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const v = (btn.getAttribute("data-value") || "").trim();
+      if (!v) return;
+      if (selectedInterests.has(v)) selectedInterests.delete(v);
+      else selectedInterests.add(v);
+      setChipSelected(btn, selectedInterests.has(v));
+      syncInterestsHiddenInput();
+      captureDraft();
+    });
+  });
+
+  if (btnAddInterest && profileInterestCustomEl) {
+    btnAddInterest.addEventListener("click", () => {
+      const v = profileInterestCustomEl.value.trim().toLowerCase();
+      if (!v) return;
+      selectedInterests.add(v);
+      profileInterestCustomEl.value = "";
+      syncInterestsHiddenInput();
+      captureDraft();
+      // show as selected chip only if it exists in the predefined set
+      if (interestChipsEl) {
+        const match = interestChipsEl.querySelector(`.chip[data-value="${CSS.escape(v)}"]`);
+        if (match) setChipSelected(match, true);
+      }
+      setProfileStatus(`Added interest: ${v}`);
+    });
+  }
+}
+
+function initBioCounter() {
+  if (!profileBioEl || !bioCountEl) return;
+  const update = () => {
+    const n = (profileBioEl.value || "").length;
+    bioCountEl.textContent = String(n);
+  };
+  profileBioEl.addEventListener("input", () => {
+    if (profileBioEl.value.length > 240) profileBioEl.value = profileBioEl.value.slice(0, 240);
+    update();
+    captureDraft();
+  });
+  update();
 }
 
 
@@ -1136,6 +1221,8 @@ btnVerify.addEventListener("click", async () => {
     }
 
 setAuthedUI();
+initInterestChips();
+initBioCounter();
   hydrateProfileFromServer();
   // Tabs
   if (tabButtons && tabButtons.length) {
@@ -1255,6 +1342,8 @@ if (!uiWired) {
   storage.refreshToken = null;
   storage.idTokenExpiresAt = 0;
     setAuthedUI();
+initInterestChips();
+initBioCounter();
   // Tabs
   if (tabButtons && tabButtons.length) {
     tabButtons.forEach(btn => btn.addEventListener("click", () => setActiveTab(btn.getAttribute("data-tab"))));
@@ -1408,6 +1497,8 @@ btnLogout.addEventListener("click", () => {
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
+initInterestChips();
+initBioCounter();
   // Tabs
   if (tabButtons && tabButtons.length) {
     tabButtons.forEach(btn => btn.addEventListener("click", () => setActiveTab(btn.getAttribute("data-tab"))));
@@ -1507,12 +1598,16 @@ btnLogout.addEventListener("click", () => {
       const dn = profileDisplayNameEl ? profileDisplayNameEl.value.trim() : "";
       const city = profileCityEl ? profileCityEl.value.trim() : "";
       const ageRaw = profileAgeEl ? profileAgeEl.value : "";
+      syncInterestsHiddenInput();
       const interestsRaw = profileInterestsEl ? profileInterestsEl.value : "";
       const latRaw = profileLatEl ? profileLatEl.value : "";
       const lngRaw = profileLngEl ? profileLngEl.value : "";
 
       if (dn) payload.displayName = dn;
       if (city) payload.city = city;
+
+      const bio = profileBioEl ? profileBioEl.value.trim() : "";
+      if (bio) payload.bio = bio;
 
       if (ageRaw !== "") {
         const ageNum = Number(ageRaw);
@@ -1548,6 +1643,8 @@ btnLogout.addEventListener("click", () => {
   if (btnApplyFilters) btnApplyFilters.addEventListener("click", applyFiltersAndRender);
   if (btnClearFilters) btnClearFilters.addEventListener("click", clearFilters);
   setAuthedUI();
+initInterestChips();
+initBioCounter();
   // Tabs
   if (tabButtons && tabButtons.length) {
     tabButtons.forEach(btn => btn.addEventListener("click", () => setActiveTab(btn.getAttribute("data-tab"))));
