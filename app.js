@@ -201,8 +201,8 @@ async function ensureAdminCreditsUi() {
       try {
         const userSel = document.getElementById("adminUserSelect");
         const amtSel = document.getElementById("adminCreditAmount");
-        const targetUid = userSel ? String((userSel as any).value || "") : "";
-        const amount = amtSel ? Number((amtSel as any).value) : 0;
+        const targetUid = userSel ? String(userSel.value || "") : "";
+        const amount = amtSel ? Number(amtSel.value) : 0;
 
         const st = document.getElementById("adminCreditsStatus");
         if (st) st.textContent = "Granting...";
@@ -217,7 +217,7 @@ async function ensureAdminCreditsUi() {
         if (st) st.textContent = resp?.ok ? `Granted +${amount}.` : `Failed: ${resp?.error || "Unknown error"}`;
       } catch (e) {
         const st = document.getElementById("adminCreditsStatus");
-        if (st) st.textContent = `Failed: ${String((e as any)?.message || e)}`;
+        if (st) st.textContent = `Failed: ${String(e?.message || e)}`;
       }
     });
   }
@@ -228,13 +228,13 @@ async function ensureAdminCreditsUi() {
     const resp = await jsonFetch(`/api/admin/users`, { method: "GET", headers: { ...authHeaders } });
     const sel = document.getElementById("adminUserSelect");
     if (sel && resp?.ok && Array.isArray(resp.users)) {
-      (sel as any).innerHTML = "";
+      sel.innerHTML = "";
       for (const u of resp.users) {
         const opt = document.createElement("option");
         opt.value = u.uid;
         const name = (u.displayName || "").trim() || u.uid;
         opt.textContent = `${name} (${u.credits ?? 0})`;
-        (sel as any).appendChild(opt);
+        sel.appendChild(opt);
       }
     }
   } catch (_) {}
