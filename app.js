@@ -70,6 +70,23 @@ function isAdminUser() {
   return !!email && ADMIN_EMAIL_ALLOWLIST.includes(email);
 }
 
+
+function showDevOtpIfPresent(data) {
+  try {
+    if (!data || !data.devOtp) return;
+    const el = document.getElementById("devOtpEl") || document.getElementById("devOtp") || document.getElementById("otpDevCode") || document.getElementById("devOtpCode");
+    if (el) {
+      el.textContent = String(data.devOtp);
+      el.style.display = "";
+    }
+    const status = document.getElementById("devOtpStatus") || document.getElementById("authStatus") || document.getElementById("devAuthStatus");
+    if (status) {
+      status.textContent = `DEV OTP: ${data.devOtp}`;
+    }
+  } catch (_) {}
+}
+
+
 function applyAdminVisibility() {
   // Keep the Dev panel visible so the user can always log in / verify backend.
   // Only hide the admin-only controls inside it.
