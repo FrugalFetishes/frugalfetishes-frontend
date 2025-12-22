@@ -3,240 +3,413 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>FrugalFetishes — Admin Dashboard</title>
-  <link rel="stylesheet" href="./admin.css" />
+  <title>FrugalFetishes Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg0:#0b0b14;
+      --bg1:#111229;
+      --card:#ffffff;
+      --muted:#6b7280;
+      --ink:#111827;
+      --accent:#ff2d87;
+      --accent2:#7c3aed;
+      --ring: rgba(255,45,135,.25);
+      --shadow: 0 18px 50px rgba(0,0,0,.18);
+      --radius: 16px;
+      --radius2: 20px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1000px 500px at 18% 10%, rgba(255,45,135,.25), transparent 60%),
+        radial-gradient(900px 500px at 85% 20%, rgba(124,58,237,.25), transparent 60%),
+        linear-gradient(180deg, #0d1024 0%, #0b0b14 55%, #0b0b14 100%);
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+    .app{
+      display:flex;
+      min-height:100vh;
+    }
+    .sidebar{
+      width:240px;
+      padding:18px 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+      border-right:1px solid rgba(255,255,255,.08);
+      backdrop-filter: blur(10px);
+    }
+    .brand{
+      display:flex; align-items:center; gap:10px;
+      padding:10px 10px 18px;
+      color:#fff;
+    }
+    .logoDot{
+      width:34px; height:34px; border-radius:12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow: 0 10px 30px rgba(255,45,135,.25);
+      display:grid; place-items:center;
+      font-weight:800;
+    }
+    .brandText .t1{font-weight:800; letter-spacing:.2px;}
+    .brandText .t2{font-size:12px; opacity:.8; margin-top:2px;}
+    .nav{
+      display:flex; flex-direction:column; gap:8px;
+      margin-top:6px;
+    }
+    .nav button{
+      width:100%;
+      border:1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.04);
+      color:#fff;
+      padding:10px 12px;
+      border-radius:12px;
+      text-align:left;
+      cursor:pointer;
+      font-weight:600;
+      transition:.15s ease;
+    }
+    .nav button:hover{transform: translateY(-1px); background: rgba(255,255,255,.06);}
+    .nav button.active{
+      background: linear-gradient(135deg, rgba(255,45,135,.28), rgba(124,58,237,.20));
+      border-color: rgba(255,45,135,.35);
+      box-shadow: 0 10px 30px rgba(255,45,135,.12);
+    }
+
+    .footerStatus{
+      margin-top:auto;
+      color:rgba(255,255,255,.85);
+      font-size:12px;
+      padding:12px 10px;
+      border-top:1px solid rgba(255,255,255,.08);
+    }
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 10px; border-radius:999px;
+      border:1px solid rgba(255,255,255,.14);
+      background: rgba(255,255,255,.05);
+      margin:4px 0;
+      width:100%;
+      overflow:hidden;
+      white-space:nowrap;
+      text-overflow:ellipsis;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:999px;
+      background: #9ca3af;
+    }
+    .dot.ok{background:#22c55e}
+    .dot.bad{background:#ef4444}
+
+    .main{
+      flex:1;
+      padding:22px 22px 26px;
+    }
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px;
+      margin-bottom:16px;
+    }
+    .topbar h1{
+      margin:0; color:#fff; font-size:22px;
+      letter-spacing:.2px;
+    }
+    .topbar .sub{
+      color:rgba(255,255,255,.70);
+      font-size:13px;
+      margin-top:4px;
+    }
+    .actions{
+      display:flex; gap:10px; align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .badge{
+      display:inline-flex; align-items:center; gap:8px;
+      border-radius:999px;
+      padding:7px 10px;
+      border:1px solid rgba(255,255,255,.18);
+      color:#fff;
+      background: rgba(255,255,255,.06);
+      font-weight:600;
+      font-size:13px;
+    }
+    .btn{
+      border:0;
+      border-radius:12px;
+      padding:10px 12px;
+      cursor:pointer;
+      font-weight:700;
+      font-size:13px;
+      transition:.15s ease;
+    }
+    .btn:hover{transform: translateY(-1px);}
+    .btn.primary{
+      color:#fff;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      box-shadow: 0 12px 35px rgba(255,45,135,.18);
+    }
+    .btn.ghost{
+      color:#fff;
+      border:1px solid rgba(255,255,255,.18);
+      background: rgba(255,255,255,.06);
+    }
+
+    .card{
+      background: rgba(255,255,255,.92);
+      border:1px solid rgba(255,255,255,.35);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow);
+      padding:16px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:14px;
+    }
+    @media (min-width: 980px){
+      .grid{grid-template-columns: 1fr 1fr 1fr;}
+      .span2{grid-column: span 2;}
+    }
+    .card h2{
+      margin:0 0 6px;
+      font-size:16px;
+    }
+    .muted{color:var(--muted); font-size:13px;}
+    .row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+    .field{display:flex; flex-direction:column; gap:6px; flex:1; min-width:220px;}
+    label{font-size:12px; color:#374151; font-weight:700;}
+    input{
+      border-radius:12px;
+      border:1px solid rgba(17,24,39,.12);
+      padding:10px 12px;
+      font-size:14px;
+      outline:none;
+    }
+    input:focus{box-shadow: 0 0 0 4px var(--ring); border-color: rgba(255,45,135,.45);}
+    .notice{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(17,24,39,.10);
+      background: rgba(255,255,255,.65);
+      font-size:13px;
+    }
+    .notice.ok{border-color: rgba(34,197,94,.25); background: rgba(34,197,94,.08);}
+    .notice.bad{border-color: rgba(239,68,68,.25); background: rgba(239,68,68,.08);}
+    .hidden{display:none !important;}
+    table{
+      width:100%;
+      border-collapse: collapse;
+      font-size:13px;
+      background:#fff;
+      border-radius: 14px;
+      overflow:hidden;
+      border:1px solid rgba(17,24,39,.08);
+    }
+    th, td{padding:10px 10px; border-bottom:1px solid rgba(17,24,39,.06); text-align:left;}
+    th{background: rgba(17,24,39,.03); font-size:12px; color:#374151;}
+    .right{text-align:right;}
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .tiny{font-size:12px;}
+  </style>
 </head>
 <body>
   <div class="app">
     <aside class="sidebar" aria-label="Admin navigation">
       <div class="brand">
-        <div class="logo">FF</div>
+        <div class="logoDot">FF</div>
         <div class="brandText">
-          <div class="brandName">FrugalFetishes</div>
-          <div class="brandSub">Admin</div>
+          <div class="t1">FrugalFetishes</div>
+          <div class="t2">Admin</div>
         </div>
       </div>
 
-      <nav class="nav">
-        <button class="navItem active" data-view="dashboard" type="button">Dashboard</button>
-        <button class="navItem" data-view="users" type="button">Users</button>
-        <button class="navItem" data-view="credits" type="button">Credits</button>
-        <button class="navItem" data-view="system" type="button">System</button>
-      </nav>
+      <div class="nav">
+        <button id="tabDashboard" class="active" type="button">Dashboard</button>
+        <button id="tabUsers" type="button">Users</button>
+        <button id="tabCredits" type="button">Credits</button>
+        <button id="tabSystem" type="button">System</button>
+      </div>
 
-      <div class="sidebarFooter">
-        <div class="pill" id="envPill">Backend: (checking…)</div>
-        <div class="pill muted" id="buildPill">buildId: —</div>
+      <div class="footerStatus">
+        <div class="pill" title="Backend base URL">
+          <span class="dot" id="backendDot"></span>
+          <span id="backendLabel">Backend: (checking...)</span>
+        </div>
+        <div class="pill" title="Backend build ID">
+          <span class="dot" id="buildDot"></span>
+          <span id="buildLabel">buildId: —</span>
+        </div>
       </div>
     </aside>
 
     <main class="main">
-      <header class="topbar">
-        <div class="topLeft">
-          <div class="pageTitle" id="pageTitle">Dashboard</div>
-          <div class="pageSub" id="pageSub">Admin-only tools for FrugalFetishes</div>
+      <div class="topbar">
+        <div>
+          <h1 id="pageTitle">Dashboard</h1>
+          <div class="sub" id="pageSub">Admin-only tools for FrugalFetishes</div>
         </div>
-
-        <div class="topRight">
-          <div class="authBadge" id="authBadge">
-            <span class="dot" id="authDot"></span>
-            <span id="authText">Not signed in</span>
-          </div>
-
-          <button class="btn ghost" id="btnLogout" type="button" disabled>Login</button>
+        <div class="actions">
+          <button class="btn ghost" id="openAppBtn" type="button">Open App</button>
+          <span class="badge" id="authBadge"><span class="dot bad" id="authDot"></span><span id="authText">Not signed in</span></span>
+          <button class="btn ghost" id="logoutBtn" type="button">Logout</button>
         </div>
-      </header>
+      </div>
 
-      <section class="content">
-        <!-- AUTH CARD -->
-        <div class="card" id="authCard">
-          <div class="cardHeader">
-            <div class="cardTitle">Admin Login</div>
-            <div class="cardHint">Use email + OTP. Admin access is limited to <b>frugalfetishes@outlook.com</b>.</div>
+      <section class="card" id="loginCard" aria-label="Admin login">
+        <h2>Admin Login</h2>
+        <div class="muted">Use email + OTP. Admin access is limited to <b>frugalfetishes@outlook.com</b>.</div>
+        <div class="row" style="margin-top:12px;">
+          <div class="field">
+            <label for="emailInput">Email</label>
+            <input id="emailInput" type="email" autocomplete="email" />
           </div>
-
-          <div class="authGrid">
-            <div class="field">
-              <label for="emailInput">Email</label>
-              <input id="emailInput" type="email" placeholder="frugalfetishes@outlook.com" autocomplete="username" />
-            </div>
-
-            <div class="field">
-              <label>&nbsp;</label>
-              <button class="btn" id="btnSendOtp" type="button">Send OTP</button>
-            </div>
-
-            <div class="field">
-              <label for="otpInput">OTP Code</label>
-              <input id="otpInput" type="text" inputmode="numeric" placeholder="Enter OTP" autocomplete="one-time-code" />
-            </div>
-
-            <div class="field">
-              <label>&nbsp;</label>
-              <button class="btn" id="btnVerify" type="button">Verify + Sign In</button>
-            </div>
-          </div>
-
-          <div class="status" id="authStatus">—</div>
-        </div>
-
-        <!-- DASHBOARD VIEW -->
-        <div class="view" id="view-dashboard">
-          <div class="kpiGrid">
-            <div class="kpi card">
-              <div class="kpiLabel">Total Users</div>
-              <div class="kpiValue" id="kpiUsers">—</div>
-              <div class="kpiSub">From /api/admin/users</div>
-            </div>
-            <div class="kpi card">
-              <div class="kpiLabel">Credits (Sum)</div>
-              <div class="kpiValue" id="kpiCredits">—</div>
-              <div class="kpiSub">Sum of users’ credits</div>
-            </div>
-            <div class="kpi card">
-              <div class="kpiLabel">Admin Mode</div>
-              <div class="kpiValue" id="kpiAdminMode">—</div>
-              <div class="kpiSub">Unlimited messaging (admin only)</div>
-            </div>
-          </div>
-
-          <div class="grid2">
-            <div class="card">
-              <div class="cardHeader">
-                <div class="cardTitle">Quick Actions</div>
-                <div class="cardHint">Most-used admin tools</div>
-              </div>
-
-              <div class="quickActions">
-                <button class="btn" id="btnRefreshUsers" type="button" disabled>Refresh Users</button>
-                <button class="btn ghost" id="btnGoCredits" type="button">Go to Credits</button>
-              </div>
-
-              <div class="status" id="quickStatus">—</div>
-            </div>
-
-            <div class="card">
-              <div class="cardHeader">
-                <div class="cardTitle">System</div>
-                <div class="cardHint">Backend connectivity</div>
-              </div>
-
-              <div class="sysRow">
-                <div class="sysLabel">Health</div>
-                <div class="sysValue" id="sysHealth">—</div>
-              </div>
-              <div class="sysRow">
-                <div class="sysLabel">Firebase</div>
-                <div class="sysValue" id="sysFirebase">—</div>
-              </div>
-              <div class="sysRow">
-                <div class="sysLabel">buildId</div>
-                <div class="sysValue mono" id="sysBuildId">—</div>
-              </div>
-
-              <div class="status" id="sysStatus">—</div>
-            </div>
+          <div class="field" style="max-width:220px;">
+            <label>&nbsp;</label>
+            <button class="btn primary" id="sendOtpBtn" type="button">Send OTP</button>
           </div>
         </div>
 
-        <!-- USERS VIEW -->
-        <div class="view" id="view-users" hidden>
-          <div class="card">
-            <div class="cardHeader row">
-              <div>
-                <div class="cardTitle">Users</div>
-                <div class="cardHint">Browse users and current credit balances</div>
-              </div>
-              <div class="rowRight">
-                <input class="search" id="userSearch" type="text" placeholder="Search by name / uid" />
-                <button class="btn" id="btnReloadUsers" type="button" disabled>Reload</button>
-              </div>
-            </div>
-
-            <div class="tableWrap">
-              <table class="table" aria-label="Users table">
-                <thead>
-                  <tr>
-                    <th style="width: 34%;">Name</th>
-                    <th style="width: 40%;">UID</th>
-                    <th style="width: 16%;">Credits</th>
-                    <th style="width: 10%;">Action</th>
-                  </tr>
-                </thead>
-                <tbody id="usersTbody">
-                  <tr><td colspan="4" class="muted">Sign in to load users.</td></tr>
-                </tbody>
-              </table>
-            </div>
-
-            <div class="status" id="usersStatus">—</div>
+        <div class="row" style="margin-top:10px;">
+          <div class="field">
+            <label for="otpInput">OTP Code</label>
+            <input id="otpInput" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="Enter OTP" />
+          </div>
+          <div class="field" style="max-width:220px;">
+            <label>&nbsp;</label>
+            <button class="btn primary" id="verifyBtn" type="button">Verify + Sign In</button>
           </div>
         </div>
 
-        <!-- CREDITS VIEW -->
-        <div class="view" id="view-credits" hidden>
-          <div class="card">
-            <div class="cardHeader row">
-              <div>
-                <div class="cardTitle">Grant Credits</div>
-                <div class="cardHint">Pick a user, choose amount, grant credits</div>
-              </div>
-              <div class="rowRight">
-                <button class="btn ghost" id="btnCreditsReload" type="button" disabled>Reload Users</button>
-              </div>
-            </div>
-
-            <div class="creditsGrid">
-              <div class="field">
-                <label for="creditUserSelect">User</label>
-                <select id="creditUserSelect"></select>
-              </div>
-
-              <div class="field">
-                <label for="creditAmountSelect">Amount</label>
-                <select id="creditAmountSelect">
-                  <option value="1">+1</option>
-                  <option value="10">+10</option>
-                  <option value="100" selected>+100</option>
-                  <option value="1000">+1000</option>
-                </select>
-              </div>
-
-              <div class="field">
-                <label>&nbsp;</label>
-                <button class="btn" id="btnGrantCredits" type="button" disabled>Grant Credits</button>
-              </div>
-            </div>
-
-            <div class="status" id="creditsStatus">—</div>
-          </div>
-        </div>
-
-        <!-- SYSTEM VIEW -->
-        <div class="view" id="view-system" hidden>
-          <div class="card">
-            <div class="cardHeader">
-              <div class="cardTitle">System & Diagnostics</div>
-              <div class="cardHint">Admin endpoints & helpful status</div>
-            </div>
-
-            <div class="sysRow">
-              <div class="sysLabel">Admin Users Endpoint</div>
-              <div class="sysValue mono">GET /api/admin/users</div>
-            </div>
-            <div class="sysRow">
-              <div class="sysLabel">Grant Credits Endpoint</div>
-              <div class="sysValue mono">POST /api/admin/credits/grant</div>
-            </div>
-
-            <div class="status" id="diagStatus">—</div>
-          </div>
-        </div>
-
+        <div class="notice hidden" id="loginNotice"></div>
       </section>
+
+      <section id="viewDashboard">
+        <div class="grid">
+          <div class="card">
+            <h2>Total Users</h2>
+            <div class="muted tiny">From <span class="mono">GET /api/admin/users</span></div>
+            <div style="margin-top:10px; font-size:28px; font-weight:800;" id="metricUsers">—</div>
+          </div>
+
+          <div class="card">
+            <h2>Credits (sum)</h2>
+            <div class="muted tiny">Sum of users' credits</div>
+            <div style="margin-top:10px; font-size:28px; font-weight:800;" id="metricCredits">—</div>
+          </div>
+
+          <div class="card">
+            <h2>Admin Mode</h2>
+            <div class="muted tiny">Unlimited messaging (admin only)</div>
+            <div style="margin-top:10px; font-size:28px; font-weight:800;" id="metricAdminMode">—</div>
+          </div>
+
+          <div class="card span2">
+            <h2>Quick Actions</h2>
+            <div class="muted">Most-used admin tools</div>
+            <div class="row" style="margin-top:10px;">
+              <button class="btn primary" id="refreshUsersBtn" type="button">Refresh Users</button>
+              <button class="btn ghost" id="gotoCreditsBtn" type="button">Go to Credits</button>
+            </div>
+            <div class="notice hidden" id="dashNotice"></div>
+          </div>
+
+          <div class="card">
+            <h2>System</h2>
+            <div class="muted">Backend connectivity</div>
+            <table style="margin-top:10px;">
+              <tbody>
+                <tr><th>HEALTH</th><td class="right" id="sysHealth">—</td></tr>
+                <tr><th>FIREBASE</th><td class="right" id="sysFirebase">—</td></tr>
+                <tr><th>BUILDID</th><td class="right" id="sysBuild">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section id="viewUsers" class="hidden">
+        <div class="card">
+          <h2>Users</h2>
+          <div class="muted">Browse users and current credit balances</div>
+          <div class="row" style="margin-top:10px;">
+            <div class="field">
+              <label for="searchInput">Search</label>
+              <input id="searchInput" type="text" placeholder="Search by name / uid" />
+            </div>
+            <div class="field" style="max-width:220px;">
+              <label>&nbsp;</label>
+              <button class="btn primary" id="reloadUsersBtn" type="button">Reload</button>
+            </div>
+          </div>
+          <div style="margin-top:12px;">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:30%;">Name</th>
+                  <th class="mono">UID</th>
+                  <th class="right" style="width:90px;">Credits</th>
+                  <th class="right" style="width:100px;">Action</th>
+                </tr>
+              </thead>
+              <tbody id="usersTbody">
+                <tr><td colspan="4" class="muted">Sign in to load users.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="notice hidden" id="usersNotice"></div>
+        </div>
+      </section>
+
+      <section id="viewCredits" class="hidden">
+        <div class="card">
+          <h2>Grant Credits</h2>
+          <div class="muted">Pick a user, choose an amount, grant credits</div>
+          <div class="row" style="margin-top:10px;">
+            <div class="field">
+              <label for="creditUserSelect">User</label>
+              <select id="creditUserSelect" style="border-radius:12px; border:1px solid rgba(17,24,39,.12); padding:10px 12px; font-size:14px;">
+                <option value="">(load users first)</option>
+              </select>
+            </div>
+            <div class="field" style="max-width:220px;">
+              <label for="creditAmount">Amount</label>
+              <input id="creditAmount" type="number" value="100" />
+            </div>
+            <div class="field" style="max-width:220px;">
+              <label>&nbsp;</label>
+              <button class="btn primary" id="grantBtn" type="button">Grant Credits</button>
+            </div>
+          </div>
+          <div class="notice hidden" id="creditsNotice"></div>
+        </div>
+      </section>
+
+      <section id="viewSystem" class="hidden">
+        <div class="card">
+          <h2>System & Diagnostics</h2>
+          <div class="muted">Admin endpoints + helpful status</div>
+          <table style="margin-top:12px;">
+            <tbody>
+              <tr><th>BACKEND</th><td class="right mono tiny" id="diagBackend">—</td></tr>
+              <tr><th>ADMIN USERS ENDPOINT</th><td class="right mono tiny">GET /api/admin/users</td></tr>
+              <tr><th>GRANT CREDITS ENDPOINT</th><td class="right mono tiny">POST /api/admin/credits/grant</td></tr>
+            </tbody>
+          </table>
+          <div class="notice" style="margin-top:12px;">
+            If <b>Send OTP</b> shows <b>404</b>, it means the backend URL you are calling does not have <span class="mono">/api/auth/start</span> deployed on it.
+          </div>
+        </div>
+      </section>
+
+      <script src="./admin.js?v=20251222220000"></script>
     </main>
   </div>
-
-  <script src="./admin.js?v=20251222203851"></script>
 </body>
 </html>
