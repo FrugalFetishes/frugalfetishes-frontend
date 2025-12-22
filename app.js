@@ -66,8 +66,8 @@ function getEmailFromIdToken(idToken) {
 }
 
 function isAdminUser() {
-  const email = (storage.loginEmail || getEmailFromIdToken(storage.idToken) || "").toLowerCase();
-  return !!email && ADMIN_EMAIL_ALLOWLIST.includes(email);
+  const email = (storage.loginEmail || "").toLowerCase().trim();
+  return email === "frugalfetishes@outlook.com";
 }
 
 
@@ -130,6 +130,127 @@ function applyAdminVisibility() {
     ensureAdminCreditsUi();
   }
 }
+
+
+
+async function ensureAdminCreditsUi() {
+  try {
+    if (!storage.idToken) return;
+    if (!isAdminUser()) return;
+
+    const devPanel = document.getElementById("panelDev") || document.querySelector('[data-panel="dev"]');
+    if (!devPanel) return;
+
+    // Create UI once
+    let wrap = document.getElementById("adminCreditsUi");
+    if (!wrap) {
+      wrap = document.createElement("div");
+      wrap.id = "adminCreditsUi";
+      wrap.style.marginTop = "12px";
+      wrap.style.padding = "12px";
+      wrap.style.border = "1px solid rgba(0,0,0,0.12)";
+      wrap.style.borderRadius = "10px";
+      wrap.style.background = "rgba(0,0,0,0.03)";
+
+      const title = document.createElement("div");
+      title.textContent = "Admin Credits";
+      title.style.fontWeight = "700";
+      title.style.marginBottom = "8px";
+
+      const row = document.createElement("div");
+      row.style.display = "flex";
+      row.style.gap = "8px";
+      row.style.flexWrap = "wrap";
+      row.style.alignItems = "center";
+
+      const selUser = document.createElement("select");
+      selUser.id = "adminUserSelect";
+      selUser.style.minWidth = "260px";
+
+      const selAmt = document.createElement("select");
+      selAmt.id = "adminCreditAmount";
+      [1, 10, 100, 1000].forEach(v => {
+        const opt = document.createElement("option");
+        opt.value = String(v);
+        opt.textContent = `+${v}`;
+        selAmt.appendChild(opt);
+      });
+
+      const btnGrant = document.createElement("button");
+      btnGrant.textContent = "Grant Credits";
+      btnGrant.style.padding = "6px 10px";
+      btnGrant.style.borderRadius = "8px";
+      btnGrant.style.border = "1px solid rgba(0,0,0,0.2)";
+      btnGrant.style.background = "white";
+      btnGrant.style.cursor = "pointer";
+
+      const status = document.createElement("div");
+      status.id = "adminCreditsStatus";
+      status.style.marginTop = "8px";
+      status.style.fontSize = "12px";
+
+      row.appendChild(selUser);
+      row.appendChild(selAmt);
+      row.appendChild(btnGrant);
+
+      wrap.appendChild(title);
+      wrap.appendChild(row);
+      wrap.appendChild(status);
+
+      devPanel.appendChild(wrap);
+
+      btnGrant.addEventListener("click", async () => {
+        const st = document.getElementById("adminCreditsStatus");
+        try {
+          const targetUid = selUser.value;
+          const amount = Number(selAmt.value);
+          if (!targetUid || !amount) {
+            if (st) st.textContent = "Pick a user and amount.";
+            return;
+          }
+          if (st) st.textContent = "Granting…";
+
+          const authHeaders = await getAuthHeader();
+          const resp = await jsonFetch(`/api/admin/credits/grant`, {
+            method: "POST",
+            headers: { ...authHeaders, "Content-Type": "application/json" },
+            body: { targetUid, amount }
+          });
+
+          if (st) st.textContent = resp?.ok ? `Granted +${amount}.` : `Failed: ${resp?.error || "Unknown error"}`;
+          await populateAdminUsers();
+        } catch (e) {
+          if (st) st.textContent = `Failed: ${String(e?.message || e)}`;
+        }
+      });
+    }
+
+    await populateAdminUsers();
+  } catch (_) {}
+}
+
+async function populateAdminUsers() {
+  try {
+    if (!storage.idToken) return;
+    if (!isAdminUser()) return;
+    const sel = document.getElementById("adminUserSelect");
+    if (!sel) return;
+
+    const authHeaders = await getAuthHeader();
+    const resp = await jsonFetch(`/api/admin/users`, { method: "GET", headers: { ...authHeaders } });
+    if (!resp?.ok || !Array.isArray(resp.users)) return;
+
+    sel.innerHTML = "";
+    for (const u of resp.users) {
+      const opt = document.createElement("option");
+      opt.value = u.uid;
+      const name = (u.displayName || "").trim() || u.uid;
+      opt.textContent = `${name} (${u.credits ?? 0})`;
+      sel.appendChild(opt);
+    }
+  } catch (_) {}
+}
+
 
 
 
@@ -1573,6 +1694,9 @@ if (btnSendMessage) {
 btnLogout.addEventListener("click", () => {
   storage.idToken = null;
   storage.refreshToken = null;
+  storage.loginEmail = "";
+  setAuthUiState();
+  applyAdminVisibility();
   storage.idTokenExpiresAt = 0;
   lastCodeId = null;
   storage.loginEmail = "";
@@ -2110,6 +2234,8 @@ function attachSwipeHandlers() {
 function sanitizeEmail(raw) {
   const email = String(raw || "").trim().toLowerCase();
       storage.loginEmail = email;
+      setAuthUiState();
+      storage.loginEmail = email;
   return email;
 }
 
@@ -2122,258 +2248,3 @@ function isValidEmail(email) {
 
 
 
-// ===== FF SAFE ADDON (does not modify existing bindings) =====
-(function () {
-  function ffMakeTopBanner(msg) {
-    try {
-      const id = "ffTopBanner";
-      let b = document.getElementById(id);
-      if (!b) {
-        b = document.createElement("div");
-        b.id = id;
-        b.style.position = "fixed";
-        b.style.top = "0";
-        b.style.left = "0";
-        b.style.right = "0";
-        b.style.zIndex = "99999";
-        b.style.padding = "8px 10px";
-        b.style.fontSize = "13px";
-        b.style.fontWeight = "700";
-        b.style.background = "rgba(0,0,0,0.85)";
-        b.style.color = "white";
-        b.style.borderBottom = "1px solid rgba(255,255,255,0.2)";
-        b.textContent = msg;
-        if (document.body) document.body.appendChild(b);
-        document.addEventListener("DOMContentLoaded", () => {
-          try { document.body.appendChild(b); } catch (_) {}
-        });
-      } else {
-        b.textContent = msg;
-      }
-    } catch (_) {}
-  }
-
-  // Visible error reporting
-  window.addEventListener("error", (e) => {
-    const msg = (e && (e.message || (e.error && e.error.message))) ? String(e.message || e.error.message) : "Unknown script error";
-    ffMakeTopBanner("APP ERROR ❌ " + msg);
-  });
-
-  // Show that script loaded
-  ffMakeTopBanner("APP.JS LOADED ✅");
-
-  function ffIsAdmin() {
-    try {
-      const email = (window.storage && window.storage.loginEmail) ? String(window.storage.loginEmail).toLowerCase().trim() : "";
-      return email === "frugalfetishes@outlook.com";
-    } catch (_) { return false; }
-  }
-
-  function ffEnsureAuthBadge() {
-    try {
-      const id = "ffAuthBadge";
-      if (document.getElementById(id)) return;
-
-      const wrap = document.createElement("div");
-      wrap.id = id;
-      wrap.style.position = "fixed";
-      wrap.style.top = "44px";
-      wrap.style.right = "10px";
-      wrap.style.zIndex = "99999";
-      wrap.style.padding = "10px 12px";
-      wrap.style.borderRadius = "10px";
-      wrap.style.background = "rgba(0,0,0,0.82)";
-      wrap.style.color = "#fff";
-      wrap.style.fontSize = "13px";
-      wrap.style.lineHeight = "1.2";
-      wrap.style.maxWidth = "280px";
-      wrap.style.boxShadow = "0 8px 24px rgba(0,0,0,0.35)";
-
-      const line = document.createElement("div");
-      line.id = "ffAuthBadgeLine";
-      line.textContent = "Not signed in";
-
-      const btn = document.createElement("button");
-      btn.id = "ffAuthBadgeBtn";
-      btn.style.marginTop = "8px";
-      btn.style.padding = "6px 10px";
-      btn.style.borderRadius = "8px";
-      btn.style.border = "1px solid rgba(255,255,255,0.25)";
-      btn.style.background = "rgba(255,255,255,0.12)";
-      btn.style.color = "#fff";
-      btn.style.cursor = "pointer";
-      btn.textContent = "Login";
-
-      btn.addEventListener("click", () => {
-        try {
-          if (window.storage && window.storage.idToken) {
-            window.storage.idToken = null;
-            window.storage.loginEmail = "";
-            if (typeof window.applyAdminVisibility === "function") window.applyAdminVisibility();
-            ffRenderAuthBadge();
-          } else {
-            // scroll to login section if present
-            const loginHeader = Array.from(document.querySelectorAll("h1,h2,h3,div,section"))
-              .find(el => (el.textContent || "").trim().toLowerCase() === "login");
-            if (loginHeader && loginHeader.scrollIntoView) loginHeader.scrollIntoView({ behavior: "smooth", block: "start" });
-          }
-        } catch (e) {
-          ffMakeTopBanner("APP ERROR ❌ " + String(e && e.message ? e.message : e));
-        }
-      });
-
-      wrap.appendChild(line);
-      wrap.appendChild(btn);
-      document.body.appendChild(wrap);
-      ffRenderAuthBadge();
-    } catch (e) {
-      ffMakeTopBanner("APP ERROR ❌ " + String(e && e.message ? e.message : e));
-    }
-  }
-
-  function ffRenderAuthBadge() {
-    try {
-      const line = document.getElementById("ffAuthBadgeLine");
-      const btn = document.getElementById("ffAuthBadgeBtn");
-      const email = (window.storage && window.storage.loginEmail) ? String(window.storage.loginEmail) : "";
-      const signedIn = !!(window.storage && window.storage.idToken);
-      if (line) line.textContent = signedIn ? (email ? `Signed in: ${email}` : "Signed in") : "Not signed in";
-      if (btn) btn.textContent = signedIn ? "Logout" : "Login";
-    } catch (_) {}
-  }
-
-  async function ffEnsureAdminCreditsUi() {
-    try {
-      if (!ffIsAdmin()) return;
-      if (!(window.storage && window.storage.idToken)) return;
-      if (typeof window.getAuthHeader !== "function" || typeof window.jsonFetch !== "function") return;
-
-      const container =
-        document.querySelector('[data-panel="dev"]') ||
-        document.getElementById("panelDev") ||
-        document.body;
-
-      if (!container) return;
-
-      const id = "ffAdminCreditsUi";
-      let wrap = document.getElementById(id);
-      if (!wrap) {
-        wrap = document.createElement("div");
-        wrap.id = id;
-        wrap.style.marginTop = "12px";
-        wrap.style.padding = "12px";
-        wrap.style.border = "1px solid rgba(0,0,0,0.12)";
-        wrap.style.borderRadius = "10px";
-        wrap.style.background = "rgba(0,0,0,0.04)";
-
-        const title = document.createElement("div");
-        title.textContent = "Admin Credits";
-        title.style.fontWeight = "700";
-        title.style.marginBottom = "6px";
-
-        const row = document.createElement("div");
-        row.style.display = "flex";
-        row.style.gap = "8px";
-        row.style.flexWrap = "wrap";
-        row.style.alignItems = "center";
-
-        const selUser = document.createElement("select");
-        selUser.id = "ffAdminUserSelect";
-        selUser.style.minWidth = "260px";
-
-        const selAmt = document.createElement("select");
-        selAmt.id = "ffAdminCreditAmount";
-        [1, 10, 100, 1000].forEach(v => {
-          const opt = document.createElement("option");
-          opt.value = String(v);
-          opt.textContent = `+${v}`;
-          selAmt.appendChild(opt);
-        });
-
-        const btnGrant = document.createElement("button");
-        btnGrant.id = "ffBtnGrantCredits";
-        btnGrant.textContent = "Grant Credits";
-        btnGrant.style.padding = "6px 10px";
-        btnGrant.style.borderRadius = "8px";
-        btnGrant.style.border = "1px solid rgba(0,0,0,0.2)";
-        btnGrant.style.background = "white";
-        btnGrant.style.cursor = "pointer";
-
-        const status = document.createElement("div");
-        status.id = "ffAdminCreditsStatus";
-        status.style.marginTop = "8px";
-        status.style.fontSize = "12px";
-
-        row.appendChild(selUser);
-        row.appendChild(selAmt);
-        row.appendChild(btnGrant);
-
-        wrap.appendChild(title);
-        wrap.appendChild(row);
-        wrap.appendChild(status);
-        container.appendChild(wrap);
-
-        btnGrant.addEventListener("click", async () => {
-          const st = document.getElementById("ffAdminCreditsStatus");
-          try {
-            const targetUid = selUser.value;
-            const amount = Number(selAmt.value);
-            if (!targetUid || !amount) {
-              if (st) st.textContent = "Pick a user and amount.";
-              return;
-            }
-            if (st) st.textContent = "Granting…";
-            const authHeaders = await window.getAuthHeader();
-            const resp = await window.jsonFetch(`/api/admin/credits/grant`, {
-              method: "POST",
-              headers: { ...authHeaders, "Content-Type": "application/json" },
-              body: { targetUid, amount }
-            });
-            if (st) st.textContent = resp && resp.ok ? `Granted +${amount}.` : `Failed: ${(resp && resp.error) || "Unknown error"}`;
-            await ffPopulateAdminUsers();
-          } catch (e) {
-            if (st) st.textContent = "Failed: " + String(e && e.message ? e.message : e);
-          }
-        });
-      }
-
-      await ffPopulateAdminUsers();
-    } catch (e) {
-      ffMakeTopBanner("APP ERROR ❌ " + String(e && e.message ? e.message : e));
-    }
-  }
-
-  async function ffPopulateAdminUsers() {
-    try {
-      if (!ffIsAdmin()) return;
-      if (!(window.storage && window.storage.idToken)) return;
-      const sel = document.getElementById("ffAdminUserSelect");
-      if (!sel) return;
-
-      const authHeaders = await window.getAuthHeader();
-      const resp = await window.jsonFetch(`/api/admin/users`, { method: "GET", headers: { ...authHeaders } });
-      if (!resp || !resp.ok || !Array.isArray(resp.users)) return;
-
-      sel.innerHTML = "";
-      for (const u of resp.users) {
-        const opt = document.createElement("option");
-        opt.value = u.uid;
-        const name = (u.displayName || "").trim() || u.uid;
-        opt.textContent = `${name} (${u.credits ?? 0})`;
-        sel.appendChild(opt);
-      }
-    } catch (_) {}
-  }
-
-  // Poll for auth changes (safe, minimal)
-  setInterval(() => {
-    ffRenderAuthBadge();
-    if (ffIsAdmin()) ffEnsureAdminCreditsUi();
-  }, 800);
-
-  document.addEventListener("DOMContentLoaded", () => {
-    ffEnsureAuthBadge();
-    ffRenderAuthBadge();
-    if (ffIsAdmin()) ffEnsureAdminCreditsUi();
-  });
-})();
