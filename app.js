@@ -85,8 +85,8 @@ const filterStatusEl = $("filterStatus");
 
 const startResultEl = $("startResult");
 const authStatusEl = $("authStatus");
-const landingView = document.getElementById("landingView");
-const appView = document.getElementById("appView");
+  const landingView = document.getElementById("landingView");
+  const appView = document.getElementById("appView");
 const feedStatusEl = $("feedStatus");
 const feedListEl = $("feedList");
 const btnLoadMatches = $("btnLoadMatches");
