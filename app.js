@@ -66,7 +66,7 @@ function getEmailFromIdToken(idToken) {
 }
 
 function isAdminUser() {
-  const email = getEmailFromIdToken(storage.idToken);
+  const email = (storage.loginEmail || getEmailFromIdToken(storage.idToken) || "").toLowerCase();
   return !!email && ADMIN_EMAIL_ALLOWLIST.includes(email);
 }
 
@@ -85,6 +85,20 @@ function showDevOtpIfPresent(data) {
     }
   } catch (_) {}
 }
+
+
+
+function setAuthUiState() {
+  // Show signed-in email in authStatus if present
+  const email = (storage.loginEmail || "").trim();
+  if (authStatusEl) {
+    authStatusEl.textContent = storage.idToken ? (email ? `Signed in: ${email}` : "Signed in") : "Not signed in";
+  }
+  if (btnLogout) {
+    btnLogout.textContent = storage.idToken ? "Logout" : "Login";
+  }
+}
+
 
 
 function applyAdminVisibility() {
@@ -112,6 +126,120 @@ function applyAdminVisibility() {
     if (status) status.textContent = "Admin-only. Log in as frugalfetishes@outlook.com to use Dev Credits.";
   }
 }
+  if (isAdmin) {
+    // Build admin credit controls dynamically (so we don't need HTML changes)
+    ensureAdminCreditsUi();
+  }
+}
+
+
+
+async function ensureAdminCreditsUi() {
+  const devPanel = document.querySelector('[data-panel="dev"]') || document.getElementById("panelDev");
+  if (!devPanel) return;
+
+  let wrap = document.getElementById("adminCreditsUi");
+  if (!wrap) {
+    wrap = document.createElement("div");
+    wrap.id = "adminCreditsUi";
+    wrap.style.marginTop = "12px";
+    wrap.style.padding = "12px";
+    wrap.style.border = "1px solid rgba(255,255,255,0.2)";
+    wrap.style.borderRadius = "8px";
+
+    const title = document.createElement("div");
+    title.textContent = "Admin Credits";
+    title.style.fontWeight = "700";
+    title.style.marginBottom = "8px";
+
+    const note = document.createElement("div");
+    note.textContent = "Admin mode: sending messages does NOT cost credits. You can also grant credits to any user below.";
+    note.style.fontSize = "12px";
+    note.style.opacity = "0.9";
+    note.style.marginBottom = "10px";
+
+    const row = document.createElement("div");
+    row.style.display = "flex";
+    row.style.gap = "8px";
+    row.style.flexWrap = "wrap";
+    row.style.alignItems = "center";
+
+    const selUser = document.createElement("select");
+    selUser.id = "adminUserSelect";
+    selUser.style.minWidth = "240px";
+
+    const selAmt = document.createElement("select");
+    selAmt.id = "adminCreditAmount";
+    for (const v of [1, 10, 100, 1000]) {
+      const opt = document.createElement("option");
+      opt.value = String(v);
+      opt.textContent = `+${v}`;
+      selAmt.appendChild(opt);
+    }
+
+    const btnGrant = document.createElement("button");
+    btnGrant.id = "btnAdminGrantCredits";
+    btnGrant.textContent = "Grant Credits";
+
+    const status = document.createElement("div");
+    status.id = "adminCreditsStatus";
+    status.style.marginTop = "8px";
+    status.style.fontSize = "12px";
+
+    row.appendChild(selUser);
+    row.appendChild(selAmt);
+    row.appendChild(btnGrant);
+
+    wrap.appendChild(title);
+    wrap.appendChild(note);
+    wrap.appendChild(row);
+    wrap.appendChild(status);
+
+    devPanel.appendChild(wrap);
+
+    btnGrant.addEventListener("click", async () => {
+      try {
+        const userSel = document.getElementById("adminUserSelect");
+        const amtSel = document.getElementById("adminCreditAmount");
+        const targetUid = userSel ? String((userSel as any).value || "") : "";
+        const amount = amtSel ? Number((amtSel as any).value) : 0;
+
+        const st = document.getElementById("adminCreditsStatus");
+        if (st) st.textContent = "Granting...";
+
+        const authHeaders = await getAuthHeader();
+        const resp = await jsonFetch(`/api/admin/credits/grant`, {
+          method: "POST",
+          headers: { ...authHeaders, "Content-Type": "application/json" },
+          body: { targetUid, amount }
+        });
+
+        if (st) st.textContent = resp?.ok ? `Granted +${amount}.` : `Failed: ${resp?.error || "Unknown error"}`;
+      } catch (e) {
+        const st = document.getElementById("adminCreditsStatus");
+        if (st) st.textContent = `Failed: ${String((e as any)?.message || e)}`;
+      }
+    });
+  }
+
+  // Populate users dropdown each time (best effort)
+  try {
+    const authHeaders = await getAuthHeader();
+    const resp = await jsonFetch(`/api/admin/users`, { method: "GET", headers: { ...authHeaders } });
+    const sel = document.getElementById("adminUserSelect");
+    if (sel && resp?.ok && Array.isArray(resp.users)) {
+      (sel as any).innerHTML = "";
+      for (const u of resp.users) {
+        const opt = document.createElement("option");
+        opt.value = u.uid;
+        const name = (u.displayName || "").trim() || u.uid;
+        opt.textContent = `${name} (${u.credits ?? 0})`;
+        (sel as any).appendChild(opt);
+      }
+    }
+  } catch (_) {}
+}
+
 
 // ====== DOM ======
 const $ = (id) => document.getElementById(id);
@@ -1448,6 +1576,9 @@ btnLogout.addEventListener("click", () => {
   storage.refreshToken = null;
   storage.idTokenExpiresAt = 0;
   lastCodeId = null;
+  storage.loginEmail = \"\";
+  setAuthUiState();
+  applyAdminVisibility();
   setStatus(startResultEl, "");
   setStatus(feedStatusEl, "");
   allFeedItems = [];
@@ -1643,6 +1774,7 @@ btnLogout.addEventListener("click", () => {
 
   // Hide Dev Tools unless admin
   applyAdminVisibility();
+  setAuthUiState();
 
 // Dev Tools: Add Credits (testing)
 (function setupDevAddCredits() {
@@ -1978,6 +2110,7 @@ function attachSwipeHandlers() {
 }
 function sanitizeEmail(raw) {
   const email = String(raw || "").trim().toLowerCase();
+      storage.loginEmail = email;
   return email;
 }
 
