@@ -85,6 +85,8 @@ const filterStatusEl = $("filterStatus");
 
 const startResultEl = $("startResult");
 const authStatusEl = $("authStatus");
+const landingView = document.getElementById("landingView");
+const appView = document.getElementById("appView");
 const feedStatusEl = $("feedStatus");
 const feedListEl = $("feedList");
 const btnLoadMatches = $("btnLoadMatches");
@@ -216,10 +218,16 @@ async function checkBackend() {
 
 
 function setAuthedUI() {
-  if (storage.idToken) {
-    setStatus(authStatusEl, "Signed in ✅");
-  } else {
-    setStatus(authStatusEl, "Signed out");
+  const signedIn = !!storage.idToken;
+  if (landingView) landingView.classList.toggle("hidden", signedIn);
+  if (appView) appView.classList.toggle("hidden", !signedIn);
+  if (authStatusEl) {
+    if (signedIn) {
+      const em = storage.loginEmail ? ` ${storage.loginEmail}` : "";
+      setStatus(authStatusEl, `Signed in ✅${em}`);
+    } else {
+      setStatus(authStatusEl, "Signed out");
+    }
   }
 }
 
