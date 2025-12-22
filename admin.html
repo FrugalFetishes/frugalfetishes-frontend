@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>FrugalFetishes — Admin Dashboard</title>
-  <link rel="stylesheet" href="./admin.css?v=20251222174645" />
+  <link rel="stylesheet" href="./admin.css" />
 </head>
 <body>
   <div class="app">
@@ -48,6 +48,7 @@
       </header>
 
       <section class="content">
+        <!-- AUTH CARD -->
         <div class="card" id="authCard">
           <div class="cardHeader">
             <div class="cardTitle">Admin Login</div>
@@ -79,12 +80,13 @@
           <div class="status" id="authStatus">—</div>
         </div>
 
+        <!-- DASHBOARD VIEW -->
         <div class="view" id="view-dashboard">
           <div class="kpiGrid">
             <div class="kpi card">
               <div class="kpiLabel">Total Users</div>
               <div class="kpiValue" id="kpiUsers">—</div>
-              <div class="kpiSub">From GET /api/admin/users</div>
+              <div class="kpiSub">From /api/admin/users</div>
             </div>
             <div class="kpi card">
               <div class="kpiLabel">Credits (Sum)</div>
@@ -137,6 +139,7 @@
           </div>
         </div>
 
+        <!-- USERS VIEW -->
         <div class="view" id="view-users" hidden>
           <div class="card">
             <div class="cardHeader row">
@@ -170,6 +173,7 @@
           </div>
         </div>
 
+        <!-- CREDITS VIEW -->
         <div class="view" id="view-credits" hidden>
           <div class="card">
             <div class="cardHeader row">
@@ -208,6 +212,7 @@
           </div>
         </div>
 
+        <!-- SYSTEM VIEW -->
         <div class="view" id="view-system" hidden>
           <div class="card">
             <div class="cardHeader">
@@ -215,10 +220,6 @@
               <div class="cardHint">Admin endpoints & helpful status</div>
             </div>
 
-            <div class="sysRow">
-              <div class="sysLabel">Backend</div>
-              <div class="sysValue mono" id="sysBackendUrl">—</div>
-            </div>
             <div class="sysRow">
               <div class="sysLabel">Admin Users Endpoint</div>
               <div class="sysValue mono">GET /api/admin/users</div>
@@ -236,6 +237,6 @@
     </main>
   </div>
 
-  <script src="./admin.js?v=20251222202903"></script>
+  <script src="./admin.js?v=20251222203851"></script>
 </body>
 </html>
