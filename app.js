@@ -614,7 +614,7 @@ async function devAddCredits(amount) {
   return jsonFetch(`${BACKEND_BASE_URL}/api/dev/credits/add`, {
     method: "POST",
     headers,
-    body: JSON.stringify({ amount })
+    body: JSON.stringify({ amount, idToken: token })
   });
 }
 
