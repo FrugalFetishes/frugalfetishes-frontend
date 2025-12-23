@@ -1,4 +1,4 @@
-/* FrugalFetishes Admin Dashboard (clean, accessible, no deps) */
+/* FrugalFetishes Admin Dashboard (clean, accessible, no deps) */ 
 
 :root{
   --bg: #f6f7fb;
@@ -182,23 +182,6 @@ body{
   flex-direction: column;
   gap: 14px;
 }
-/* === Users table action buttons (ensure visible on dark UI) === */
-.btn.action{
-  background: rgba(255,255,255,.10);
-  color: #ffffff;
-  border: 1px solid rgba(255,255,255,.22);
-}
-.btn.action:hover{ background: rgba(255,255,255,.16); }
-
-.btn.danger{
-  background: rgba(255,80,80,.16);
-  color: #ffffff;
-  border: 1px solid rgba(255,80,80,.35);
-}
-.btn.danger:hover{ background: rgba(255,80,80,.22); }
-
-.btn.tiny{ padding: 6px 10px; font-size: 12px; border-radius: 10px; }
-
 
 .card{
   background: var(--card);
@@ -352,4 +335,55 @@ body{
   .authGrid{ grid-template-columns: 1fr; }
   .creditsGrid{ grid-template-columns: 1fr; }
   .search{ width: 100%; }
+}
+
+/* === FORCE VISIBILITY: Users table Action controls === */
+.table td:last-child,
+.table td:last-child *,
+.table td .userActions,
+.table td .userActions * {
+  visibility: visible !important;
+  opacity: 1 !important;
+  color: #1b1f2a !important;
+}
+
+.table td .userActions {
+  display: inline-flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  white-space: nowrap !important;
+}
+
+.table td .userActions button,
+.table td .userActions a,
+.table td:last-child button,
+.table td:last-child a {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(27,31,42,.22) !important;
+  background: rgba(0,0,0,0.06) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+}
+
+.table td .userActions button:hover,
+.table td .userActions a:hover,
+.table td:last-child button:hover,
+.table td:last-child a:hover {
+  background: rgba(0,0,0,0.10) !important;
+}
+
+/* FIX: Make Users table action buttons visible */
+.table .btn.ghost,
+.table .btn.ghost.tiny {
+  color: #1b1f2a !important;
+  background: rgba(0,0,0,0.06) !important;
+  border: 1px solid rgba(27,31,42,.2) !important;
 }
