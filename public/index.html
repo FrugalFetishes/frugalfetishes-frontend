@@ -5,6 +5,26 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>FrugalFetishes — MVP Web</title>
   <link rel="stylesheet" href="./styles.css?v=20251222195350" />
+
+  <style>
+    /* Modern header */
+    .topHeader{position:sticky;top:0;z-index:50;backdrop-filter:saturate(140%) blur(10px);}
+    .topBar{display:flex;align-items:center;gap:12px;padding:12px 14px;}
+    .brand{display:flex;align-items:center;justify-content:center;flex:1;min-width:0;margin:0;}
+    .brandImg{height:44px;width:auto;display:block;}
+    .topBarRight{display:flex;align-items:center;gap:10px;}
+    .iconBtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;cursor:pointer;}
+    .iconBtn svg{width:22px;height:22px;}
+    .navDrawer{padding:0 14px 14px 14px;}
+    .navDrawer .tabs{display:flex;flex-wrap:wrap;gap:10px;padding:10px;border-radius:16px;border:1px solid rgba(255,255,255,.14);background:rgba(0,0,0,.20);}
+    .navDrawer .tabBtn{border-radius:999px;}
+    @media (max-width:700px){
+      .authPill{display:none;}
+      .brandImg{height:40px;}
+      .iconBtn{width:42px;height:42px;border-radius:14px;}
+    }
+  </style>
+
 </head>
 <body>
   <main class="container" aria-label="FrugalFetishes MVP App">
@@ -46,21 +66,46 @@
 
 <div id="appView" class="appView">
     <header class="topHeader">
-      <div class="brandRow">
-        <h1 class="brand"><img class="brandImg" src="/frugalfetishes.png" alt="FrugalFetishes" /></h1>
-        <div class="authPill" aria-live="polite">
-          <span id="authStatus" class="muted"></span>
-          <button id="btnLogout" type="button" class="secondary smallBtn">Logout</button>
+      <div class="topBar">
+        <button id="btnMenu" type="button" class="iconBtn" aria-label="Menu" aria-expanded="false" aria-controls="primaryNav">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M4 6h16M4 12h16M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
+
+        <h1 class="brand">
+          <img class="brandImg" src="/frugalfetishes.png" alt="FrugalFetishes" />
+        </h1>
+
+        <div class="topBarRight">
+          <button id="btnNavChat" type="button" class="iconBtn" aria-label="Chat">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M4 5.5C4 4.1 5.1 3 6.5 3h11C19.9 3 21 4.1 21 5.5v8C21 14.9 19.9 16 18.5 16H9l-4.5 4v-4H6.5C5.1 16 4 14.9 4 13.5v-8Z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+              <path d="M8 8h9M8 11h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+
+          <button id="btnNavProfile" type="button" class="iconBtn" aria-label="Profile">
+            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+              <path d="M12 12a4 4 0 1 0-4-4 4 4 0 0 0 4 4Z" fill="none" stroke="currentColor" stroke-width="2"/>
+              <path d="M4.5 21a7.5 7.5 0 0 1 15 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </button>
+
+          <div class="authPill" aria-live="polite">
+            <span id="authStatus" class="muted"></span>
+            <button id="btnLogout" type="button" class="secondary smallBtn">Logout</button>
+          </div>
         </div>
       </div>
 
-      <nav class="tabs" aria-label="Primary navigation">
+      <div id="primaryNav" class="navDrawer" hidden>
+        <nav class="tabs" aria-label="Primary navigation" id="navTabs">
         <button type="button" class="tabBtn active" data-tab="discover">Discover</button>
         <button type="button" class="tabBtn" data-tab="matches">Matches</button>
         <button type="button" class="tabBtn" data-tab="chat">Chat</button>
         <button type="button" class="tabBtn" data-tab="profile">Profile</button>
         <button type="button" class="tabBtn" data-tab="subscribe">Subscribe</button>
 </nav>
+      </div>
 
       <div id="errorBox" class="error" role="alert" aria-live="assertive" hidden></div>
     </header>
@@ -345,6 +390,44 @@
 
   <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 </main>
+
+
+  <script>
+    /* header-nav wiring */
+    (function(){
+      const btnMenu = document.getElementById("btnMenu");
+      const drawer = document.getElementById("primaryNav");
+      const navTabs = document.getElementById("navTabs");
+      const btnChat = document.getElementById("btnNavChat");
+      const btnProfile = document.getElementById("btnNavProfile");
+
+      function setDrawer(open){
+        if (!drawer || !btnMenu) return;
+        drawer.hidden = !open;
+        btnMenu.setAttribute("aria-expanded", open ? "true" : "false");
+      }
+
+      btnMenu && btnMenu.addEventListener("click", () => setDrawer(drawer ? drawer.hidden : true));
+
+      // Close drawer after selecting a tab
+      drawer && drawer.addEventListener("click", (e) => {
+        const t = e && e.target;
+        if (t && t.closest && t.closest(".tabBtn")) setDrawer(false);
+      });
+
+      function clickTab(tabName){
+        const btn = document.querySelector('.tabBtn[data-tab="' + tabName + '"]');
+        if (btn) btn.click();
+      }
+
+      btnChat && btnChat.addEventListener("click", () => clickTab("chat"));
+      btnProfile && btnProfile.addEventListener("click", () => clickTab("profile"));
+
+      // Start with drawer closed
+      setDrawer(false);
+    })();
+  </script>
+
 
   <script src="./app.js?v=20251222195350"></script>
 </body>
