@@ -656,8 +656,3 @@ input, textarea, select{
   font-weight: 700;
 }
 .toast.hidden{ display:none; }
-
-
-/* Profile: Save button + confirmation */
-#btnSaveProfile{ min-width:140px; }
-#profileStatus{ margin-top:10px; }
