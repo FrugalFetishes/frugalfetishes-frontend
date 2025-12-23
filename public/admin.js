@@ -1,3 +1,4 @@
+alert("ADMIN.JS LOADED");
 /* FrugalFetishes Admin Dashboard (plain JS) */
 (() => {
   // ---- HARD BASELINE (do not auto-guess domains) ----
