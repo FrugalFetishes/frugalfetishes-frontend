@@ -1913,7 +1913,13 @@ function setActiveTab(tabName) {
     else p.hidden = true;
   });
 
-  // Hide dev feed list by default unless dev tab
+  
+
+  // Refresh Profile when opening the Profile tab
+  if (tabName === "profile") {
+    hydrateProfileFromServer();
+  }
+// Hide dev feed list by default unless dev tab
   if (feedListEl) {
     feedListEl.hidden = tabName !== "dev";
   }
