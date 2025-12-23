@@ -37,7 +37,6 @@ function filterOutSelf(items) {
  */
 
 // ====== CONFIG ======
-const APP_VERSION = "2025-12-23-FEED-AUTOLOAD-2";
 const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
 
 // DEV ONLY: matches backend env DEV_OTP_KEY (used to receive devOtp for any email)
@@ -393,12 +392,11 @@ async function getFeed() {
 
 
 async function postLike(targetUid) {
-  if (!targetUid) throw new Error("Missing targetUid.");
   const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/like`, {
     method: "POST",
     headers: { "Authorization": `Bearer ${idToken}` },
-    body: { targetUid }
+    body: JSON.stringify({ targetUid })
   });
 }
 
@@ -1348,10 +1346,13 @@ if (!uiWired) {
     attachSwipeHandlers();
 }
 
-    setStatus(feedStatusEl, "Signed in. You can load the feed now.");
+    setStatus(feedStatusEl, "Signed in. Loading feed...");
 
-    // Auto-load feed right after sign-in (same logic as clicking "Load Feed")
-    try { if (btnLoadFeed) setTimeout(() => btnLoadFeed.click(), 0); } catch (e) { console.warn("Auto load feed after sign-in failed", e); }
+    // UX: auto-load feed after sign-in (uses existing Load Feed handler; does not change OTP/auth)
+    try {
+      if (btnLoadFeed) setTimeout(() => { try { btnLoadFeed.click(); } catch {} }, 0);
+    } catch {}
+
   } catch (e) {
     storage.idToken = null;
   storage.refreshToken = null;
@@ -1688,10 +1689,11 @@ initBioCounter();
   }
 
   attachSwipeHandlers();
-  if (storage.idToken) setStatus(feedStatusEl, "Signed in from previous session. Loading feed...");
+  if (storage.idToken) {
+    setStatus(feedStatusEl, "Signed in from previous session. Loading feed...");
+    try { if (btnLoadFeed) setTimeout(() => { try { btnLoadFeed.click(); } catch {} }, 0); } catch {}
+  }
 
-    // Auto-load feed on startup (same logic as clicking "Load Feed")
-    try { if (btnLoadFeed) setTimeout(() => btnLoadFeed.click(), 0); } catch (e) { console.warn("Auto load feed on startup failed", e); }
   // Photo selection handlers (safe if Photos UI isn't present)
   if (btnClearPhotos) btnClearPhotos.addEventListener("click", () => {
     selectedPhotos = [];
