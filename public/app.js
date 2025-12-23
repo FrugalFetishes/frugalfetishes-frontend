@@ -1895,6 +1895,10 @@ function renderCollapsedCard(p) {
   if (swipeSubEl) swipeSubEl.textContent = `${age} • ${city}`.trim();
 
   const photo = firstPhotoUrl(p);
+  // Ensure swipe photo shows as a single scaled image (no tiling)
+  swipePhotoEl.style.backgroundRepeat = "no-repeat";
+  swipePhotoEl.style.backgroundPosition = "center";
+  swipePhotoEl.style.backgroundSize = "contain";
   if (photo) swipePhotoEl.style.backgroundImage = `url("${photo}")`;
   else swipePhotoEl.style.backgroundImage = "";
 }
