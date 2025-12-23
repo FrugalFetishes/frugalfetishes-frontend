@@ -97,6 +97,9 @@ const profileSaveStatusEl = document.getElementById("profileSaveStatus");
 const toastEl = document.getElementById("toast");
   const landingView = document.getElementById("landingView");
   const appView = document.getElementById("appView");
+  // Ensure visitors never see app UI before auth state is applied
+  if (appView) appView.style.display = "none";
+  if (landingView) landingView.style.display = "";
 const feedStatusEl = $("feedStatus");
 const feedListEl = $("feedList");
 const btnLoadMatches = $("btnLoadMatches");
@@ -166,21 +169,13 @@ function getUidFromIdToken(idToken) {
 
 // ====== Storage ======
 const storage = {
-  get idToken() {
-    const v = localStorage.getItem("ff_idToken");
-    if (!v || v === "null" || v === "undefined") { localStorage.removeItem("ff_idToken"); return ""; }
-    return v;
-  },
+  get idToken() { return localStorage.getItem("ff_idToken"); },
   set idToken(v) {
     if (v) localStorage.setItem("ff_idToken", v);
     else localStorage.removeItem("ff_idToken");
   },
 
-  get refreshToken() {
-    const v = localStorage.getItem("ff_refreshToken");
-    if (!v || v === "null" || v === "undefined") { localStorage.removeItem("ff_refreshToken"); return ""; }
-    return v;
-  },
+  get refreshToken() { return localStorage.getItem("ff_refreshToken"); },
   set refreshToken(v) {
     if (v) localStorage.setItem("ff_refreshToken", v);
     else localStorage.removeItem("ff_refreshToken");
