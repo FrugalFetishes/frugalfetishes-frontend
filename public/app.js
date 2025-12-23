@@ -123,6 +123,19 @@ const swipeSubEl = $("swipeSub");
 const btnPassEl = $("btnPass");
 const btnLikeEl = $("btnLike");
 const btnExpandEl = $("btnExpand");
+const btnInfoEl = document.createElement("button");
+btnInfoEl.type = "button";
+btnInfoEl.className = "btn tiny";
+btnInfoEl.textContent = "ⓘ";
+btnInfoEl.title = "View profile";
+btnInfoEl.style.minWidth = "36px";
+btnInfoEl.style.paddingLeft = "10px";
+btnInfoEl.style.paddingRight = "10px";
+try {
+  if (btnExpandEl && btnExpandEl.parentElement) {
+    btnExpandEl.parentElement.insertBefore(btnInfoEl, btnExpandEl);
+  }
+} catch {}
 const expandSheetEl = $("expandSheet");
 const btnCollapseEl = $("btnCollapse");
 const sheetTitleEl = $("sheetTitle");
@@ -1285,7 +1298,15 @@ initBioCounter();
   if (btnPassEl) btnPassEl.addEventListener("click", passCurrent);
   if (btnLikeEl) btnLikeEl.addEventListener("click", () => likeCurrent());
   if (btnExpandEl) btnExpandEl.addEventListener("click", expandCurrent);
+  // UX: ⓘ icon opens profile details
+  try {
+    btnInfoEl.addEventListener("click", (e) => { try { e.stopPropagation(); } catch {} expandCurrent(); });
+  } catch {}
   if (btnCollapseEl) btnCollapseEl.addEventListener("click", collapseSheet);
+  // UX: click outside the sheet (backdrop) to return to feed
+  if (expandSheetEl) expandSheetEl.addEventListener("click", (e) => {
+    if (e && e.target === expandSheetEl) collapseSheet();
+  });
   if (btnPass2El) btnPass2El.addEventListener("click", passCurrent);
   if (btnLike2El) btnLike2El.addEventListener("click", () => likeCurrent());
 
@@ -2112,8 +2133,10 @@ function attachSwipeHandlers() {
     // Horizontal swipe pass/like
     if (absX > absY && absX > 60) {
       lastSwipeAt = Date.now();
-      if (dx < 0) passCurrent();
-      else likeCurrent();
+      if (dx < 0) lastSwipeAt = Date.now();
+    passCurrent();
+      else lastSwipeAt = Date.now();
+    likeCurrent();
     }
 
     touchStart = null;
