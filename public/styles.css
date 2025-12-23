@@ -484,6 +484,61 @@ tr:hover td {
 
 
 /* Profile polish */
+
+/* === Profile hero (modern) === */
+.profileHero{
+  position:relative;
+  border:1px solid var(--border);
+  border-radius:18px;
+  overflow:hidden;
+  background:rgba(255,255,255,0.04);
+  box-shadow:0 12px 32px rgba(0,0,0,0.25);
+  margin:10px 0 14px;
+}
+.profileHeroPhoto{
+  height:240px;
+  background-image:linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+  background-size:cover;
+  background-position:center;
+  background-repeat:no-repeat;
+}
+.profileHeroOverlay{
+  position:absolute;
+  left:0;
+  right:0;
+  bottom:0;
+  padding:14px 14px 12px;
+  background:linear-gradient(to top, rgba(0,0,0,0.62), rgba(0,0,0,0.08));
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+}
+.profileHeroName{
+  font-size:20px;
+  font-weight:800;
+  letter-spacing:0.2px;
+  color:#fff;
+  text-shadow:0 2px 10px rgba(0,0,0,0.45);
+}
+.profileHeroAge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:44px;
+  height:30px;
+  padding:0 10px;
+  border-radius:999px;
+  border:1px solid rgba(255,255,255,0.22);
+  background:rgba(255,255,255,0.10);
+  color:#fff;
+  font-weight:800;
+}
+@media (max-width:720px){
+  .profileHeroPhoto{ height:200px; }
+  .profileHeroName{ font-size:18px; }
+}
+
 .twoCol{
   display:grid;
   grid-template-columns: 1fr 1fr;
@@ -656,49 +711,3 @@ input, textarea, select{
   font-weight: 700;
 }
 .toast.hidden{ display:none; }
-
-
-/* === Profile hero (modern) === */
-.profileHero{
-  width:100%;
-  height:220px;
-  border-radius:18px;
-  overflow:hidden;
-  border:1px solid rgba(255,255,255,0.10);
-  background: rgba(255,255,255,0.04);
-  position:relative;
-  margin: 14px 0 18px;
-}
-.profileHeroImg{
-  position:absolute;
-  inset:0;
-  background-position:center;
-  background-repeat:no-repeat;
-  background-size:cover;
-  filter:saturate(1.05);
-}
-.profileHeroOverlay{
-  position:absolute;
-  inset:0;
-  display:flex;
-  align-items:flex-end;
-  padding:14px;
-  background: linear-gradient(180deg, rgba(0,0,0,0.00) 40%, rgba(0,0,0,0.45) 100%);
-}
-.profileHeroNameAge{
-  font-weight:800;
-  letter-spacing:0.2px;
-  font-size:22px;
-  color:#fff;
-  text-shadow: 0 2px 14px rgba(0,0,0,0.45);
-}
-
-/* Profile actions */
-.profileActions{
-  display:flex;
-  align-items:center;
-  gap:12px;
-  margin-top:10px;
-  margin-bottom:8px;
-}
-#profileStatus{ min-height:18px; }
