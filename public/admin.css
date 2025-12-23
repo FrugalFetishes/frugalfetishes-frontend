@@ -337,20 +337,45 @@ body{
   .search{ width: 100%; }
 }
 
-/* === FIX: Users table action buttons were "there but invisible" === */
-.table .btn.ghost.tiny,
-.table button.btn.ghost.tiny {
-  background: rgba(0,0,0,0.06) !important;
+/* === FORCE VISIBILITY: Users table Action controls === */
+.table td:last-child,
+.table td:last-child *,
+.table td .userActions,
+.table td .userActions * {
+  visibility: visible !important;
+  opacity: 1 !important;
   color: #1b1f2a !important;
-  border: 1px solid rgba(27,31,42,.18) !important;
-  text-decoration: none !important;
-  padding: 6px 10px !important;
-  font-size: 12px !important;
-  line-height: 1.2 !important;
-  border-radius: 8px !important;
 }
 
-.table .btn.ghost.tiny:hover,
-.table button.btn.ghost.tiny:hover {
+.table td .userActions {
+  display: inline-flex !important;
+  gap: 6px !important;
+  align-items: center !important;
+  justify-content: flex-end !important;
+  white-space: nowrap !important;
+}
+
+.table td .userActions button,
+.table td .userActions a,
+.table td:last-child button,
+.table td:last-child a {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(27,31,42,.22) !important;
+  background: rgba(0,0,0,0.06) !important;
+  text-decoration: none !important;
+  cursor: pointer !important;
+}
+
+.table td .userActions button:hover,
+.table td .userActions a:hover,
+.table td:last-child button:hover,
+.table td:last-child a:hover {
   background: rgba(0,0,0,0.10) !important;
 }
