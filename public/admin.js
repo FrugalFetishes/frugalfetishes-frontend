@@ -291,7 +291,13 @@
           <td>${name}</td>
           <td class="mono tiny">${uid}</td>
           <td class="right">${credits}</td>
-          <td class="right" style="white-space:nowrap"><button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="grant" type="button">Grant</button><button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="ban" type="button" style="margin-left:6px">Ban</button><button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="remove" type="button" style="margin-left:6px">Remove</button></td>
+          <td class="right" style="white-space:nowrap">
+            <div class="userActions">
+              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="grant" type="button">Grant</button>
+              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="ban" type="button">Ban</button>
+              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="remove" type="button">Remove</button>
+            </div>
+          </td>
         </tr>
       `;
     }).join("");
