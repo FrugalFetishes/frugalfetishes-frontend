@@ -166,13 +166,21 @@ function getUidFromIdToken(idToken) {
 
 // ====== Storage ======
 const storage = {
-  get idToken() { return localStorage.getItem("ff_idToken"); },
+  get idToken() {
+    const v = localStorage.getItem("ff_idToken");
+    if (!v || v === "null" || v === "undefined") { localStorage.removeItem("ff_idToken"); return ""; }
+    return v;
+  },
   set idToken(v) {
     if (v) localStorage.setItem("ff_idToken", v);
     else localStorage.removeItem("ff_idToken");
   },
 
-  get refreshToken() { return localStorage.getItem("ff_refreshToken"); },
+  get refreshToken() {
+    const v = localStorage.getItem("ff_refreshToken");
+    if (!v || v === "null" || v === "undefined") { localStorage.removeItem("ff_refreshToken"); return ""; }
+    return v;
+  },
   set refreshToken(v) {
     if (v) localStorage.setItem("ff_refreshToken", v);
     else localStorage.removeItem("ff_refreshToken");
