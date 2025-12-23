@@ -4,7 +4,7 @@
   // If this backend URL changes, update it here.
   const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
   const ADMIN_EMAIL = "frugalfetishes@outlook.com";
-  const ADMIN_JS_VERSION = "2025-12-22-FIX4-LIVE";
+  const ADMIN_JS_VERSION = "2025-12-23-FIX7-ERRBODY";
 
   const $ = (id) => document.getElementById(id);
 
@@ -291,16 +291,7 @@
           <td>${name}</td>
           <td class="mono tiny">${uid}</td>
           <td class="right">${credits}</td>
-          <td class="right" style="white-space:nowrap">
-            <div class="userActions">
-              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="grant" type="button"
-                style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;font-size:12px;font-weight:800;line-height:1.2;border-radius:8px;border:1px solid rgba(27,31,42,.22);background:rgba(0,0,0,.06);color:#1b1f2a;text-decoration:none;cursor:pointer;">Grant</button>
-              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="ban" type="button"
-                style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;font-size:12px;font-weight:800;line-height:1.2;border-radius:8px;border:1px solid rgba(27,31,42,.22);background:rgba(0,0,0,.06);color:#1b1f2a;text-decoration:none;cursor:pointer;margin-left:6px;">Ban</button>
-              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="remove" type="button"
-                style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;font-size:12px;font-weight:800;line-height:1.2;border-radius:8px;border:1px solid rgba(27,31,42,.22);background:rgba(0,0,0,.06);color:#1b1f2a;text-decoration:none;cursor:pointer;margin-left:6px;">Remove</button>
-            </div>
-          </td>
+          <td class="right" style="white-space:nowrap"><button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="grant" type="button">Grant</button><button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="ban" type="button" style="margin-left:6px">Ban</button><button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="remove" type="button" style="margin-left:6px">Remove</button></td>
         </tr>
       `;
     }).join("");
@@ -391,7 +382,10 @@ This cannot be undone.`);
       headers: authHeaders(),
       body: { uid }
     });
-    if (!r.ok) return setNotice(usersNotice, `Ban failed: HTTP ${r.status}`, "bad");
+    if (!r.ok) {
+      const msg = (r.data && (r.data.error || r.data.message)) ? (r.data.error || r.data.message) : null;
+      return setNotice(usersNotice, `Ban failed: HTTP ${r.status}${msg ? " — " + msg : ""}`, "bad");
+    }
     setNotice(usersNotice, "Banned ✅", "ok");
     await loadUsers();
   }
@@ -404,7 +398,10 @@ This cannot be undone.`);
       headers: authHeaders(),
       body: { uid }
     });
-    if (!r.ok) return setNotice(usersNotice, `Remove failed: HTTP ${r.status}`, "bad");
+    if (!r.ok) {
+      const msg = (r.data && (r.data.error || r.data.message)) ? (r.data.error || r.data.message) : null;
+      return setNotice(usersNotice, `Remove failed: HTTP ${r.status}${msg ? " — " + msg : ""}`, "bad");
+    }
     setNotice(usersNotice, "Removed ✅", "ok");
     await loadUsers();
   }
