@@ -218,15 +218,19 @@
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
     .tiny{font-size:12px;}
   
-    /* === Users table: make ghost buttons visible on white background === */
-    .table .btn.ghost, .table .ghost{
-      color:#1b1f2a !important;
-      border:1px solid rgba(27,31,42,.18) !important;
-      background: rgba(0,0,0,.06) !important;
-      text-decoration:none !important;
+    /* === Users table: override ghost buttons (admin.html was forcing white text) === */
+    .table .btn.ghost,
+    .table .btn.ghost.tiny,
+    .table button.btn.ghost,
+    .table button.btn.ghost.tiny {
+      color: #1b1f2a !important;
+      background: rgba(0, 0, 0, 0.06) !important;
+      border: 1px solid rgba(27, 31, 42, 0.20) !important;
+      text-decoration: none !important;
     }
-    .table .btn.ghost:hover, .table .ghost:hover{
-      background: rgba(0,0,0,.10) !important;
+    .table .btn.ghost:hover,
+    .table button.btn.ghost:hover {
+      background: rgba(0, 0, 0, 0.10) !important;
     }
 
   </style>
@@ -367,7 +371,7 @@
                   <th style="width:30%;">Name</th>
                   <th class="mono">UID</th>
                   <th class="right" style="width:90px;">Credits</th>
-                  <th class="right" style="width:260px;">Action</th>
+                  <th class="right" style="width:100px;">Action</th>
                 </tr>
               </thead>
               <tbody id="usersTbody">
