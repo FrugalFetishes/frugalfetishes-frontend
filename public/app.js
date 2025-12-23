@@ -46,26 +46,6 @@ const FIREBASE_WEB_API_KEY = "AIzaSyBcMM5dAFqbQXcN0ltT4Py6SeA5Fzg-nD8";
 // ====== DOM ======
 const $ = (id) => document.getElementById(id);
 
-// --- SAFETY: never allow blank screen; surface JS errors visibly ---
-window.addEventListener("error", (e) => {
-  try {
-    const msg = e && (e.message || (e.error && e.error.message)) ? (e.message || e.error.message) : "Unknown JS error";
-    const box = document.getElementById("appErrorBanner") || document.getElementById("authStatus");
-    if (box) box.textContent = `Error: ${msg}`;
-    const landing = document.getElementById("landingView");
-    if (landing) landing.style.display = "";
-  } catch (_) {}
-});
-window.addEventListener("unhandledrejection", (e) => {
-  try {
-    const msg = e && e.reason && (e.reason.message || String(e.reason)) ? (e.reason.message || String(e.reason)) : "Unhandled rejection";
-    const box = document.getElementById("appErrorBanner") || document.getElementById("authStatus");
-    if (box) box.textContent = `Error: ${msg}`;
-    const landing = document.getElementById("landingView");
-    if (landing) landing.style.display = "";
-  } catch (_) {}
-});
-
 const emailEl = $("email");
 const otpEl = $("otp");
 const btnStart = $("btnStart");
@@ -120,22 +100,9 @@ const profileSaveStatusEl = document.getElementById("profileSaveStatus");
 const toastEl = document.getElementById("toast");
   const landingView = document.getElementById("landingView");
   const appView = document.getElementById("appView");
-
-function forceShowLanding() {
-  const lv = document.getElementById("landingView");
-  const av = document.getElementById("appView");
-  if (lv) { lv.classList.remove("hidden"); lv.style.display = ""; }
-  if (av) { av.classList.add("hidden"); av.style.display = "none"; }
-}
-function forceShowApp() {
-  const lv = document.getElementById("landingView");
-  const av = document.getElementById("appView");
-  if (lv) { lv.classList.add("hidden"); lv.style.display = "none"; }
-  if (av) { av.classList.remove("hidden"); av.style.display = ""; }
-}
-
   // Ensure visitors never see app UI before auth state is applied
-  forceShowLanding();
+  if (appView) appView.style.display = "none";
+  if (landingView) landingView.style.display = "";
 const feedStatusEl = $("feedStatus");
 const feedListEl = $("feedList");
 const btnLoadMatches = $("btnLoadMatches");
@@ -189,7 +156,6 @@ let currentProfile = null;
 let isExpanded = false;
 let actionLocked = false;
 let touchStart = null;
-let lastSwipeAt = 0; // prevents tap-to-expand firing right after a swipe
 
 
 function getUidFromIdToken(idToken) {
@@ -1305,9 +1271,7 @@ btnVerify.addEventListener("click", async () => {
       if (ex.expiresIn) { const ms = Number(ex.expiresIn) * 1000; storage.idTokenExpiresAt = Date.now() + ms - 60_000; }
     }
 
-    forceShowApp();
-    setAuthedUI();
-if (!storage.idToken) forceShowLanding();
+setAuthedUI();
 initInterestChips();
 initBioCounter();
   hydrateProfileFromServer();
@@ -1435,7 +1399,6 @@ if (!uiWired) {
   storage.refreshToken = null;
   storage.idTokenExpiresAt = 0;
     setAuthedUI();
-if (!storage.idToken) forceShowLanding();
 initInterestChips();
 initBioCounter();
   // Tabs
@@ -1591,7 +1554,6 @@ btnLogout.addEventListener("click", () => {
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
-if (!storage.idToken) forceShowLanding();
 initInterestChips();
 initBioCounter();
   // Tabs
@@ -1685,7 +1647,7 @@ initBioCounter();
     if (locationStatusEl) locationStatusEl.textContent = "Location cleared.";
   });
 
-  btnSaveProfile.addEventListener("click", async () => {
+  if (btnSaveProfile) btnSaveProfile.addEventListener("click", async () => {
   const photos = document.querySelectorAll(".photoThumb img");
   if (!photos || photos.length === 0) {
     alert("Please add at least one photo to continue.");
@@ -1744,7 +1706,6 @@ initBioCounter();
   if (btnApplyFilters) btnApplyFilters.addEventListener("click", applyFiltersAndRender);
   if (btnClearFilters) btnClearFilters.addEventListener("click", clearFilters);
   setAuthedUI();
-if (!storage.idToken) forceShowLanding();
 initInterestChips();
 initBioCounter();
   // Tabs
@@ -2142,7 +2103,6 @@ function attachSwipeHandlers() {
 
     // Swipe-up to expand
     if (absY > absX && dy < -50) {
-      lastSwipeAt = Date.now();
       expandCurrent();
       touchStart = null;
       return;
@@ -2150,31 +2110,12 @@ function attachSwipeHandlers() {
 
     // Horizontal swipe pass/like
     if (absX > absY && absX > 60) {
-      lastSwipeAt = Date.now();
       if (dx < 0) passCurrent();
       else likeCurrent();
     }
 
     touchStart = null;
   }, { passive: true });
-
-  // Tap/click to open details (does NOT affect OTP/auth)
-  const onTapExpand = () => {
-    // ignore taps that immediately follow a swipe gesture
-    if (Date.now() - lastSwipeAt < 350) return;
-    expandCurrent();
-  };
-
-  try {
-    if (swipePhotoEl) {
-      swipePhotoEl.style.cursor = "pointer";
-      swipePhotoEl.addEventListener("click", onTapExpand);
-    }
-    if (swipeTitleEl) {
-      swipeTitleEl.style.cursor = "pointer";
-      swipeTitleEl.addEventListener("click", onTapExpand);
-    }
-  } catch {}
 
   // Keyboard shortcuts: Left=pass, Right=like, Up=expand, Esc=close
   swipeCardEl.addEventListener("keydown", (e) => {
