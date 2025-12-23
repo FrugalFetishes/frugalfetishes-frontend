@@ -4,7 +4,7 @@
   // If this backend URL changes, update it here.
   const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
   const ADMIN_EMAIL = "frugalfetishes@outlook.com";
-  const ADMIN_JS_VERSION = "2025-12-22-B1";
+  const ADMIN_JS_VERSION = "2025-12-22-B2";
 
   const $ = (id) => document.getElementById(id);
 
@@ -155,8 +155,8 @@
 
   // --- Health poll ---
   async function pollHealth() {
-    diagBackend.textContent = `${BACKEND_BASE_URL} (admin.js ${ADMIN_JS_VERSION})`;
-    backendLabel.textContent = `Backend: ${BACKEND_BASE_URL} (admin.js ${ADMIN_JS_VERSION})`;
+    if (diagBackend) diagBackend.textContent = `${BACKEND_BASE_URL} (admin.js ${ADMIN_JS_VERSION})`;
+    if (backendLabel) backendLabel.textContent = `Backend: ${BACKEND_BASE_URL} (admin.js ${ADMIN_JS_VERSION})`;
     try {
             const r = await api('/api/health', { method: 'GET' });
       const json = r.data || {};
@@ -166,7 +166,7 @@
       sysHealth.textContent = ok ? "ok" : `HTTP ${r.status} (${BACKEND_BASE_URL}/api/health)`;
       sysFirebase.textContent = json.firebase || "—";
       sysBuild.textContent = json.buildId || "—";
-      buildLabel.textContent = `buildId: ${json.buildId || "—"}`;
+        if (buildLabel) buildLabel.textContent = `buildId: ${json.buildId || "—"}`;
       buildDot.classList.toggle("ok", !!json.buildId);
       buildDot.classList.toggle("bad", !json.buildId);
     } catch (e) {
@@ -175,7 +175,7 @@
       sysHealth.textContent = "offline";
       sysFirebase.textContent = "—";
       sysBuild.textContent = "—";
-      buildLabel.textContent = "buildId: —";
+      if (buildLabel) buildLabel.textContent = "buildId: —";
       buildDot.classList.remove("ok");
       buildDot.classList.add("bad");
     }
@@ -383,7 +383,13 @@
   // ---- Wire up ----
   function init() {
     emailInput.value = ADMIN_EMAIL;
-    diagBackend.textContent = BACKEND_BASE_URL;
+    // VISIBLE VERSION STAMP (to prove which admin.js is live)
+    try {
+      if (pageTitle) pageTitle.textContent = `${pageTitle.textContent || "Admin"} (admin.js ${ADMIN_JS_VERSION})`;
+      setNotice(loginNotice, `Loaded admin.js ${ADMIN_JS_VERSION}`, "ok");
+      console.log(`FrugalFetishes Admin: loaded admin.js ${ADMIN_JS_VERSION}`);
+    } catch (e) { console.log("Version stamp failed", e); }
+    if (diagBackend) diagBackend.textContent = BACKEND_BASE_URL;
 
     loadSession();
     setSignedInUI(!!state.idToken);
