@@ -155,6 +155,7 @@ let currentProfile = null;
 let isExpanded = false;
 let actionLocked = false;
 let touchStart = null;
+let lastSwipeAt = 0; // prevents tap-to-expand firing right after a swipe
 
 
 function getUidFromIdToken(idToken) {
@@ -2102,6 +2103,7 @@ function attachSwipeHandlers() {
 
     // Swipe-up to expand
     if (absY > absX && dy < -50) {
+      lastSwipeAt = Date.now();
       expandCurrent();
       touchStart = null;
       return;
@@ -2109,12 +2111,31 @@ function attachSwipeHandlers() {
 
     // Horizontal swipe pass/like
     if (absX > absY && absX > 60) {
+      lastSwipeAt = Date.now();
       if (dx < 0) passCurrent();
       else likeCurrent();
     }
 
     touchStart = null;
   }, { passive: true });
+
+  // Tap/click to open details (does NOT affect OTP/auth)
+  const onTapExpand = () => {
+    // ignore taps that immediately follow a swipe gesture
+    if (Date.now() - lastSwipeAt < 350) return;
+    expandCurrent();
+  };
+
+  try {
+    if (swipePhotoEl) {
+      swipePhotoEl.style.cursor = "pointer";
+      swipePhotoEl.addEventListener("click", onTapExpand);
+    }
+    if (swipeTitleEl) {
+      swipeTitleEl.style.cursor = "pointer";
+      swipeTitleEl.addEventListener("click", onTapExpand);
+    }
+  } catch {}
 
   // Keyboard shortcuts: Left=pass, Right=like, Up=expand, Esc=close
   swipeCardEl.addEventListener("keydown", (e) => {
