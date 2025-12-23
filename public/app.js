@@ -64,7 +64,6 @@ const profileAgeEl = $("profileAge");
 const profileInterestsEl = $("profileInterests");
 const profileLatEl = $("profileLat");
   const profileZipEl = $("profileZip");
-const profileCityEl = $("profileCity");
 const profileLngEl = $("profileLng");
 const btnSaveProfile = $("btnSaveProfile");
   const btnUseLocation = $("btnUseLocation");
@@ -156,6 +155,7 @@ let currentProfile = null;
 let isExpanded = false;
 let actionLocked = false;
 let touchStart = null;
+let lastSwipeAt = 0; // prevents tap-to-expand firing right after a swipe
 
 
 function getUidFromIdToken(idToken) {
@@ -1647,7 +1647,7 @@ initBioCounter();
     if (locationStatusEl) locationStatusEl.textContent = "Location cleared.";
   });
 
-  if (btnSaveProfile) btnSaveProfile.addEventListener("click", async () => {
+  btnSaveProfile.addEventListener("click", async () => {
   const photos = document.querySelectorAll(".photoThumb img");
   if (!photos || photos.length === 0) {
     alert("Please add at least one photo to continue.");
@@ -1692,7 +1692,7 @@ initBioCounter();
 
       setProfileStatus("Saving profile...");
       await updateProfile(payload);
-      setProfileStatus("Profile Saved Successfully ✅");
+      setProfileStatus("Saved ✅ (lastActive/profileUpdated set server-side)");
     } catch (e) {
       setProfileStatus("");
       showError(`Profile update failed: ${e.message}`);
@@ -2103,6 +2103,7 @@ function attachSwipeHandlers() {
 
     // Swipe-up to expand
     if (absY > absX && dy < -50) {
+      lastSwipeAt = Date.now();
       expandCurrent();
       touchStart = null;
       return;
@@ -2110,12 +2111,31 @@ function attachSwipeHandlers() {
 
     // Horizontal swipe pass/like
     if (absX > absY && absX > 60) {
+      lastSwipeAt = Date.now();
       if (dx < 0) passCurrent();
       else likeCurrent();
     }
 
     touchStart = null;
   }, { passive: true });
+
+  // Tap/click to open details (does NOT affect OTP/auth)
+  const onTapExpand = () => {
+    // ignore taps that immediately follow a swipe gesture
+    if (Date.now() - lastSwipeAt < 350) return;
+    expandCurrent();
+  };
+
+  try {
+    if (swipePhotoEl) {
+      swipePhotoEl.style.cursor = "pointer";
+      swipePhotoEl.addEventListener("click", onTapExpand);
+    }
+    if (swipeTitleEl) {
+      swipeTitleEl.style.cursor = "pointer";
+      swipeTitleEl.addEventListener("click", onTapExpand);
+    }
+  } catch {}
 
   // Keyboard shortcuts: Left=pass, Right=like, Up=expand, Esc=close
   swipeCardEl.addEventListener("keydown", (e) => {
