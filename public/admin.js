@@ -4,7 +4,7 @@
   // If this backend URL changes, update it here.
   const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
   const ADMIN_EMAIL = "frugalfetishes@outlook.com";
-  const ADMIN_JS_VERSION = "2025-12-23-FIX7-ERRBODY";
+  const ADMIN_JS_VERSION = "2025-12-23-FIX9-NOGHOST";
 
   const $ = (id) => document.getElementById(id);
 
@@ -291,7 +291,7 @@
           <td>${name}</td>
           <td class="mono tiny">${uid}</td>
           <td class="right">${credits}</td>
-          <td class="right" style="white-space:nowrap"><button class="btn action tiny" data-uid="${uid}" data-name="${name}" data-action="grant" type="button">Grant</button><button class="btn action tiny" data-uid="${uid}" data-name="${name}" data-action="ban" type="button" style="margin-left:6px">Ban</button><button class="btn danger tiny" data-uid="${uid}" data-name="${name}" data-action="remove" type="button" style="margin-left:6px">Remove</button></td>
+          <td class="right" style="white-space:nowrap"><button class="btn tiny" data-uid="${uid}" data-name="${name}" data-action="grant" type="button">Grant</button><button class="btn tiny" data-uid="${uid}" data-name="${name}" data-action="ban" type="button" style="margin-left:6px">Ban</button><button class="btn tiny" data-uid="${uid}" data-name="${name}" data-action="remove" type="button" style="margin-left:6px">Remove</button></td>
         </tr>
       `;
     }).join("");
