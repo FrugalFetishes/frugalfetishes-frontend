@@ -657,27 +657,7 @@ input, textarea, select{
 }
 .toast.hidden{ display:none; }
 
-/* PROFILE_SAVE_BTN */
-.profileActions{
-  gap: 12px;
-  align-items: center;
-}
-#profileSaveStatus{
-  min-height: 18px;
-}
 
-
-/* --- SAFETY: visible error banner (prevents "blank screen" confusion) --- */
-.status{
-  margin-top: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  font-size: 13px;
-  line-height: 1.2;
-}
-.status.error{
-  background: rgba(255, 0, 96, 0.14);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  color: #fff;
-}
-
+/* Profile: Save button + confirmation */
+#btnSaveProfile{ min-width:140px; }
+#profileStatus{ margin-top:10px; }
