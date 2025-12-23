@@ -37,7 +37,7 @@ function filterOutSelf(items) {
  */
 
 // ====== CONFIG ======
-const APP_VERSION = "2025-12-23-FEED-AUTOLOAD-1";
+const APP_VERSION = "2025-12-23-FEED-AUTOLOAD-2";
 const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
 
 // DEV ONLY: matches backend env DEV_OTP_KEY (used to receive devOtp for any email)
@@ -333,9 +333,7 @@ async function refreshIdToken() {
   if (!idToken) throw new Error("Token refresh missing id_token.");
 
   storage.idToken = idToken;
-  
-    // Auto-load feed after sign-in
-    try { await loadFeedNow(); } catch (e) { console.warn('Auto loadFeed after sign-in failed', e); }if (refreshToken) storage.refreshToken = refreshToken;
+  if (refreshToken) storage.refreshToken = refreshToken;
   if (expiresIn) {
     const ms = Number(expiresIn) * 1000;
     // Refresh one minute before expiry
@@ -1351,6 +1349,9 @@ if (!uiWired) {
 }
 
     setStatus(feedStatusEl, "Signed in. You can load the feed now.");
+
+    // Auto-load feed right after sign-in (same logic as clicking "Load Feed")
+    try { if (btnLoadFeed) setTimeout(() => btnLoadFeed.click(), 0); } catch (e) { console.warn("Auto load feed after sign-in failed", e); }
   } catch (e) {
     storage.idToken = null;
   storage.refreshToken = null;
@@ -1386,9 +1387,8 @@ initBioCounter();
   }
 });
 
-
-async function loadFeedNow() {
-clearError();
+btnLoadFeed.addEventListener("click", async () => {
+  clearError();
   setStatus(feedStatusEl, "");
   btnLoadFeed.disabled = true;
   try {
@@ -1407,11 +1407,8 @@ clearError();
   } finally {
     btnLoadFeed.disabled = false;
   }
-}
-
-btnLoadFeed.addEventListener("click", async () => {
-  await loadFeedNow();
 });
+
 btnCredits.addEventListener("click", async () => {
   clearError();
   btnCredits.disabled = true;
@@ -1692,8 +1689,9 @@ initBioCounter();
 
   attachSwipeHandlers();
   if (storage.idToken) setStatus(feedStatusEl, "Signed in from previous session. Loading feed...");
-  // Auto-load feed on startup
-  try { loadFeedNow(); } catch (e) { console.warn("Auto loadFeed on startup failed", e); }
+
+    // Auto-load feed on startup (same logic as clicking "Load Feed")
+    try { if (btnLoadFeed) setTimeout(() => btnLoadFeed.click(), 0); } catch (e) { console.warn("Auto load feed on startup failed", e); }
   // Photo selection handlers (safe if Photos UI isn't present)
   if (btnClearPhotos) btnClearPhotos.addEventListener("click", () => {
     selectedPhotos = [];
