@@ -61,6 +61,7 @@ const backendDebugEl = $("backendDebug");
 
 const profileDisplayNameEl = $("profileDisplayName");
 const profileAgeEl = $("profileAge");
+const profileCityEl = $("profileCity");
 const profileInterestsEl = $("profileInterests");
 const profileLatEl = $("profileLat");
   const profileZipEl = $("profileZip");
@@ -514,6 +515,7 @@ async function hydrateProfileFromServer() {
 
     // Save as draft for this uid
     captureDraft();
+      scheduleProfileAutoSave("interests");
   } catch {}
 }
 
@@ -570,7 +572,7 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
-  saveDraft(d);
+  if (uid) saveDraft(uid, d);
 }
 
 
@@ -623,6 +625,7 @@ function initInterestChips() {
       profileInterestCustomEl.value = "";
       syncInterestsHiddenInput();
       captureDraft();
+      scheduleProfileAutoSave("interests");
       // show as selected chip only if it exists in the predefined set
       if (interestChipsEl) {
         const match = interestChipsEl.querySelector(`.chip[data-value="${CSS.escape(v)}"]`);
@@ -643,6 +646,7 @@ function initBioCounter() {
     if (profileBioEl.value.length > 240) profileBioEl.value = profileBioEl.value.slice(0, 240);
     update();
     captureDraft();
+    scheduleProfileAutoSave("bio");
   });
   update();
 }
