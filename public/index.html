@@ -11,7 +11,7 @@
     .topHeader{position:sticky;top:0;z-index:50;backdrop-filter:saturate(140%) blur(10px);}
     .topBar{display:flex;align-items:center;gap:12px;padding:12px 14px;}
     .brand{display:flex;align-items:center;justify-content:center;flex:1;min-width:0;margin:0;}
-    .brandImg{height:44px;width:auto;display:block;}
+    .menuLogo{height:44px;width:auto;display:block;}
     .topBarRight{display:flex;align-items:center;gap:10px;}
     .iconBtn{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;border-radius:14px;border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.06);color:#fff;cursor:pointer;}
     .iconBtn svg{width:22px;height:22px;}
@@ -20,10 +20,12 @@
     .navDrawer .tabBtn{border-radius:999px;}
     @media (max-width:700px){
       .authPill{display:none;}
-      .brandImg{height:40px;}
+      .menuLogo{height:40px;}
       .iconBtn{width:42px;height:42px;border-radius:14px;}
     }
-  </style>
+  
+    .landingImg{max-width:520px;width:100%;height:auto;display:block;}
+</style>
 
 </head>
 <body>
@@ -31,7 +33,7 @@
 <div id="landingView" class="landing">
     <div class="landingHero">
       <div class="landingBrand">
-        <img class="brandImg" src="/frugalfetishes.png" alt="FrugalFetishes" />
+        <img class="landingImg" src="/frugalfetishes.png" alt="FrugalFetishes" />
         <div class="landingTagline">Find your match — the FrugalFetishes way.</div>
       </div>
 
@@ -72,7 +74,7 @@
         </button>
 
         <h1 class="brand">
-          <img class="brandImg" src="/frugalfetishes.png" alt="FrugalFetishes" />
+          <img class="menuLogo" src="/FFmenuheaderlogo.png" alt="FrugalFetishes" />
         </h1>
 
         <div class="topBarRight">
