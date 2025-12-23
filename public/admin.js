@@ -4,7 +4,7 @@
   // If this backend URL changes, update it here.
   const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
   const ADMIN_EMAIL = "frugalfetishes@outlook.com";
-  const ADMIN_JS_VERSION = "2025-12-23-FIX7-ERRBODY";
+  const ADMIN_JS_VERSION = "2025-12-23-FIX8-USERS-BTNVIS";
 
   const $ = (id) => document.getElementById(id);
 
@@ -296,6 +296,9 @@
       `;
     }).join("");
 
+    // force visible action buttons (prevents ghost-on-white invisibility)
+    forceUsersActionButtonVisibility();
+
     // attach action buttons (Grant / Ban / Remove)
     Array.from(usersTbody.querySelectorAll("button[data-uid][data-action]")).forEach((btn) => {
       btn.addEventListener("click", async () => {
@@ -437,6 +440,20 @@ This cannot be undone.`);
       pageTitle.textContent = "System";
       pageSub.textContent = "Endpoints and diagnostics";
     }
+  }
+
+
+  function forceUsersActionButtonVisibility() {
+    try {
+      const btns = usersTbody ? usersTbody.querySelectorAll('button.btn.ghost.tiny[data-action]') : [];
+      btns.forEach((b) => {
+        b.style.color = "#1b1f2a";
+        b.style.background = "rgba(0,0,0,0.06)";
+        b.style.border = "1px solid rgba(27,31,42,0.20)";
+        b.style.textDecoration = "none";
+        b.style.borderRadius = "12px";
+      });
+    } catch {}
   }
 
   // --- helpers ---
