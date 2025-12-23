@@ -293,9 +293,12 @@
           <td class="right">${credits}</td>
           <td class="right" style="white-space:nowrap">
             <div class="userActions">
-              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="grant" type="button">Grant</button>
-              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="ban" type="button">Ban</button>
-              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="remove" type="button">Remove</button>
+              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="grant" type="button"
+                style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;font-size:12px;font-weight:800;line-height:1.2;border-radius:8px;border:1px solid rgba(27,31,42,.22);background:rgba(0,0,0,.06);color:#1b1f2a;text-decoration:none;cursor:pointer;">Grant</button>
+              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="ban" type="button"
+                style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;font-size:12px;font-weight:800;line-height:1.2;border-radius:8px;border:1px solid rgba(27,31,42,.22);background:rgba(0,0,0,.06);color:#1b1f2a;text-decoration:none;cursor:pointer;margin-left:6px;">Ban</button>
+              <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="remove" type="button"
+                style="display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;font-size:12px;font-weight:800;line-height:1.2;border-radius:8px;border:1px solid rgba(27,31,42,.22);background:rgba(0,0,0,.06);color:#1b1f2a;text-decoration:none;cursor:pointer;margin-left:6px;">Remove</button>
             </div>
           </td>
         </tr>
