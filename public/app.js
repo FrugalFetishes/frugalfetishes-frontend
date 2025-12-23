@@ -51,6 +51,8 @@ const otpEl = $("otp");
 const btnStart = $("btnStart");
 const btnVerify = $("btnVerify");
 const btnLoadFeed = $("btnLoadFeed");
+// UX: hide the manual Load Feed button (feed auto-loads after login; reload still available elsewhere)
+try { if (btnLoadFeed) btnLoadFeed.style.display = "none"; } catch {}
 const btnCredits = $("btnCredits");
 const btnLogout = $("btnLogout");
 
@@ -153,7 +155,6 @@ let currentProfile = null;
 let isExpanded = false;
 let actionLocked = false;
 let touchStart = null;
-let lastSwipeAt = 0;
 
 
 function getUidFromIdToken(idToken) {
@@ -219,6 +220,33 @@ function showToast(msg){
 function setStatus(el, message) {
   el.textContent = message || "";
 }
+
+// ===== Feed loading UX helpers (surgical; no OTP/auth changes) =====
+let feedSpinnerEl = null;
+function ensureFeedSpinner() {
+  if (feedSpinnerEl) return feedSpinnerEl;
+  if (!feedStatusEl || !feedStatusEl.parentNode) return null;
+
+  // Reuse existing element if present
+  feedSpinnerEl = document.getElementById("feedSpinner");
+  if (!feedSpinnerEl) {
+    feedSpinnerEl = document.createElement("span");
+    feedSpinnerEl.id = "feedSpinner";
+    feedSpinnerEl.textContent = "⏳";
+    feedSpinnerEl.style.marginLeft = "8px";
+    feedSpinnerEl.style.display = "none";
+    feedSpinnerEl.style.verticalAlign = "middle";
+    feedStatusEl.parentNode.insertBefore(feedSpinnerEl, feedStatusEl.nextSibling);
+  }
+  return feedSpinnerEl;
+}
+
+function setFeedLoading(isLoading, message) {
+  try { if (feedStatusEl) setStatus(feedStatusEl, message || ""); } catch {}
+  const sp = ensureFeedSpinner();
+  if (sp) sp.style.display = isLoading ? "inline-block" : "none";
+}
+
 
 
 function setBackendDebug(msg) {
@@ -1256,23 +1284,7 @@ initBioCounter();
   if (btnPassEl) btnPassEl.addEventListener("click", passCurrent);
   if (btnLikeEl) btnLikeEl.addEventListener("click", () => likeCurrent());
   if (btnExpandEl) btnExpandEl.addEventListener("click", expandCurrent);
-  // UX: click/tap the profile photo/card to view details
-  if (swipePhotoEl) swipePhotoEl.addEventListener("click", () => {
-    if (Date.now() - lastSwipeAt < 350) return;
-    expandCurrent();
-  });
-  if (swipeCardEl) swipeCardEl.addEventListener("click", (e) => {
-    // ignore clicks on buttons inside the card
-    const t = e && e.target;
-    if (t && t.closest && t.closest("button")) return;
-    if (Date.now() - lastSwipeAt < 350) return;
-    expandCurrent();
-  });
   if (btnCollapseEl) btnCollapseEl.addEventListener("click", collapseSheet);
-  // UX: click outside the sheet (backdrop) to return to feed
-  if (expandSheetEl) expandSheetEl.addEventListener("click", (e) => {
-    if (e && e.target === expandSheetEl) collapseSheet();
-  });
   if (btnPass2El) btnPass2El.addEventListener("click", passCurrent);
   if (btnLike2El) btnLike2El.addEventListener("click", () => likeCurrent());
 
@@ -1418,10 +1430,10 @@ initBioCounter();
 
 btnLoadFeed.addEventListener("click", async () => {
   clearError();
-  setStatus(feedStatusEl, "");
+  setFeedLoading(false, "");
   btnLoadFeed.disabled = true;
   try {
-    setStatus(feedStatusEl, "Loading feed...");
+    setFeedLoading(true, "Loading feed...");
     const r = await getFeed();
     allFeedItems = r.items || [];
     setDeckFromFeed(allFeedItems);
@@ -1429,10 +1441,10 @@ btnLoadFeed.addEventListener("click", async () => {
     renderFeed(getFilteredItems(allFeedItems));
     populateFiltersFromItems(allFeedItems);
     applyFiltersAndRender();
-    setStatus(feedStatusEl, `Loaded ${Array.isArray(r.items) ? r.items.length : 0} profiles ✅`);
+    setFeedLoading(false, `Loaded ${Array.isArray(r.items) ? r.items.length : 0} profiles ✅`);
   } catch (e) {
     showError(`Feed failed: ${e.message}`);
-    setStatus(feedStatusEl, "");
+    setFeedLoading(false, "");
   } finally {
     btnLoadFeed.disabled = false;
   }
@@ -1902,8 +1914,9 @@ function renderCollapsedCard(p) {
   if (!swipeCardEl || !swipeTitleEl || !swipePhotoEl) return;
 
   if (!p) {
-    swipeTitleEl.textContent = "No more profiles";
-    if (swipeSubEl) swipeSubEl.textContent = "Try again later.";
+    const loaded = Array.isArray(allFeedItems) && allFeedItems.length > 0;
+    swipeTitleEl.textContent = loaded ? "No profiles match right now" : "No profiles yet";
+    if (swipeSubEl) swipeSubEl.textContent = loaded ? "Try widening filters or check back later." : "Your feed will appear here after it’s available.";
     swipePhotoEl.style.backgroundImage = "";
     return;
   }
@@ -1919,8 +1932,15 @@ function renderCollapsedCard(p) {
   swipePhotoEl.style.backgroundRepeat = "no-repeat";
   swipePhotoEl.style.backgroundPosition = "center";
   swipePhotoEl.style.backgroundSize = "contain";
-  if (photo) swipePhotoEl.style.backgroundImage = `url("${photo}")`;
+    if (photo) swipePhotoEl.style.backgroundImage = `url("${photo}")`;
   else swipePhotoEl.style.backgroundImage = "";
+
+  // UX: Preload the next profile photo for smoother swipes (best-effort)
+  try {
+    const next = (Array.isArray(deckItems) && typeof deckIndex === "number") ? deckItems[deckIndex + 1] : null;
+    const nextPhoto = next ? firstPhotoUrl(next) : "";
+    if (nextPhoto) { const img = new Image(); img.src = nextPhoto; }
+  } catch {}
 }
 
 function clearChildren(el) { if (!el) return; while (el.firstChild) el.removeChild(el.firstChild); }
@@ -2089,10 +2109,8 @@ function attachSwipeHandlers() {
 
     // Horizontal swipe pass/like
     if (absX > absY && absX > 60) {
-      if (dx < 0) lastSwipeAt = Date.now();
-    passCurrent();
-      else lastSwipeAt = Date.now();
-    likeCurrent();
+      if (dx < 0) passCurrent();
+      else likeCurrent();
     }
 
     touchStart = null;
