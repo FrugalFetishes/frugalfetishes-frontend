@@ -46,6 +46,26 @@ const FIREBASE_WEB_API_KEY = "AIzaSyBcMM5dAFqbQXcN0ltT4Py6SeA5Fzg-nD8";
 // ====== DOM ======
 const $ = (id) => document.getElementById(id);
 
+// --- SAFETY: never allow blank screen; surface JS errors visibly ---
+window.addEventListener("error", (e) => {
+  try {
+    const msg = e && (e.message || (e.error && e.error.message)) ? (e.message || e.error.message) : "Unknown JS error";
+    const box = document.getElementById("appErrorBanner") || document.getElementById("authStatus");
+    if (box) box.textContent = `Error: ${msg}`;
+    const landing = document.getElementById("landingView");
+    if (landing) landing.style.display = "";
+  } catch (_) {}
+});
+window.addEventListener("unhandledrejection", (e) => {
+  try {
+    const msg = e && e.reason && (e.reason.message || String(e.reason)) ? (e.reason.message || String(e.reason)) : "Unhandled rejection";
+    const box = document.getElementById("appErrorBanner") || document.getElementById("authStatus");
+    if (box) box.textContent = `Error: ${msg}`;
+    const landing = document.getElementById("landingView");
+    if (landing) landing.style.display = "";
+  } catch (_) {}
+});
+
 const emailEl = $("email");
 const otpEl = $("otp");
 const btnStart = $("btnStart");
@@ -99,9 +119,22 @@ const profileSaveStatusEl = document.getElementById("profileSaveStatus");
 const toastEl = document.getElementById("toast");
   const landingView = document.getElementById("landingView");
   const appView = document.getElementById("appView");
+
+function forceShowLanding() {
+  const lv = document.getElementById("landingView");
+  const av = document.getElementById("appView");
+  if (lv) { lv.classList.remove("hidden"); lv.style.display = ""; }
+  if (av) { av.classList.add("hidden"); av.style.display = "none"; }
+}
+function forceShowApp() {
+  const lv = document.getElementById("landingView");
+  const av = document.getElementById("appView");
+  if (lv) { lv.classList.add("hidden"); lv.style.display = "none"; }
+  if (av) { av.classList.remove("hidden"); av.style.display = ""; }
+}
+
   // Ensure visitors never see app UI before auth state is applied
-  if (appView) appView.style.display = "none";
-  if (landingView) landingView.style.display = "";
+  forceShowLanding();
 const feedStatusEl = $("feedStatus");
 const feedListEl = $("feedList");
 const btnLoadMatches = $("btnLoadMatches");
@@ -1271,7 +1304,9 @@ btnVerify.addEventListener("click", async () => {
       if (ex.expiresIn) { const ms = Number(ex.expiresIn) * 1000; storage.idTokenExpiresAt = Date.now() + ms - 60_000; }
     }
 
-setAuthedUI();
+    forceShowApp();
+    setAuthedUI();
+if (!storage.idToken) forceShowLanding();
 initInterestChips();
 initBioCounter();
   hydrateProfileFromServer();
@@ -1399,6 +1434,7 @@ if (!uiWired) {
   storage.refreshToken = null;
   storage.idTokenExpiresAt = 0;
     setAuthedUI();
+if (!storage.idToken) forceShowLanding();
 initInterestChips();
 initBioCounter();
   // Tabs
@@ -1554,6 +1590,7 @@ btnLogout.addEventListener("click", () => {
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
+if (!storage.idToken) forceShowLanding();
 initInterestChips();
 initBioCounter();
   // Tabs
@@ -1706,6 +1743,7 @@ initBioCounter();
   if (btnApplyFilters) btnApplyFilters.addEventListener("click", applyFiltersAndRender);
   if (btnClearFilters) btnClearFilters.addEventListener("click", clearFilters);
   setAuthedUI();
+if (!storage.idToken) forceShowLanding();
 initInterestChips();
 initBioCounter();
   // Tabs
