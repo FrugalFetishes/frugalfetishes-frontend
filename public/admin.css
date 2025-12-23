@@ -337,15 +337,20 @@ body{
   .search{ width: 100%; }
 }
 
-/* === FIX: ghost buttons were invisible on white Users table === */
-.table .btn.ghost,
-.table .ghost {
-  background: rgba(0,0,0,0.04) !important;
+/* === FIX: Users table action buttons were "there but invisible" === */
+.table .btn.ghost.tiny,
+.table button.btn.ghost.tiny {
+  background: rgba(0,0,0,0.06) !important;
   color: #1b1f2a !important;
   border: 1px solid rgba(27,31,42,.18) !important;
+  text-decoration: none !important;
+  padding: 6px 10px !important;
+  font-size: 12px !important;
+  line-height: 1.2 !important;
+  border-radius: 8px !important;
 }
 
-.table .btn.ghost:hover,
-.table .ghost:hover {
-  background: rgba(0,0,0,0.07) !important;
+.table .btn.ghost.tiny:hover,
+.table button.btn.ghost.tiny:hover {
+  background: rgba(0,0,0,0.10) !important;
 }
