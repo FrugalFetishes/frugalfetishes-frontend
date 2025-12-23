@@ -143,17 +143,31 @@
     return { ok: res.ok, status: res.status, data };
   }
 
+
+  // Try multiple endpoints (for deployments that differ in route prefix)
+  async function apiFirst(paths, opts = {}) {
+    let last = null;
+    for (const p of paths) {
+      const r = await api(p, opts);
+      last = r;
+      if (r.ok) return r;
+      // if it's 404, keep trying; otherwise stop early
+      if (r.status && r.status !== 404) break;
+    }
+    return last || { ok: false, status: 0, data: null };
+  }
+
   // --- Health poll ---
   async function pollHealth() {
     diagBackend.textContent = BACKEND_BASE_URL;
     backendLabel.textContent = `Backend: ${BACKEND_BASE_URL}`;
     try {
-      const res = await fetch(`${BACKEND_BASE_URL}/api/health`, { method: "GET" });
-      const json = await res.json().catch(() => ({}));
-      const ok = res.ok && json && json.status === "ok";
+      const r = await apiFirst(['/api/health','/health'], { method: 'GET' });
+      const json = r.data || {};
+      const ok = r.ok && json && json.status === "ok";
       backendDot.classList.toggle("ok", !!ok);
       backendDot.classList.toggle("bad", !ok);
-      sysHealth.textContent = ok ? "ok" : `HTTP ${res.status}`;
+      sysHealth.textContent = ok ? "ok" : `HTTP ${r.status}`;
       sysFirebase.textContent = json.firebase || "—";
       sysBuild.textContent = json.buildId || "—";
       buildLabel.textContent = `buildId: ${json.buildId || "—"}`;
