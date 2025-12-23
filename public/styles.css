@@ -62,6 +62,13 @@ a { color: inherit; }
   min-width: 0;
 }
 
+.brandImg {
+  display: block;
+  width: 220px;
+  height: auto;
+  flex-shrink: 0;
+}
+
 .logo {
   width: 44px;
   height: 44px;
