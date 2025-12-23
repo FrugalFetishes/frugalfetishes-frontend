@@ -1,11 +1,10 @@
-alert("ADMIN.JS LOADED");
 /* FrugalFetishes Admin Dashboard (plain JS) */
 (() => {
   // ---- HARD BASELINE (do not auto-guess domains) ----
   // If this backend URL changes, update it here.
   const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
   const ADMIN_EMAIL = "frugalfetishes@outlook.com";
-  const ADMIN_JS_VERSION = "2025-12-22-B2";
+  const ADMIN_JS_VERSION = "2025-12-22-FIX1";
 
   const $ = (id) => document.getElementById(id);
 
@@ -131,7 +130,6 @@ alert("ADMIN.JS LOADED");
 
   async function api(path, opts = {}) {
     // HARD GUARD: admin frontend must ONLY call /api/* endpoints.
-    // If any code attempts a non-/api path, fail loudly to prevent silent regressions.
     if (typeof path !== "string" || !path.startsWith("/api/")) {
       const msg = `Blocked non-/api request path: ${String(path)}`;
       console.error(msg);
@@ -156,8 +154,8 @@ alert("ADMIN.JS LOADED");
 
   // --- Health poll ---
   async function pollHealth() {
-    if (diagBackend) diagBackend.textContent = `${BACKEND_BASE_URL} (admin.js ${ADMIN_JS_VERSION})`;
-    if (backendLabel) backendLabel.textContent = `Backend: ${BACKEND_BASE_URL} (admin.js ${ADMIN_JS_VERSION})`;
+    diagBackend.textContent = `${BACKEND_BASE_URL} (admin.js ${ADMIN_JS_VERSION})`;
+    backendLabel.textContent = `Backend: ${BACKEND_BASE_URL} (admin.js ${ADMIN_JS_VERSION})`;
     try {
             const r = await api('/api/health', { method: 'GET' });
       const json = r.data || {};
@@ -167,7 +165,7 @@ alert("ADMIN.JS LOADED");
       sysHealth.textContent = ok ? "ok" : `HTTP ${r.status} (${BACKEND_BASE_URL}/api/health)`;
       sysFirebase.textContent = json.firebase || "—";
       sysBuild.textContent = json.buildId || "—";
-        if (buildLabel) buildLabel.textContent = `buildId: ${json.buildId || "—"}`;
+      buildLabel.textContent = `buildId: ${json.buildId || "—"}`;
       buildDot.classList.toggle("ok", !!json.buildId);
       buildDot.classList.toggle("bad", !json.buildId);
     } catch (e) {
@@ -176,7 +174,7 @@ alert("ADMIN.JS LOADED");
       sysHealth.textContent = "offline";
       sysFirebase.textContent = "—";
       sysBuild.textContent = "—";
-      if (buildLabel) buildLabel.textContent = "buildId: —";
+      buildLabel.textContent = "buildId: —";
       buildDot.classList.remove("ok");
       buildDot.classList.add("bad");
     }
@@ -191,7 +189,7 @@ alert("ADMIN.JS LOADED");
     setNotice(loginNotice, "Sending OTP…", "");
     const r = await api("/api/auth/start", { method: "POST", body: { email } });
     if (!r.ok) {
-      const msg = (r.data && (r.data.error || r.data.message)) ? (r.data.error || r.data.message) : `OTP start failed: HTTP ${r.status} (${BACKEND_BASE_URL}/api/auth/start)`;
+      const msg = (r.data && (r.data.error || r.data.message)) ? (r.data.error || r.data.message) : `OTP start failed: HTTP ${r.status}`;
       return setNotice(loginNotice, msg, "bad");
     }
     state.lastCodeId = r.data && (r.data.codeId || r.data.code_id || r.data.id) ? (r.data.codeId || r.data.code_id || r.data.id) : null;
@@ -384,13 +382,7 @@ alert("ADMIN.JS LOADED");
   // ---- Wire up ----
   function init() {
     emailInput.value = ADMIN_EMAIL;
-    // VISIBLE VERSION STAMP (to prove which admin.js is live)
-    try {
-      if (pageTitle) pageTitle.textContent = `${pageTitle.textContent || "Admin"} (admin.js ${ADMIN_JS_VERSION})`;
-      setNotice(loginNotice, `Loaded admin.js ${ADMIN_JS_VERSION}`, "ok");
-      console.log(`FrugalFetishes Admin: loaded admin.js ${ADMIN_JS_VERSION}`);
-    } catch (e) { console.log("Version stamp failed", e); }
-    if (diagBackend) diagBackend.textContent = BACKEND_BASE_URL;
+    diagBackend.textContent = `${BACKEND_BASE_URL} (admin.js ${ADMIN_JS_VERSION})`;
 
     loadSession();
     setSignedInUI(!!state.idToken);
