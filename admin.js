@@ -128,6 +128,13 @@
   }
 
   async function api(path, opts = {}) {
+    // HARD GUARD: admin frontend must ONLY call /api/* endpoints.
+    // If any code attempts a non-/api path, fail loudly to prevent silent regressions.
+    if (typeof path !== "string" || !path.startsWith("/api/")) {
+      const msg = `Blocked non-/api request path: ${String(path)}`;
+      console.error(msg);
+      throw new Error(msg);
+    }
     const url = `${BACKEND_BASE_URL}${path}`;
     const init = {
       method: opts.method || "GET",
@@ -142,18 +149,6 @@
     try { data = await res.json(); } catch {}
     return { ok: res.ok, status: res.status, data };
   }
-
-
-  // Try multiple endpoints (for deployments that differ in route prefix)
-  async function apiFirst(paths, opts = {}) {
-    let last = null;
-    for (const p of paths) {
-      const r = await api(p, opts);
-      last = r;
-      if (r.ok) return r;
-      // if it's 404, keep trying; otherwise stop early
-      if (r.status && r.status !== 404) break;
-    }
     return last || { ok: false, status: 0, data: null };
   }
 
@@ -162,7 +157,7 @@
     diagBackend.textContent = BACKEND_BASE_URL;
     backendLabel.textContent = `Backend: ${BACKEND_BASE_URL}`;
     try {
-      const r = await apiFirst(['/api/health','/health'], { method: 'GET' });
+            const r = await api('/api/health', { method: 'GET' });
       const json = r.data || {};
       const ok = r.ok && json && json.status === "ok";
       backendDot.classList.toggle("ok", !!ok);
