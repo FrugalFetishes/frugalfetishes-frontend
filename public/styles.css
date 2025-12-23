@@ -711,3 +711,13 @@ input, textarea, select{
   font-weight: 700;
 }
 .toast.hidden{ display:none; }
+
+
+/* Profile: Save Profile row */
+.profileActions{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  margin: 10px 0 14px;
+}
+.profileActions .muted{ min-height: 18px; }
