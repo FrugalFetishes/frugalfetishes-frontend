@@ -4,7 +4,7 @@
   // If this backend URL changes, update it here.
   const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
   const ADMIN_EMAIL = "frugalfetishes@outlook.com";
-  const ADMIN_JS_VERSION = "2025-12-22-FIX2";
+  const ADMIN_JS_VERSION = "2025-12-22-FIX3-BANDEL";
 
   const $ = (id) => document.getElementById(id);
 
@@ -291,17 +291,53 @@
           <td>${name}</td>
           <td class="mono tiny">${uid}</td>
           <td class="right">${credits}</td>
-          <td class="right"><button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" type="button">Grant</button></td>
+          <td class="right"><button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="grant" type="button">Grant</button> <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="ban" type="button">Ban</button> <button class="btn ghost tiny" data-uid="${uid}" data-name="${name}" data-action="remove" type="button">Remove</button></td>
         </tr>
       `;
     }).join("");
 
-    // attach Grant buttons
-    Array.from(usersTbody.querySelectorAll("button[data-uid]")).forEach((btn) => {
-      btn.addEventListener("click", () => {
+    // attach action buttons (Grant / Ban / Remove)
+    Array.from(usersTbody.querySelectorAll("button[data-uid][data-action]")).forEach((btn) => {
+      btn.addEventListener("click", async () => {
         const uid = btn.getAttribute("data-uid") || "";
-        creditUserSelect.value = uid;
-        setActiveTab("credits");
+        const name = btn.getAttribute("data-name") || uid;
+        const action = btn.getAttribute("data-action") || "";
+        if (!uid) return;
+
+        if (action === "grant") {
+          creditUserSelect.value = uid;
+          setActiveTab("credits");
+          return;
+        }
+
+        if (!state.idToken) {
+          setNotice(usersNotice, "Sign in first.", "bad");
+          return;
+        }
+
+        if (action === "ban") {
+          const ok = confirm(`BAN user?
+
+${name}
+${uid}
+
+This will block login/use.`);
+          if (!ok) return;
+          await banUser(uid);
+          return;
+        }
+
+        if (action === "remove") {
+          const ok = confirm(`REMOVE user permanently?
+
+${name}
+${uid}
+
+This cannot be undone.`);
+          if (!ok) return;
+          await removeUser(uid);
+          return;
+        }
       });
     });
   }
@@ -333,6 +369,34 @@
 
     setNotice(creditsNotice, "Granted ✅", "ok");
     // refresh users to update credits
+    await loadUsers();
+  }
+
+
+
+  async function banUser(uid) {
+    setNotice(usersNotice, "Banning…", "");
+    // Endpoint MUST exist on backend; if it returns 404, backend needs a small add.
+    const r = await api("/api/admin/users/ban", {
+      method: "POST",
+      headers: authHeaders(),
+      body: { uid }
+    });
+    if (!r.ok) return setNotice(usersNotice, `Ban failed: HTTP ${r.status}`, "bad");
+    setNotice(usersNotice, "Banned ✅", "ok");
+    await loadUsers();
+  }
+
+  async function removeUser(uid) {
+    setNotice(usersNotice, "Removing…", "");
+    // Endpoint MUST exist on backend; if it returns 404, backend needs a small add.
+    const r = await api("/api/admin/users/remove", {
+      method: "POST",
+      headers: authHeaders(),
+      body: { uid }
+    });
+    if (!r.ok) return setNotice(usersNotice, `Remove failed: HTTP ${r.status}`, "bad");
+    setNotice(usersNotice, "Removed ✅", "ok");
     await loadUsers();
   }
 
