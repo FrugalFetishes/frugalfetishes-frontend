@@ -336,3 +336,40 @@ body{
   .creditsGrid{ grid-template-columns: 1fr; }
   .search{ width: 100%; }
 }
+
+/* === Admin Users action buttons (Ban / Delete) === */
+
+.table td {
+  overflow: visible !important;
+}
+
+.userActions {
+  display: flex !important;
+  gap: 6px;
+  align-items: center;
+  min-width: 160px;
+}
+
+.btn-ban,
+.btn-delete {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  min-width: 70px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.btn-ban {
+  background: #ff9800;
+  color: #000;
+}
+
+.btn-delete {
+  background: #f44336;
+  color: #fff;
+}
