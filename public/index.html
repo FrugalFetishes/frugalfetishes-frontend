@@ -219,7 +219,15 @@
 
     <!-- PROFILE -->
     <section class="card tabPanel" data-panel="profile" aria-label="Profile" hidden>
-      <h2>My Profile</h2>
+      
+      <div class="profileHero" aria-label="Profile header">
+        <div id="profileHeroPhoto" class="profileHeroPhoto" role="img" aria-label="Profile photo"></div>
+        <div class="profileHeroOverlay">
+          <div id="profileHeroName" class="profileHeroName"></div>
+          <div class="profileHeroMeta"><span id="profileHeroAge" class="profileHeroAge"></span></div>
+        </div>
+      </div>
+<h2>My Profile</h2>
       <p class="muted">Make your profile feel real: add a photo, pick interests, write a short bio.</p>
 
       <div class="twoCol">
