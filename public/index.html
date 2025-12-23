@@ -27,12 +27,6 @@
     .landingImg{max-width:520px;width:100%;height:auto;display:block;}
 </style>
 
-
-  <style>
-    /* VISITOR_NOFLASH: prevent authed UI flash under landing before JS runs */
-    #appView { display: none; }
-  </style>
-
 </head>
 <body>
   <main class="container" aria-label="FrugalFetishes MVP App">
@@ -288,17 +282,13 @@
 
       <label for="profileBio">Bio</label>
       <textarea id="profileBio" rows="4" placeholder="A few lines about you... (keep it fun)"></textarea>
-      <div class="row rowWrap profileActions">
-        <button id="btnSaveProfile" type="button" class="btn btnPrimary">Save Profile</button>
-        <div id="profileSaveStatus" class="muted" role="status" aria-live="polite"></div>
-      </div>
-
       <div class="rowBetween">
         <div class="muted small">Keep it short and specific.</div>
         <div class="muted small"><span id="bioCount">0</span>/240</div>
       </div>
 
       <div class="row rowWrap" style="margin-top:12px;">
+          <button id="btnSaveProfile" type="button" class="btn primary">Save Profile</button>
         </div>
 
       <div id="profileStatus" class="muted" role="status" aria-live="polite"></div>
