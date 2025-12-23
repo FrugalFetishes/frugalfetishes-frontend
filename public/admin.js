@@ -4,7 +4,7 @@
   // If this backend URL changes, update it here.
   const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
   const ADMIN_EMAIL = "frugalfetishes@outlook.com";
-  const ADMIN_JS_VERSION = "2025-12-22-FIX1";
+  const ADMIN_JS_VERSION = "2025-12-22-FIX2";
 
   const $ = (id) => document.getElementById(id);
 
@@ -148,8 +148,6 @@
     let data = null;
     try { data = await res.json(); } catch {}
     return { ok: res.ok, status: res.status, data };
-  }
-    return last || { ok: false, status: 0, data: null };
   }
 
   // --- Health poll ---
