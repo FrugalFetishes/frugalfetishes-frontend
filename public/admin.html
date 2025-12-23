@@ -218,18 +218,18 @@
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
     .tiny{font-size:12px;}
   
-    /* === Users table: override ghost buttons (admin.html was forcing white text) === */
-    .table .btn.ghost,
-    .table .btn.ghost.tiny,
-    .table button.btn.ghost,
-    .table button.btn.ghost.tiny {
+    /* === FIX: Force visible ghost buttons in Users view === */
+    #viewUsers .btn.ghost,
+    #viewUsers .btn.ghost.tiny,
+    #viewUsers button.btn.ghost,
+    #viewUsers button.btn.ghost.tiny {
       color: #1b1f2a !important;
       background: rgba(0, 0, 0, 0.06) !important;
       border: 1px solid rgba(27, 31, 42, 0.20) !important;
       text-decoration: none !important;
     }
-    .table .btn.ghost:hover,
-    .table button.btn.ghost:hover {
+    #viewUsers .btn.ghost:hover,
+    #viewUsers button.btn.ghost:hover {
       background: rgba(0, 0, 0, 0.10) !important;
     }
 
