@@ -51,6 +51,8 @@ const otpEl = $("otp");
 const btnStart = $("btnStart");
 const btnVerify = $("btnVerify");
 const btnLoadFeed = $("btnLoadFeed");
+// UX: hide the manual Load Feed button (feed auto-loads after login; reload still available elsewhere)
+try { if (btnLoadFeed) btnLoadFeed.style.display = "none"; } catch {}
 const btnCredits = $("btnCredits");
 const btnLogout = $("btnLogout");
 
@@ -97,6 +99,9 @@ const profileSaveStatusEl = document.getElementById("profileSaveStatus");
 const toastEl = document.getElementById("toast");
   const landingView = document.getElementById("landingView");
   const appView = document.getElementById("appView");
+  // Ensure visitors never see app UI before auth state is applied
+  if (appView) appView.style.display = "none";
+  if (landingView) landingView.style.display = "";
 const feedStatusEl = $("feedStatus");
 const feedListEl = $("feedList");
 const btnLoadMatches = $("btnLoadMatches");
@@ -150,6 +155,7 @@ let currentProfile = null;
 let isExpanded = false;
 let actionLocked = false;
 let touchStart = null;
+let lastSwipeAt = 0; // prevents tap-to-expand firing right after a swipe
 
 
 function getUidFromIdToken(idToken) {
@@ -216,6 +222,33 @@ function setStatus(el, message) {
   el.textContent = message || "";
 }
 
+// ===== Feed loading UX helpers (surgical; no OTP/auth changes) =====
+let feedSpinnerEl = null;
+function ensureFeedSpinner() {
+  if (feedSpinnerEl) return feedSpinnerEl;
+  if (!feedStatusEl || !feedStatusEl.parentNode) return null;
+
+  // Reuse existing element if present
+  feedSpinnerEl = document.getElementById("feedSpinner");
+  if (!feedSpinnerEl) {
+    feedSpinnerEl = document.createElement("span");
+    feedSpinnerEl.id = "feedSpinner";
+    feedSpinnerEl.textContent = "⏳";
+    feedSpinnerEl.style.marginLeft = "8px";
+    feedSpinnerEl.style.display = "none";
+    feedSpinnerEl.style.verticalAlign = "middle";
+    feedStatusEl.parentNode.insertBefore(feedSpinnerEl, feedStatusEl.nextSibling);
+  }
+  return feedSpinnerEl;
+}
+
+function setFeedLoading(isLoading, message) {
+  try { if (feedStatusEl) setStatus(feedStatusEl, message || ""); } catch {}
+  const sp = ensureFeedSpinner();
+  if (sp) sp.style.display = isLoading ? "inline-block" : "none";
+}
+
+
 
 function setBackendDebug(msg) {
   if (backendDebugEl) setStatus(backendDebugEl, msg);
@@ -236,13 +269,17 @@ async function checkBackend() {
 
 
 function setAuthedUI() {
-  
-  // Ensure visitor sees ONLY landing until authenticated
-  if (landingView) landingView.hidden = true;
-  if (appView) appView.hidden = false;
-const signedIn = !!storage.idToken;
-  if (landingView) landingView.classList.toggle("hidden", signedIn);
-  if (appView) appView.classList.toggle("hidden", !signedIn);
+  const signedIn = !!storage.idToken;
+  // Keep existing class toggle, but also force display to avoid "stacked views" if CSS differs.
+  if (landingView) {
+    landingView.classList.toggle("hidden", signedIn);
+    landingView.style.display = signedIn ? "none" : "";
+  }
+  if (appView) {
+    appView.classList.toggle("hidden", !signedIn);
+    appView.style.display = signedIn ? "" : "none";
+  }
+
   if (authStatusEl) {
     if (signedIn) {
       const em = storage.loginEmail ? ` ${storage.loginEmail}` : "";
@@ -491,11 +528,10 @@ async function getPublicProfile(uid) {
 
 async function getMyProfile() {
   const idToken = await getValidIdToken();
-  const resp = await jsonFetch(`${BACKEND_BASE_URL}/api/profile/me`, {
+  return jsonFetch(`${BACKEND_BASE_URL}/api/profile/me`, {
     method: "GET",
-    headers: { "Authorization": `Bearer ${idToken}` },
+    headers: { "Authorization": `Bearer ${idToken}` }
   });
-  return resp && resp.profile ? resp.profile : resp;
 }
 
 function parseInterests(raw) {
@@ -1351,7 +1387,13 @@ if (!uiWired) {
     attachSwipeHandlers();
 }
 
-    setStatus(feedStatusEl, "Signed in. You can load the feed now.");
+    setStatus(feedStatusEl, "Signed in. Loading feed...");
+
+    // UX: auto-load feed after sign-in (uses existing Load Feed handler; does not change OTP/auth)
+    try {
+      if (btnLoadFeed) setTimeout(() => { try { btnLoadFeed.click(); } catch {} }, 0);
+    } catch {}
+
   } catch (e) {
     storage.idToken = null;
   storage.refreshToken = null;
@@ -1389,10 +1431,10 @@ initBioCounter();
 
 btnLoadFeed.addEventListener("click", async () => {
   clearError();
-  setStatus(feedStatusEl, "");
+  setFeedLoading(false, "");
   btnLoadFeed.disabled = true;
   try {
-    setStatus(feedStatusEl, "Loading feed...");
+    setFeedLoading(true, "Loading feed...");
     const r = await getFeed();
     allFeedItems = r.items || [];
     setDeckFromFeed(allFeedItems);
@@ -1400,10 +1442,10 @@ btnLoadFeed.addEventListener("click", async () => {
     renderFeed(getFilteredItems(allFeedItems));
     populateFiltersFromItems(allFeedItems);
     applyFiltersAndRender();
-    setStatus(feedStatusEl, `Loaded ${Array.isArray(r.items) ? r.items.length : 0} profiles ✅`);
+    setFeedLoading(false, `Loaded ${Array.isArray(r.items) ? r.items.length : 0} profiles ✅`);
   } catch (e) {
     showError(`Feed failed: ${e.message}`);
-    setStatus(feedStatusEl, "");
+    setFeedLoading(false, "");
   } finally {
     btnLoadFeed.disabled = false;
   }
@@ -1650,7 +1692,7 @@ initBioCounter();
 
       setProfileStatus("Saving profile...");
       await updateProfile(payload);
-      setProfileStatus("Saved ✅ (lastActive/profileUpdated set server-side)");
+      setProfileStatus("Profile Saved Successfully ✅");
     } catch (e) {
       setProfileStatus("");
       showError(`Profile update failed: ${e.message}`);
@@ -1688,7 +1730,12 @@ initBioCounter();
   }
 
   attachSwipeHandlers();
-  if (storage.idToken) setStatus(feedStatusEl, "Signed in from previous session. Click 'Load Feed'.");
+  if (storage.idToken) {
+    setStatus(feedStatusEl, "Signed in from previous session. Loading feed...");
+    // UX: auto-load feed on startup (uses existing Load Feed handler)
+    try { if (btnLoadFeed) setTimeout(() => { try { btnLoadFeed.click(); } catch {} }, 0); } catch {}
+  }
+
   // Photo selection handlers (safe if Photos UI isn't present)
   if (btnClearPhotos) btnClearPhotos.addEventListener("click", () => {
     selectedPhotos = [];
@@ -1868,8 +1915,9 @@ function renderCollapsedCard(p) {
   if (!swipeCardEl || !swipeTitleEl || !swipePhotoEl) return;
 
   if (!p) {
-    swipeTitleEl.textContent = "No more profiles";
-    if (swipeSubEl) swipeSubEl.textContent = "Try again later.";
+    const loaded = Array.isArray(allFeedItems) && allFeedItems.length > 0;
+    swipeTitleEl.textContent = loaded ? "No profiles match right now" : "No profiles yet";
+    if (swipeSubEl) swipeSubEl.textContent = loaded ? "Try widening filters or check back later." : "Your feed will appear here after it’s available.";
     swipePhotoEl.style.backgroundImage = "";
     return;
   }
@@ -1881,8 +1929,19 @@ function renderCollapsedCard(p) {
   if (swipeSubEl) swipeSubEl.textContent = `${age} • ${city}`.trim();
 
   const photo = firstPhotoUrl(p);
-  if (photo) swipePhotoEl.style.backgroundImage = `url("${photo}")`;
+  // Ensure swipe photo shows as a single scaled image (no tiling)
+  swipePhotoEl.style.backgroundRepeat = "no-repeat";
+  swipePhotoEl.style.backgroundPosition = "center";
+  swipePhotoEl.style.backgroundSize = "contain";
+    if (photo) swipePhotoEl.style.backgroundImage = `url("${photo}")`;
   else swipePhotoEl.style.backgroundImage = "";
+
+  // UX: Preload the next profile photo for smoother swipes (best-effort)
+  try {
+    const next = (Array.isArray(deckItems) && typeof deckIndex === "number") ? deckItems[deckIndex + 1] : null;
+    const nextPhoto = next ? firstPhotoUrl(next) : "";
+    if (nextPhoto) { const img = new Image(); img.src = nextPhoto; }
+  } catch {}
 }
 
 function clearChildren(el) { if (!el) return; while (el.firstChild) el.removeChild(el.firstChild); }
@@ -2044,6 +2103,7 @@ function attachSwipeHandlers() {
 
     // Swipe-up to expand
     if (absY > absX && dy < -50) {
+      lastSwipeAt = Date.now();
       expandCurrent();
       touchStart = null;
       return;
@@ -2051,12 +2111,31 @@ function attachSwipeHandlers() {
 
     // Horizontal swipe pass/like
     if (absX > absY && absX > 60) {
+      lastSwipeAt = Date.now();
       if (dx < 0) passCurrent();
       else likeCurrent();
     }
 
     touchStart = null;
   }, { passive: true });
+
+  // Tap/click to open details (does NOT affect OTP/auth)
+  const onTapExpand = () => {
+    // ignore taps that immediately follow a swipe gesture
+    if (Date.now() - lastSwipeAt < 350) return;
+    expandCurrent();
+  };
+
+  try {
+    if (swipePhotoEl) {
+      swipePhotoEl.style.cursor = "pointer";
+      swipePhotoEl.addEventListener("click", onTapExpand);
+    }
+    if (swipeTitleEl) {
+      swipeTitleEl.style.cursor = "pointer";
+      swipeTitleEl.addEventListener("click", onTapExpand);
+    }
+  } catch {}
 
   // Keyboard shortcuts: Left=pass, Right=like, Up=expand, Esc=close
   swipeCardEl.addEventListener("keydown", (e) => {
