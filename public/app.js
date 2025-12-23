@@ -61,6 +61,9 @@ const backendDebugEl = $("backendDebug");
 
 const profileDisplayNameEl = $("profileDisplayName");
 const profileAgeEl = $("profileAge");
+const profileHeroPhotoEl = $("profileHeroPhoto");
+const profileHeroNameEl = $("profileHeroName");
+const profileHeroAgeEl = $("profileHeroAge");
 const profileInterestsEl = $("profileInterests");
 const profileLatEl = $("profileLat");
   const profileZipEl = $("profileZip");
@@ -320,6 +323,8 @@ async function startAuth(email) {
     headers: DEV_OTP_KEY ? { "x-dev-otp-key": DEV_OTP_KEY } : {},
     body: { email: sanitizeEmail(email) }
   });
+  // Keep hero photo in sync with first selected photo
+  updateProfileHero(selectedPhotos[0] || null);
 }
 
 async function verifyAuth(email, codeId, otp) {
@@ -495,6 +500,7 @@ async function hydrateProfileFromServer() {
     // Photos: prefer profile.photos, fallback to user.photos
     const photos = (profile && Array.isArray(profile.photos) ? profile.photos :
                    (resp.user && Array.isArray(resp.user.photos) ? resp.user.photos : []));
+    updateProfileHero((Array.isArray(photos) && photos.length) ? photos[0] : null);
     if (Array.isArray(photos) && photoPreviewEl) {
       // Render previews
       photoPreviewEl.innerHTML = "";
@@ -509,6 +515,7 @@ async function hydrateProfileFromServer() {
         img.style.border = "1px solid var(--border)";
         photoPreviewEl.appendChild(img);
       });
+      updateProfileHero((Array.isArray(photos) && photos.length) ? photos[0] : null);
     }
 
 
@@ -2148,6 +2155,22 @@ function attachSwipeHandlers() {
 function sanitizeEmail(raw) {
   const email = String(raw || "").trim().toLowerCase();
   return email;
+}
+
+function updateProfileHero(firstPhotoSrc) {
+  try {
+    const name = profileDisplayNameEl ? String(profileDisplayNameEl.value || "").trim() : "";
+    const age = profileAgeEl ? String(profileAgeEl.value || "").trim() : "";
+    if (profileHeroNameEl) profileHeroNameEl.textContent = name || "";
+    if (profileHeroAgeEl) profileHeroAgeEl.textContent = age || "";
+    if (profileHeroPhotoEl) {
+      if (firstPhotoSrc) {
+        profileHeroPhotoEl.style.backgroundImage = `url("${String(firstPhotoSrc)}")`;
+      } else {
+        profileHeroPhotoEl.style.backgroundImage = "linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))";
+      }
+    }
+  } catch {}
 }
 
 function isValidEmail(email) {
