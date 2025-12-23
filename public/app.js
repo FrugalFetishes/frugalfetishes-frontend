@@ -500,11 +500,26 @@ async function hydrateProfileFromServer() {
     // Photos: prefer profile.photos, fallback to user.photos
     const photos = (profile && Array.isArray(profile.photos) ? profile.photos :
                    (resp.user && Array.isArray(resp.user.photos) ? resp.user.photos : []));
-    updateProfileHero((Array.isArray(photos) && photos.length) ? photos[0] : null);
-    if (Array.isArray(photos) && photoPreviewEl) {
+    // If /profile/me doesn't include photos (common), fall back to public profile for this uid
+    let effectivePhotos = photos;
+    try {
+      const myUid = (profile && profile.uid) || (resp.user && resp.user.uid) || null;
+      if ((!Array.isArray(effectivePhotos) || !effectivePhotos.length) && myUid) {
+        const pub = await getPublicProfile(myUid);
+        const pubProfile = (pub && (pub.profile || pub.user)) ? (pub.profile || pub.user) : null;
+        if (pubProfile && Array.isArray(pubProfile.photos) && pubProfile.effectivePhotos.length) {
+          effectivePhotos = pubProfile.photos;
+        }
+      }
+    } catch (e) {
+      // ignore fallback errors; profile fields still render
+    }
+
+    updateProfileHero((Array.isArray(effectivePhotos) && effectivePhotos.length) ? photos[0] : null);
+    if (Array.isArray(effectivePhotos) && photoPreviewEl) {
       // Render previews
       photoPreviewEl.innerHTML = "";
-      photos.slice(0, 6).forEach((src, idx) => {
+      effectivePhotos.slice(0, 6).forEach((src, idx) => {
         const img = document.createElement("img");
         img.src = String(src);
         img.alt = `Photo ${idx + 1}`;
@@ -515,7 +530,7 @@ async function hydrateProfileFromServer() {
         img.style.border = "1px solid var(--border)";
         photoPreviewEl.appendChild(img);
       });
-      updateProfileHero((Array.isArray(photos) && photos.length) ? photos[0] : null);
+      updateProfileHero((Array.isArray(effectivePhotos) && effectivePhotos.length) ? photos[0] : null);
     }
 
 
