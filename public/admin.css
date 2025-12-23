@@ -379,3 +379,11 @@ body{
 .table td:last-child a:hover {
   background: rgba(0,0,0,0.10) !important;
 }
+
+/* FIX: Make Users table action buttons visible */
+.table .btn.ghost,
+.table .btn.ghost.tiny {
+  color: #1b1f2a !important;
+  background: rgba(0,0,0,0.06) !important;
+  border: 1px solid rgba(27,31,42,.2) !important;
+}
