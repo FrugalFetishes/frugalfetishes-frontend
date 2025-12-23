@@ -61,12 +61,12 @@ const backendDebugEl = $("backendDebug");
 
 const profileDisplayNameEl = $("profileDisplayName");
 const profileAgeEl = $("profileAge");
+const profileHeroPhotoEl = $("profileHeroPhoto");
+const profileHeroNameEl = $("profileHeroName");
+const profileHeroAgeEl = $("profileHeroAge");
 const profileInterestsEl = $("profileInterests");
 const profileLatEl = $("profileLat");
   const profileZipEl = $("profileZip");
-
-const profileHeroImgEl = $("profileHeroImg");
-const profileHeroNameAgeEl = $("profileHeroNameAge");
 const profileLngEl = $("profileLng");
 const btnSaveProfile = $("btnSaveProfile");
   const btnUseLocation = $("btnUseLocation");
@@ -323,6 +323,8 @@ async function startAuth(email) {
     headers: DEV_OTP_KEY ? { "x-dev-otp-key": DEV_OTP_KEY } : {},
     body: { email: sanitizeEmail(email) }
   });
+  // Keep hero photo in sync with first selected photo
+  updateProfileHero(selectedPhotos[0] || null);
 }
 
 async function verifyAuth(email, codeId, otp) {
@@ -478,26 +480,6 @@ async function updateProfile(fields) {
 }
 
 
-
-function updateProfileHeroFromPhotos(photos) {
-  if (!profileHeroImgEl) return;
-  const first = Array.isArray(photos) && photos.length ? String(photos[0] || "") : "";
-  if (!first) {
-    profileHeroImgEl.style.backgroundImage = "none";
-    return;
-  }
-  profileHeroImgEl.style.backgroundImage = `url(${first})`;
-}
-
-function updateProfileHeroNameAge() {
-  if (!profileHeroNameAgeEl) return;
-  const name = (profileDisplayNameEl && profileDisplayNameEl.value) ? String(profileDisplayNameEl.value).trim() : "";
-  const age = (profileAgeEl && profileAgeEl.value) ? String(profileAgeEl.value).trim() : "";
-  if (name && age) profileHeroNameAgeEl.textContent = `${name}, ${age}`;
-  else if (name) profileHeroNameAgeEl.textContent = name;
-  else profileHeroNameAgeEl.textContent = "—";
-}
-
 async function hydrateProfileFromServer() {
   try {
     if (!profileDisplayNameEl) return;
@@ -506,45 +488,38 @@ async function hydrateProfileFromServer() {
     const profile = resp.profile || resp.user || null;
     if (!profile) return;
 
-    
-    // If /me is missing fields/photos, fall back to public profile for this same uid.
-    let fallbackPublic = null;
-    const myUid = getUidFromIdToken(await getValidIdToken());
-    if (myUid) {
-      const needPhotos = !Array.isArray(profile.photos) || profile.photos.length === 0;
-      const needBasics = !profile.displayName && (profileDisplayNameEl && !profileDisplayNameEl.value);
-      if (needPhotos || needBasics) {
-        const pub = await getPublicProfile(myUid);
-        if (pub && pub.profile) fallbackPublic = pub.profile;
-        else if (pub && pub.user) fallbackPublic = pub.user;
-      }
-    }
-if (profile.displayName && profileDisplayNameEl) profileDisplayNameEl.value = String(profile.displayName);
+    if (profile.displayName && profileDisplayNameEl) profileDisplayNameEl.value = String(profile.displayName);
     if (typeof profile.age === "number" && profileAgeEl) profileAgeEl.value = String(profile.age);
     if (profile.city && profileCityEl) profileCityEl.value = String(profile.city);
     if (Array.isArray(profile.interests) && profileInterestsEl) profileInterestsEl.value = profile.interests.join(", ");
     if (profileBioEl && typeof profile.bio === "string") profileBioEl.value = profile.bio;
     if (bioCountEl && profileBioEl) bioCountEl.textContent = String((profileBioEl.value || "").length);
-
-    const photos = (Array.isArray(profile.photos) && profile.photos.length) ? profile.photos : (fallbackPublic && Array.isArray(fallbackPublic.photos) ? fallbackPublic.photos : []);
-    if (photos && photos.length) {
-      renderPhotoPreview(photos);
-      updateProfileHeroFromPhotos(photos);
-    } else {
-      renderPhotoPreview([]);
-      updateProfileHeroFromPhotos([]);
-    }
-    updateProfileHeroNameAge();
     initInterestChipsFromValue(profileInterestsEl ? profileInterestsEl.value : "");
     if (profile.location && typeof profile.location.lat === "number" && profileLatEl) profileLatEl.value = String(profile.location.lat);
     if (profile.location && typeof profile.location.lng === "number" && profileLngEl) profileLngEl.value = String(profile.location.lng);
     // Photos: prefer profile.photos, fallback to user.photos
     const photos = (profile && Array.isArray(profile.photos) ? profile.photos :
                    (resp.user && Array.isArray(resp.user.photos) ? resp.user.photos : []));
-    if (Array.isArray(photos) && photoPreviewEl) {
+    // If /profile/me doesn't include photos (common), fall back to public profile for this uid
+    let effectivePhotos = photos;
+    try {
+      const myUid = (profile && profile.uid) || (resp.user && resp.user.uid) || null;
+      if ((!Array.isArray(effectivePhotos) || !effectivePhotos.length) && myUid) {
+        const pub = await getPublicProfile(myUid);
+        const pubProfile = (pub && (pub.profile || pub.user)) ? (pub.profile || pub.user) : null;
+        if (pubProfile && Array.isArray(pubProfile.photos) && pubProfile.effectivePhotos.length) {
+          effectivePhotos = pubProfile.photos;
+        }
+      }
+    } catch (e) {
+      // ignore fallback errors; profile fields still render
+    }
+
+    updateProfileHero((Array.isArray(effectivePhotos) && effectivePhotos.length) ? photos[0] : null);
+    if (Array.isArray(effectivePhotos) && photoPreviewEl) {
       // Render previews
       photoPreviewEl.innerHTML = "";
-      photos.slice(0, 6).forEach((src, idx) => {
+      effectivePhotos.slice(0, 6).forEach((src, idx) => {
         const img = document.createElement("img");
         img.src = String(src);
         img.alt = `Photo ${idx + 1}`;
@@ -555,6 +530,7 @@ if (profile.displayName && profileDisplayNameEl) profileDisplayNameEl.value = St
         img.style.border = "1px solid var(--border)";
         photoPreviewEl.appendChild(img);
       });
+      updateProfileHero((Array.isArray(effectivePhotos) && effectivePhotos.length) ? photos[0] : null);
     }
 
 
@@ -1941,11 +1917,6 @@ function setActiveTab(tabName) {
   if (feedListEl) {
     feedListEl.hidden = tabName !== "dev";
   }
-  // Profile: hydrate when user opens Profile tab
-  if (tabName === "profile") {
-    hydrateProfileFromServer();
-  }
-
 }
 
 // ====== Discover Deck ======
@@ -2199,6 +2170,22 @@ function attachSwipeHandlers() {
 function sanitizeEmail(raw) {
   const email = String(raw || "").trim().toLowerCase();
   return email;
+}
+
+function updateProfileHero(firstPhotoSrc) {
+  try {
+    const name = profileDisplayNameEl ? String(profileDisplayNameEl.value || "").trim() : "";
+    const age = profileAgeEl ? String(profileAgeEl.value || "").trim() : "";
+    if (profileHeroNameEl) profileHeroNameEl.textContent = name || "";
+    if (profileHeroAgeEl) profileHeroAgeEl.textContent = age || "";
+    if (profileHeroPhotoEl) {
+      if (firstPhotoSrc) {
+        profileHeroPhotoEl.style.backgroundImage = `url("${String(firstPhotoSrc)}")`;
+      } else {
+        profileHeroPhotoEl.style.backgroundImage = "linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02))";
+      }
+    }
+  } catch {}
 }
 
 function isValidEmail(email) {
