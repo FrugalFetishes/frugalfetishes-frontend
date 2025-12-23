@@ -237,8 +237,16 @@ async function checkBackend() {
 
 function setAuthedUI() {
   const signedIn = !!storage.idToken;
-  if (landingView) landingView.classList.toggle("hidden", signedIn);
-  if (appView) appView.classList.toggle("hidden", !signedIn);
+  // Keep existing class toggle, but also force display to avoid "stacked views" if CSS differs.
+  if (landingView) {
+    landingView.classList.toggle("hidden", signedIn);
+    landingView.style.display = signedIn ? "none" : "";
+  }
+  if (appView) {
+    appView.classList.toggle("hidden", !signedIn);
+    appView.style.display = signedIn ? "" : "none";
+  }
+
   if (authStatusEl) {
     if (signedIn) {
       const em = storage.loginEmail ? ` ${storage.loginEmail}` : "";
@@ -1691,6 +1699,7 @@ initBioCounter();
   attachSwipeHandlers();
   if (storage.idToken) {
     setStatus(feedStatusEl, "Signed in from previous session. Loading feed...");
+    // UX: auto-load feed on startup (uses existing Load Feed handler)
     try { if (btnLoadFeed) setTimeout(() => { try { btnLoadFeed.click(); } catch {} }, 0); } catch {}
   }
 
