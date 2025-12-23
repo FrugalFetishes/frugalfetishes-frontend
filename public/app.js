@@ -392,11 +392,12 @@ async function getFeed() {
 
 
 async function postLike(targetUid) {
+  if (!targetUid) throw new Error("Missing targetUid.");
   const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/like`, {
     method: "POST",
     headers: { "Authorization": `Bearer ${idToken}` },
-    body: JSON.stringify({ targetUid })
+    body: { targetUid }
   });
 }
 
