@@ -4,6 +4,7 @@
   // If this backend URL changes, update it here.
   const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
   const ADMIN_EMAIL = "frugalfetishes@outlook.com";
+  const ADMIN_JS_VERSION = "2025-12-22-B1";
 
   const $ = (id) => document.getElementById(id);
 
@@ -154,15 +155,15 @@
 
   // --- Health poll ---
   async function pollHealth() {
-    diagBackend.textContent = BACKEND_BASE_URL;
-    backendLabel.textContent = `Backend: ${BACKEND_BASE_URL}`;
+    diagBackend.textContent = `${BACKEND_BASE_URL} (admin.js ${ADMIN_JS_VERSION})`;
+    backendLabel.textContent = `Backend: ${BACKEND_BASE_URL} (admin.js ${ADMIN_JS_VERSION})`;
     try {
             const r = await api('/api/health', { method: 'GET' });
       const json = r.data || {};
       const ok = r.ok && json && json.status === "ok";
       backendDot.classList.toggle("ok", !!ok);
       backendDot.classList.toggle("bad", !ok);
-      sysHealth.textContent = ok ? "ok" : `HTTP ${r.status}`;
+      sysHealth.textContent = ok ? "ok" : `HTTP ${r.status} (${BACKEND_BASE_URL}/api/health)`;
       sysFirebase.textContent = json.firebase || "—";
       sysBuild.textContent = json.buildId || "—";
       buildLabel.textContent = `buildId: ${json.buildId || "—"}`;
@@ -189,7 +190,7 @@
     setNotice(loginNotice, "Sending OTP…", "");
     const r = await api("/api/auth/start", { method: "POST", body: { email } });
     if (!r.ok) {
-      const msg = (r.data && (r.data.error || r.data.message)) ? (r.data.error || r.data.message) : `OTP start failed: HTTP ${r.status}`;
+      const msg = (r.data && (r.data.error || r.data.message)) ? (r.data.error || r.data.message) : `OTP start failed: HTTP ${r.status} (${BACKEND_BASE_URL}/api/auth/start)`;
       return setNotice(loginNotice, msg, "bad");
     }
     state.lastCodeId = r.data && (r.data.codeId || r.data.code_id || r.data.id) ? (r.data.codeId || r.data.code_id || r.data.id) : null;
