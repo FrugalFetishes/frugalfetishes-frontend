@@ -84,6 +84,7 @@ const profileAgeEl = $("profileAge");
 const profileInterestsEl = $("profileInterests");
 const profileLatEl = $("profileLat");
   const profileZipEl = $("profileZip");
+const profileCityEl = $("profileCity");
 const profileLngEl = $("profileLng");
 const btnSaveProfile = $("btnSaveProfile");
   const btnUseLocation = $("btnUseLocation");
