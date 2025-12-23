@@ -217,6 +217,18 @@
     .right{text-align:right;}
     .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
     .tiny{font-size:12px;}
+  
+    /* === Users table: make ghost buttons visible on white background === */
+    .table .btn.ghost, .table .ghost{
+      color:#1b1f2a !important;
+      border:1px solid rgba(27,31,42,.18) !important;
+      background: rgba(0,0,0,.06) !important;
+      text-decoration:none !important;
+    }
+    .table .btn.ghost:hover, .table .ghost:hover{
+      background: rgba(0,0,0,.10) !important;
+    }
+
   </style>
 </head>
 <body>
