@@ -133,6 +133,8 @@ const photoStatusEl = $("photoStatus");
 const photoPreviewEl = $("photoPreview");
 const profileHeroImgEl = $("profileHeroImg");
 const profileHeroNameAgeEl = $("profileHeroNameAge");
+const profileHeroImgEl = $("profileHeroImg");
+const profileHeroNameAgeEl = $("profileHeroNameAge");
 
 
 const btnDeleteSelectedPhotos = (function ensureDeleteSelectedPhotosBtn(){
@@ -2499,3 +2501,44 @@ function renderSavedPhotos(photos, profile){
   }catch(e){}
 }
 
+
+function renderSavedPhotos(photos){
+  try{
+    const list = Array.isArray(photos) ? photos.map(normalizePhotoUrl).filter(Boolean) : [];
+    if (!photoPreviewEl) return;
+    photoPreviewEl.innerHTML = "";
+    list.slice(0,6).forEach((url, idx) => {
+      const wrap = document.createElement("div");
+      wrap.className = "photoThumb";
+      wrap.style.position = "relative";
+      const img = document.createElement("img");
+      img.src = String(url);
+      img.alt = `Photo ${idx+1}`;
+      img.loading = "lazy";
+      img.style.width = "100%";
+      img.style.height = "110px";
+      img.style.objectFit = "cover";
+      img.style.display = "block";
+
+      const star = document.createElement("button");
+      star.type = "button";
+      star.className = "photoStarBtn";
+      star.textContent = "★";
+      star.addEventListener("click", async (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        const idToken = (storage && storage.idToken) || localStorage.getItem("ff_idToken") || "";
+        if (!idToken) return;
+        await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
+          body: JSON.stringify({ primaryPhoto: String(url) })
+        });
+        try{ await hydrateProfileFromServer(); }catch(e){}
+      });
+
+      wrap.appendChild(img);
+      wrap.appendChild(star);
+      photoPreviewEl.appendChild(wrap);
+    });
+  }catch(e){}
+}
