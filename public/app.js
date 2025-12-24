@@ -307,6 +307,7 @@ function installSaveProfileHandler() {
       const payload = {
         displayName: String(d.displayName || "").trim(),
         city: String(d.city || "").trim(),
+      zip: String(d.zip || "").trim(),
         interests: interestsArr,
       };
       if (Number.isFinite(ageNum)) payload.age = ageNum;
@@ -338,7 +339,7 @@ function installSaveProfileHandler() {
         if (Array.isArray(selectedPhotos) && selectedPhotos.length > 0) {
           const btnSavePhotos = $("btnSavePhotos");
           if (btnSavePhotos && typeof btnSavePhotos.click === "function") {
-            btnSavePhotos.click();
+            await ffSavePhotosFlow();
           }
         }
       } catch (e) {}
@@ -1776,6 +1777,7 @@ initBioCounter();
 
   if (btnSetMiami) btnSetMiami.addEventListener("click", () => {
     if (profileCityEl) profileCityEl.value = "Miami";
+      if (profileZipEl) profileZipEl.value = String(profile.zip || "");
     if (profileLatEl) profileLatEl.value = "25.7617";
     if (profileLngEl) profileLngEl.value = "-80.1918";
     captureDraft();
@@ -1847,6 +1849,7 @@ initBioCounter();
       if (dn) payload.displayName = dn;
       if (city) payload.city = city;
 
+  d.zip = (profileZipEl && profileZipEl.value) ? String(profileZipEl.value).trim() : "";
       const bio = profileBioEl ? profileBioEl.value.trim() : "";
       if (bio) payload.bio = bio;
 
@@ -1975,9 +1978,10 @@ initBioCounter();
     }
   });
 
-if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
-    
-    try {
+
+// Shared Save Photos flow so Save Profile can invoke it reliably
+async function ffSavePhotosFlow() {
+try {
       setPhotoStatus("Saving photos…");
       const idToken = await getValidIdToken();
 
@@ -1987,8 +1991,13 @@ if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
         const me = await jsonFetch(`${BACKEND_BASE_URL}/api/profile/me`, {
           method: "GET",
           headers: { "Authorization": `Bearer ${idToken}` },
-        });
-        existing = (me && me.profile && Array.isArray(me.profile.photos)) ? me.profile.photos : [];
+}
+
+  // Save Photos button
+  if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
+    await ffSavePhotosFlow();
+  });
+existing = (me && me.profile && Array.isArray(me.profile.photos)) ? me.profile.photos : [];
       } catch (e) {
         existing = [];
       }
