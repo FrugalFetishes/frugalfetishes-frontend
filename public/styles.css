@@ -662,3 +662,16 @@ input, textarea, select{
   outline: 3px solid var(--accent, #6c5ce7);
   border-radius: 14px;
 }
+
+
+/* --- Photo tiles (saved + selected) --- */
+#photoPreview{
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(140px, 1fr));
+  gap:12px;
+  margin-top:10px;
+}
+#photoPreview .photoThumb{
+  border-radius:12px;
+  overflow:hidden;
+}
