@@ -1,6 +1,6 @@
 
 function setDevCreditsStatus(msg) {
-  if (devCreditsStatusEl) devCreditsStatusEl.textContent = msg || "";
+  if (devCreditsStatusEl) devCreditsStatusEl.textContent = msg || ""; 
 }
 
 function setDevCreditsBalance(n) {
