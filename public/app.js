@@ -1878,7 +1878,10 @@ initBioCounter();
     if (btn1000) btn1000.addEventListener("click", () => doAdd(1000));
   } catch (e) {
     // ignore
-  }
+  
+  // After a hard refresh, token may already be present; hydrate profile so saved photos render.
+  try { if (storage && storage.idToken) hydrateProfileFromServer(); } catch (e) {}
+}
 })();
 
 })();
