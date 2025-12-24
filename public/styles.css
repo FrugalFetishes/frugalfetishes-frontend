@@ -725,3 +725,23 @@ input, textarea, select{
   font-size: 12px;
   cursor: pointer;
 }
+/* === Photo tile size fix (safe, UI only) === */
+
+#photoPreview {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+#photoPreview .photoThumb {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+#photoPreview .photoThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
