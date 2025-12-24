@@ -19,6 +19,26 @@ function normalizePhotoUrl(p) {
 }
 
 
+function setProfileHeroFromProfile(profile){
+  try{
+    if (!profile) return;
+    const name = (profile.displayName || profile.name || "").trim();
+    const ageNum = (typeof profile.age === "number") ? profile.age : (profile.age ? Number(profile.age) : null);
+    const label = (name ? name : "Your Profile") + ((ageNum && !Number.isNaN(ageNum)) ? `, ${ageNum}` : "");
+    if (profileHeroNameAgeEl) profileHeroNameAgeEl.textContent = label;
+
+    const photos = Array.isArray(profile.photos) ? profile.photos.map(normalizePhotoUrl).filter(Boolean) : [];
+    const primary = normalizePhotoUrl(profile.primaryPhoto) || (photos.length ? photos[0] : "");
+    if (profileHeroImgEl){
+      profileHeroImgEl.src = primary || "";
+      profileHeroImgEl.style.display = primary ? "block" : "none";
+    }
+  }catch(e){}
+}
+
+
+
+
 async function refreshDevCreditsBalance() {
   try {
     if (!storage || !storage.idToken) { setDevCreditsBalance(""); return; }
@@ -112,6 +132,9 @@ try { if (btnSavePhotos) btnSavePhotos.style.display = "none"; } catch (e) {}
 const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
 const photoPreviewEl = $("photoPreview");
+const profileHeroImgEl = $("profileHeroImg");
+const profileHeroNameAgeEl = $("profileHeroNameAge");
+
 
 const btnDeleteSelectedPhotos = (function ensureDeleteSelectedPhotosBtn(){
   // Try to find existing button
@@ -582,7 +605,34 @@ async function hydrateProfileFromServer() {
           setPhotoStatus(savedPhotoSelection.size ? `${savedPhotoSelection.size} selected to delete.` : "");
         });
 
-        wrap.appendChild(img);
+        // Set-as-profile button (star)
+          const star = document.createElement("button");
+          star.type = "button";
+          star.className = "photoStarBtn";
+          star.textContent = "★";
+          star.setAttribute("aria-label", "Set as profile photo");
+          const isPrimary = normalizePhotoUrl((currentProfile && currentProfile.primaryPhoto) || "") === normalizePhotoUrl(url);
+          star.setAttribute("aria-pressed", isPrimary ? "true" : "false");
+          star.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            try{
+              const idToken = storage.idToken || localStorage.getItem("ff_idToken") || "";
+              if (!idToken) return;
+              await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
+                body: JSON.stringify({ primaryPhoto: String(url) })
+              });
+              if (currentProfile) currentProfile.primaryPhoto = String(url);
+              setProfileHeroFromProfile(currentProfile || {});
+              try{ await hydrateProfileFromServer(); }catch(e){}
+            }catch(e){}
+          });
+
+          wrap.appendChild(img);
+          wrap.appendChild(star);
+
         wrap.appendChild(badge);
         photoPreviewEl.appendChild(wrap);
       });
@@ -760,7 +810,34 @@ function renderPhotoPreviews() {
       setPhotoStatus(`${selectedPhotos.length} selected.`);
     });
 
-    wrap.appendChild(img);
+    // Set-as-profile button (star)
+          const star = document.createElement("button");
+          star.type = "button";
+          star.className = "photoStarBtn";
+          star.textContent = "★";
+          star.setAttribute("aria-label", "Set as profile photo");
+          const isPrimary = normalizePhotoUrl((currentProfile && currentProfile.primaryPhoto) || "") === normalizePhotoUrl(url);
+          star.setAttribute("aria-pressed", isPrimary ? "true" : "false");
+          star.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            try{
+              const idToken = storage.idToken || localStorage.getItem("ff_idToken") || "";
+              if (!idToken) return;
+              await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
+                body: JSON.stringify({ primaryPhoto: String(url) })
+              });
+              if (currentProfile) currentProfile.primaryPhoto = String(url);
+              setProfileHeroFromProfile(currentProfile || {});
+              try{ await hydrateProfileFromServer(); }catch(e){}
+            }catch(e){}
+          });
+
+          wrap.appendChild(img);
+          wrap.appendChild(star);
+
     wrap.appendChild(rm);
     photoPreviewEl.appendChild(wrap);
   });
@@ -1887,7 +1964,34 @@ initBioCounter();
           badge.className = "photoBadge";
           badge.textContent = "Tap to select";
 
+          // Set-as-profile button (star)
+          const star = document.createElement("button");
+          star.type = "button";
+          star.className = "photoStarBtn";
+          star.textContent = "★";
+          star.setAttribute("aria-label", "Set as profile photo");
+          const isPrimary = normalizePhotoUrl((currentProfile && currentProfile.primaryPhoto) || "") === normalizePhotoUrl(url);
+          star.setAttribute("aria-pressed", isPrimary ? "true" : "false");
+          star.addEventListener("click", async (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            try{
+              const idToken = storage.idToken || localStorage.getItem("ff_idToken") || "";
+              if (!idToken) return;
+              await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
+                body: JSON.stringify({ primaryPhoto: String(url) })
+              });
+              if (currentProfile) currentProfile.primaryPhoto = String(url);
+              setProfileHeroFromProfile(currentProfile || {});
+              try{ await hydrateProfileFromServer(); }catch(e){}
+            }catch(e){}
+          });
+
           wrap.appendChild(img);
+          wrap.appendChild(star);
+
           wrap.appendChild(badge);
 
           wrap.addEventListener("click", () => {
