@@ -552,10 +552,12 @@ function draftKeyForUid(uid) {
 }
 
 function loadDraft(uid) {
+  if (!uid) return {};
   const key = draftKeyForUid(uid);
   try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return {}; }
 }
 function saveDraft(uid, d) {
+  if (!uid) return;
   const key = draftKeyForUid(uid);
   try { localStorage.setItem(key, JSON.stringify(d || {})); } catch {}
 }
@@ -570,7 +572,7 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
-  saveDraft(d);
+  saveDraft(uid, d);
 }
 
 
@@ -1553,6 +1555,25 @@ btnLogout.addEventListener("click", () => {
   if (threadMetaEl) setStatus(threadMetaEl, "");
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
+  // Clear profile fields + any anonymous/shared draft so next login doesn't inherit previous user's values
+  try {
+    if (profileDisplayNameEl) profileDisplayNameEl.value = "";
+    if (profileAgeEl) profileAgeEl.value = "";
+    if (profileCityEl) profileCityEl.value = "";
+    if (profileInterestsEl) profileInterestsEl.value = "";
+    if (profileLatEl) profileLatEl.value = "";
+    if (profileLngEl) profileLngEl.value = "";
+    if (profileBioEl) profileBioEl.value = "";
+    selectedInterests = new Set();
+    // Remove any leftover anon/shared profile draft keys
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (k.startsWith("ff_profileDraft_v1_") && (k.endsWith("_anon") || k.includes("[object Object]"))) {
+        localStorage.removeItem(k);
+      }
+    }
+  } catch {}
   setAuthedUI();
 initInterestChips();
 initBioCounter();
