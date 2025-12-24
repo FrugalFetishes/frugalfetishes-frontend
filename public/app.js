@@ -561,11 +561,6 @@ function saveDraft(uid, d) {
 }
 function captureDraft() {
   const uid = getUidFromIdToken(storage.idToken);
-  // Cleanup legacy broken draft keys (pre-UID saveDraft bug)
-  try {
-    localStorage.removeItem("ff_profileDraft_v1_[object Object]");
-    localStorage.removeItem("ff_profileDraft_v1_anon");
-  } catch {}
 
   const d = {
     displayName: profileDisplayNameEl ? profileDisplayNameEl.value : "",
@@ -575,9 +570,8 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
-  saveDraft(uid, d);
+  saveDraft(d);
 }
-
 
 
 function syncInterestsHiddenInput() {
@@ -1542,6 +1536,10 @@ if (btnSendMessage) {
 
 
 btnLogout.addEventListener("click", () => {
+  // LOGOUT CONFIRMATION (UI only — does not touch OTP/auth flow)
+  try { if (typeof showToast === "function") showToast("You have been logged out."); } catch (e) {}
+  if (otpEl) otpEl.value = "";
+
   storage.idToken = null;
   storage.refreshToken = null;
   storage.idTokenExpiresAt = 0;
