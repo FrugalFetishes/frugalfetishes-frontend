@@ -96,11 +96,23 @@ if (!btnSaveProfileLiveEl) {
   if (row) row.insertBefore(btn, row.firstChild);
   btnSaveProfileLiveEl = btn;
 }
-try { if (btnSavePhotos) btnSavePhotos.style.display = "none"; } catch (e) {}
-
-const btnClearPhotos = $("btnClearPhotos");
+try { if (btnSavePhotos) btnSavePhotos.style.display = ""; } catch (e) {}const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
 const photoPreviewEl = $("photoPreview");
+
+// Delete selected photos button (for saved gallery); created if missing
+let btnDeleteSelectedPhotosEl = $("btnDeleteSelectedPhotos");
+if (!btnDeleteSelectedPhotosEl) {
+  const row = btnClearPhotos ? btnClearPhotos.parentElement : (btnSavePhotos ? btnSavePhotos.parentElement : null);
+  const btn = document.createElement("button");
+  btn.id = "btnDeleteSelectedPhotos";
+  btn.type = "button";
+  btn.className = "btn secondary";
+  btn.textContent = "Delete Selected Photos";
+  if (row) row.appendChild(btn);
+  btnDeleteSelectedPhotosEl = btn;
+}
+
 
 const filterCityEl = $("filterCity");
 const filterInterestEl = $("filterInterest");
@@ -512,11 +524,12 @@ async function hydrateProfileFromServer() {
                    (resp.user && Array.isArray(resp.user.photos) ? resp.user.photos : []));
     if (Array.isArray(photos) && photoPreviewEl) {
       showingSavedPhotos = true;
+      try { if (btnClearPhotos) btnClearPhotos.textContent = "Clear Selected"; } catch {}
+      try { if (btnDeleteSelectedPhotosEl) btnDeleteSelectedPhotosEl.style.display = ""; } catch {}
       savedPhotosCache = photos.slice(0, 6).map(p => String(p));
       savedPhotoSelection = new Set();
       // Render previews
       photoPreviewEl.innerHTML = "";
-  showingSavedPhotos = false;
       photos.slice(0, 6).forEach((src, idx) => {
         const url = String(src);
         const wrap = document.createElement("div");
@@ -707,6 +720,9 @@ function setPhotoStatus(msg) {
 }
 
 function renderPhotoPreviews() {
+  try { showingSavedPhotos = false; } catch {}
+  try { if (btnDeleteSelectedPhotosEl) btnDeleteSelectedPhotosEl.style.display = "none"; } catch {}
+  try { if (btnClearPhotos) btnClearPhotos.textContent = "Clear Selected"; } catch {}
   if (!photoPreviewEl) return;
   photoPreviewEl.innerHTML = "";
   if (!selectedPhotos.length) return;
@@ -1805,6 +1821,36 @@ initBioCounter();
       } else {
         // Clear staged selection (not saved photos)
         selectedPhotos = [];
+        renderPhotoPreviews();
+        setPhotoStatus("Selection cleared.");
+      }
+    } catch (e) {
+      setPhotoStatus("");
+      showError(`Delete failed: ${e.message}`);
+    }
+  });
+
+
+  // Delete Selected Photos button: deletes from saved gallery when viewing saved photos,
+  // otherwise clears staged selection
+  if (btnDeleteSelectedPhotosEl) btnDeleteSelectedPhotosEl.addEventListener("click", async () => {
+    clearError();
+    try {
+      if (showingSavedPhotos) {
+        if (!savedPhotoSelection || savedPhotoSelection.size === 0) {
+          setPhotoStatus("Select 1+ saved photos to delete.");
+          return;
+        }
+        const ok = confirm(`Delete ${savedPhotoSelection.size} selected photo(s)?`);
+        if (!ok) return;
+        setPhotoStatus("Deleting...");
+        const remaining = (savedPhotosCache || []).filter(p => !savedPhotoSelection.has(String(p)));
+        await updateProfile({ photos: remaining });
+        await hydrateProfileFromServer();
+        setPhotoStatus("Deleted ✅");
+      } else {
+        selectedPhotos = [];
+        if (photoFilesEl) photoFilesEl.value = "";
         renderPhotoPreviews();
         setPhotoStatus("Selection cleared.");
       }
