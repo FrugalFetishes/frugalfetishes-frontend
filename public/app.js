@@ -61,7 +61,6 @@ const backendDebugEl = $("backendDebug");
 
 const profileDisplayNameEl = $("profileDisplayName");
 const profileAgeEl = $("profileAge");
-const profileCityEl = $("profileCity");
 const profileInterestsEl = $("profileInterests");
 const profileLatEl = $("profileLat");
   const profileZipEl = $("profileZip");
@@ -605,7 +604,7 @@ function initInterestChips() {
   if (profileInterestsEl && profileInterestsEl.value) initInterestChipsFromValue(profileInterestsEl.value);
 
   interestChipsEl.querySelectorAll(".chip").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    if (btn) btn.addEventListener("click", () => {
       const v = (btn.getAttribute("data-value") || "").trim();
       if (!v) return;
       if (selectedInterests.has(v)) selectedInterests.delete(v);
@@ -617,7 +616,7 @@ function initInterestChips() {
   });
 
   if (btnAddInterest && profileInterestCustomEl) {
-    btnAddInterest.addEventListener("click", () => {
+    if (btnAddInterest) btnAddInterest.addEventListener("click", () => {
       const v = profileInterestCustomEl.value.trim().toLowerCase();
       if (!v) return;
       selectedInterests.add(v);
@@ -640,7 +639,7 @@ function initBioCounter() {
     const n = (profileBioEl.value || "").length;
     bioCountEl.textContent = String(n);
   };
-  profileBioEl.addEventListener("input", () => {
+  if (profileBioEl) profileBioEl.addEventListener("input", () => {
     if (profileBioEl.value.length > 240) profileBioEl.value = profileBioEl.value.slice(0, 240);
     update();
     captureDraft();
@@ -674,7 +673,7 @@ function renderPhotoPreviews() {
     rm.type = "button";
     rm.className = "secondary";
     rm.textContent = "Remove";
-    rm.addEventListener("click", () => {
+    if (rm) rm.addEventListener("click", () => {
       selectedPhotos.splice(idx, 1);
       renderPhotoPreviews();
       setPhotoStatus(`${selectedPhotos.length} selected.`);
@@ -1028,7 +1027,7 @@ rowTop.appendChild(titleWrap);
     const btn = document.createElement("button");
     btn.className = "btn primary";
     btn.textContent = "Open Chat";
-    btn.addEventListener("click", () => {
+    if (btn) btn.addEventListener("click", () => {
       selectedMatchId = matchId || "";
       selectedOtherUid = otherUid || "";
       if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Chat with ${name}` : `Chat`);
@@ -1104,7 +1103,7 @@ function renderFeed(items) {
     likeStatus.className = "muted";
     likeStatus.style.marginTop = "6px";
 
-    likeBtn.addEventListener("click", async () => {
+    if (likeBtn) likeBtn.addEventListener("click", async () => {
       clearError();
       likeBtn.disabled = true;
       likeStatus.textContent = "Liking...";
@@ -1207,7 +1206,7 @@ function clearFilters() {
   if (filterStatusEl) setStatus(filterStatusEl, `Showing ${allFeedItems.length} profiles.`);
 }
 
-btnStart.addEventListener("click", async () => {
+if (btnStart) btnStart.addEventListener("click", async () => {
   clearError();
   setStatus(startResultEl, "");
   const emailRaw = emailEl ? emailEl.value : "";
@@ -1234,7 +1233,7 @@ btnStart.addEventListener("click", async () => {
   }
 });
 
-btnVerify.addEventListener("click", async () => {
+if (btnVerify) btnVerify.addEventListener("click", async () => {
   clearError();
   const email = (emailEl.value || "").trim();
   const otp = (otpEl.value || "").trim();
@@ -1292,7 +1291,7 @@ initBioCounter();
 
   // Dev feed toggle
   if (btnToggleDevFeed && feedListEl) {
-    btnToggleDevFeed.addEventListener("click", () => {
+    if (btnToggleDevFeed) btnToggleDevFeed.addEventListener("click", () => {
       feedListEl.hidden = !feedListEl.hidden;
     });
   }
@@ -1374,10 +1373,10 @@ initBioCounter();
 
 if (!uiWired) {
   uiWired = true;
-  btnSendMessage.addEventListener("click", sendMessageUI);
+  if (btnSendMessage) btnSendMessage.addEventListener("click", sendMessageUI);
 
   if (messageTextEl) {
-    messageTextEl.addEventListener("keydown", (e) => {
+    if (messageTextEl) messageTextEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         sendMessageUI();
@@ -1418,7 +1417,7 @@ initBioCounter();
 
   // Dev feed toggle
   if (btnToggleDevFeed && feedListEl) {
-    btnToggleDevFeed.addEventListener("click", () => {
+    if (btnToggleDevFeed) btnToggleDevFeed.addEventListener("click", () => {
       feedListEl.hidden = !feedListEl.hidden;
     });
   }
@@ -1430,7 +1429,7 @@ initBioCounter();
   }
 });
 
-btnLoadFeed.addEventListener("click", async () => {
+if (btnLoadFeed) btnLoadFeed.addEventListener("click", async () => {
   clearError();
   setFeedLoading(false, "");
   btnLoadFeed.disabled = true;
@@ -1452,7 +1451,7 @@ btnLoadFeed.addEventListener("click", async () => {
   }
 });
 
-btnCredits.addEventListener("click", async () => {
+if (btnCredits) btnCredits.addEventListener("click", async () => {
   clearError();
   btnCredits.disabled = true;
   try {
@@ -1466,7 +1465,7 @@ btnCredits.addEventListener("click", async () => {
 });
 
 if (btnLoadMatches) {
-  btnLoadMatches.addEventListener("click", async () => {
+  if (btnLoadMatches) btnLoadMatches.addEventListener("click", async () => {
     clearError();
     if (matchesStatusEl) setStatus(matchesStatusEl, "");
     if (matchesListEl) matchesListEl.innerHTML = "";
@@ -1488,7 +1487,7 @@ if (btnLoadMatches) {
 
 
 if (btnLoadThread) {
-  btnLoadThread.addEventListener("click", async () => {
+  if (btnLoadThread) btnLoadThread.addEventListener("click", async () => {
     clearError();
     if (threadStatusEl) setStatus(threadStatusEl, "");
     if (threadListEl) threadListEl.innerHTML = "";
@@ -1510,7 +1509,7 @@ if (btnLoadThread) {
 }
 
 if (btnSendMessage) {
-  btnSendMessage.addEventListener("click", async () => {
+  if (btnSendMessage) btnSendMessage.addEventListener("click", async () => {
     clearError();
     btnSendMessage.disabled = true;
     try {
@@ -1536,7 +1535,7 @@ if (btnSendMessage) {
 
 
 
-btnLogout.addEventListener("click", () => {
+if (btnLogout) btnLogout.addEventListener("click", () => {
   storage.idToken = null;
   storage.refreshToken = null;
   storage.idTokenExpiresAt = 0;
@@ -1573,7 +1572,7 @@ initBioCounter();
 
   // Dev feed toggle
   if (btnToggleDevFeed && feedListEl) {
-    btnToggleDevFeed.addEventListener("click", () => {
+    if (btnToggleDevFeed) btnToggleDevFeed.addEventListener("click", () => {
       feedListEl.hidden = !feedListEl.hidden;
     });
   }
@@ -1648,7 +1647,7 @@ initBioCounter();
     if (locationStatusEl) locationStatusEl.textContent = "Location cleared.";
   });
 
-  btnSaveProfile.addEventListener("click", async () => {
+  if (btnSaveProfile) btnSaveProfile.addEventListener("click", async () => {
   const photos = document.querySelectorAll(".photoThumb img");
   if (!photos || photos.length === 0) {
     alert("Please add at least one photo to continue.");
@@ -1725,7 +1724,7 @@ initBioCounter();
 
   // Dev feed toggle
   if (btnToggleDevFeed && feedListEl) {
-    btnToggleDevFeed.addEventListener("click", () => {
+    if (btnToggleDevFeed) btnToggleDevFeed.addEventListener("click", () => {
       feedListEl.hidden = !feedListEl.hidden;
     });
   }
@@ -1869,8 +1868,8 @@ initBioCounter();
       }
     };
 
-    btn100.addEventListener("click", () => doAdd(100));
-    btn1000.addEventListener("click", () => doAdd(1000));
+    if (btn100) btn100.addEventListener("click", () => doAdd(100));
+    if (btn1000) btn1000.addEventListener("click", () => doAdd(1000));
   } catch (e) {
     // ignore
   }
@@ -2086,13 +2085,13 @@ function collapseSheet() {
 function attachSwipeHandlers() {
   if (!swipeCardEl) return;
 
-  swipeCardEl.addEventListener("touchstart", (e) => {
+  if (swipeCardEl) swipeCardEl.addEventListener("touchstart", (e) => {
     const t = e.changedTouches && e.changedTouches[0];
     if (!t) return;
     touchStart = { x: t.clientX, y: t.clientY, time: Date.now() };
   }, { passive: true });
 
-  swipeCardEl.addEventListener("touchend", (e) => {
+  if (swipeCardEl) swipeCardEl.addEventListener("touchend", (e) => {
     const t = e.changedTouches && e.changedTouches[0];
     if (!t || !touchStart) return;
 
@@ -2130,16 +2129,16 @@ function attachSwipeHandlers() {
   try {
     if (swipePhotoEl) {
       swipePhotoEl.style.cursor = "pointer";
-      swipePhotoEl.addEventListener("click", onTapExpand);
+      if (swipePhotoEl) swipePhotoEl.addEventListener("click", onTapExpand);
     }
     if (swipeTitleEl) {
       swipeTitleEl.style.cursor = "pointer";
-      swipeTitleEl.addEventListener("click", onTapExpand);
+      if (swipeTitleEl) swipeTitleEl.addEventListener("click", onTapExpand);
     }
   } catch {}
 
   // Keyboard shortcuts: Left=pass, Right=like, Up=expand, Esc=close
-  swipeCardEl.addEventListener("keydown", (e) => {
+  if (swipeCardEl) swipeCardEl.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft") { e.preventDefault(); passCurrent(); }
     if (e.key === "ArrowRight") { e.preventDefault(); likeCurrent(); }
     if (e.key === "ArrowUp") { e.preventDefault(); expandCurrent(); }
@@ -2155,4 +2154,5 @@ function isValidEmail(email) {
   // simple, practical validation
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""));
 }
+
 
