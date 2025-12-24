@@ -61,6 +61,7 @@ const backendDebugEl = $("backendDebug");
 
 const profileDisplayNameEl = $("profileDisplayName");
 const profileAgeEl = $("profileAge");
+const profileCityEl = $("profileCity");
 const profileInterestsEl = $("profileInterests");
 const profileLatEl = $("profileLat");
   const profileZipEl = $("profileZip");
@@ -1554,11 +1555,6 @@ btnLogout.addEventListener("click", () => {
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
-  // LOGOUT CONFIRMATION (UI only; does not touch OTP/auth flow)
-  try { showToast("You have been logged out."); } catch (e) {}
-  try { if (authStatusEl) setStatus(authStatusEl, "You have been logged out."); } catch (e) {}
-  try { if (otpEl) otpEl.value = ""; } catch (e) {}
-
 initInterestChips();
 initBioCounter();
   // Tabs
@@ -2159,5 +2155,4 @@ function isValidEmail(email) {
   // simple, practical validation
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""));
 }
-
 
