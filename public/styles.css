@@ -739,39 +739,3 @@ input, textarea, select{
   background: rgba(0,0,0,0.55);
   color: #fff;
 }
-
-
-
-/* --- Photo visibility safety --- */
-#photoPreview img,
-.profileHeroImg{
-  opacity: 1 !important;
-  visibility: visible !important;
-  display: block !important;
-}
-
-/* --- Uniform photo tiles regardless of image aspect ratio --- */
-#photoPreview{
-  display:grid !important;
-  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
-  gap: 10px !important;
-  align-items: start !important;
-}
-
-#photoPreview .photoThumb{
-  position: relative !important;
-  width: 100% !important;
-  border-radius: 14px !important;
-  overflow: hidden !important;
-}
-
-#photoPreview .photoThumb img{
-  width: 100% !important;
-  height: 110px !important;   /* uniform */
-  object-fit: cover !important;
-  object-position: center !important;
-}
-
-@media (min-width: 480px){
-  #photoPreview .photoThumb img{ height: 120px !important; }
-}
