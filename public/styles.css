@@ -739,3 +739,23 @@ input, textarea, select{
   background: rgba(0,0,0,0.55);
   color: #fff;
 }
+
+
+
+/* --- Minimal uniform tile sizing (non-destructive) --- */
+#photoPreview{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+#photoPreview .photoThumb img{
+  height: 110px;
+  width: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+@media (min-width: 480px){
+  #photoPreview .photoThumb img{ height: 120px; }
+}
