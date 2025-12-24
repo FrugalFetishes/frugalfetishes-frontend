@@ -61,7 +61,6 @@ const backendDebugEl = $("backendDebug");
 
 const profileDisplayNameEl = $("profileDisplayName");
 const profileAgeEl = $("profileAge");
-const profileCityEl = $("profileCity");
 const profileInterestsEl = $("profileInterests");
 const profileLatEl = $("profileLat");
   const profileZipEl = $("profileZip");
@@ -515,7 +514,6 @@ async function hydrateProfileFromServer() {
 
     // Save as draft for this uid
     captureDraft();
-      scheduleProfileAutoSave("interests");
   } catch {}
 }
 
@@ -572,7 +570,7 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
-  if (uid) saveDraft(uid, d);
+  saveDraft(d);
 }
 
 
@@ -625,7 +623,6 @@ function initInterestChips() {
       profileInterestCustomEl.value = "";
       syncInterestsHiddenInput();
       captureDraft();
-      scheduleProfileAutoSave("interests");
       // show as selected chip only if it exists in the predefined set
       if (interestChipsEl) {
         const match = interestChipsEl.querySelector(`.chip[data-value="${CSS.escape(v)}"]`);
@@ -646,7 +643,6 @@ function initBioCounter() {
     if (profileBioEl.value.length > 240) profileBioEl.value = profileBioEl.value.slice(0, 240);
     update();
     captureDraft();
-    scheduleProfileAutoSave("bio");
   });
   update();
 }
@@ -1585,6 +1581,42 @@ initBioCounter();
 });
 
 (function init() {
+
+  // --- PRE-AUTH SAFE GATE ---
+  // Always start in logged-out UI until token is validated. Prevents UserUI appearing under landing.
+  const _existingToken = storage.idToken;
+  if (_existingToken) {
+    // temporarily treat as logged out
+    storage.idToken = "";
+    try { localStorage.setItem("ff_idToken", ""); } catch {}
+  }
+  try { setAuthedUI(); } catch {}
+  (async () => {
+    if (!_existingToken) return;
+    try {
+      const resp = await fetch(`${BACKEND_BASE_URL}/api/profile/me`, {
+        headers: { Authorization: "Bearer " + _existingToken }
+      });
+      if (!resp.ok) throw new Error("profile/me " + resp.status);
+      const j = await resp.json();
+      if (!j || j.ok !== true) throw new Error("bad profile/me response");
+      // token is valid -> restore and show app
+      storage.idToken = _existingToken;
+      try { localStorage.setItem("ff_idToken", _existingToken); } catch {}
+      try { setAuthedUI(); } catch {}
+    } catch (e) {
+      // invalid token -> clear fully and keep landing
+      try { localStorage.removeItem("ff_idToken"); } catch {}
+      try { localStorage.removeItem("ff_refreshToken"); } catch {}
+      try { localStorage.removeItem("ff_uid"); } catch {}
+      try {
+        Object.keys(localStorage).filter(k => k.startsWith("ff_profileDraft_")).forEach(k => localStorage.removeItem(k));
+      } catch {}
+      storage.idToken = "";
+      try { setAuthedUI(); } catch {}
+    }
+  })();
+
   if (!emailEl.value) emailEl.value = "test@example.com";
 
   // Profile editor: restore draft inputs (safe if section isn't present)
@@ -2160,3 +2192,15 @@ function isValidEmail(email) {
 }
 
 
+
+
+// ====== BOOTSTRAP ======
+try {
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+} catch (e) {
+  console.error("Init failed:", e);
+}
