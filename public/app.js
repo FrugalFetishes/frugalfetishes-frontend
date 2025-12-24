@@ -197,6 +197,8 @@ const publicProfileCache = new Map(); // uid -> { displayName, photoUrl }
 let deckIndex = 0;
 let deckItems = [];
 let currentProfile = null;
+let selectedPrimaryPhoto = "";
+
 let isExpanded = false;
 let actionLocked = false;
 let touchStart = null;
@@ -378,9 +380,7 @@ async function exchangeCustomTokenForIdToken(customToken) {
   const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${encodeURIComponent(FIREBASE_WEB_API_KEY)}`;
   return jsonFetch(url, {
     method: "POST",
-    body: JSON.stringify({token: customToken, returnSecureToken: true,
-        primaryPhoto: selectedPrimaryPhoto || (currentProfile && currentProfile.primaryPhoto) || undefined
-      })
+    body: JSON.stringify({token: customToken, returnSecureToken: true})
   });
 }
 
@@ -601,7 +601,8 @@ async function hydrateProfileFromServer() {
               selectedPrimaryPhoto = String(url);
               if (currentProfile) currentProfile.primaryPhoto = String(url);
 
-              const resp = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+              const resp = selectedPrimaryPhoto = String(url);
+              await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
                 body: JSON.stringify({ primaryPhoto: String(url) })
@@ -617,6 +618,16 @@ async function hydrateProfileFromServer() {
 
           wrap.appendChild(img);
           wrap.appendChild(star);
+
+        // Primary badge
+        const isPrimaryNow = normalizePhotoUrl(selectedPrimaryPhoto || ((currentProfile && currentProfile.primaryPhoto) || "")) === normalizePhotoUrl(url);
+        if (isPrimaryNow) {
+          const pb = document.createElement("div");
+          pb.className = "photoBadge";
+          pb.textContent = "Profile";
+          wrap.appendChild(pb);
+        }
+
 
         wrap.appendChild(badge);
         photoPreviewEl.appendChild(wrap);
@@ -828,6 +839,16 @@ function renderPhotoPreviews() {
 
           wrap.appendChild(img);
           wrap.appendChild(star);
+
+        // Primary badge
+        const isPrimaryNow = normalizePhotoUrl(selectedPrimaryPhoto || ((currentProfile && currentProfile.primaryPhoto) || "")) === normalizePhotoUrl(url);
+        if (isPrimaryNow) {
+          const pb = document.createElement("div");
+          pb.className = "photoBadge";
+          pb.textContent = "Profile";
+          wrap.appendChild(pb);
+        }
+
 
     wrap.appendChild(rm);
     photoPreviewEl.appendChild(wrap);
@@ -1839,7 +1860,7 @@ initBioCounter();
       if (Object.keys(payload).length === 0) throw new Error("Nothing to save. Fill at least one field.");
 
       setProfileStatus("Saving profile...");
-      await updateProfile(payload);
+      await updateProfile(Object.assign(payload, (selectedPrimaryPhoto ? { primaryPhoto: selectedPrimaryPhoto } : {}))\);
       setProfileStatus("Saved ✅ (lastActive/profileUpdated set server-side)");
     } catch (e) {
       setProfileStatus("");
@@ -1988,6 +2009,16 @@ initBioCounter();
 
           wrap.appendChild(img);
           wrap.appendChild(star);
+
+        // Primary badge
+        const isPrimaryNow = normalizePhotoUrl(selectedPrimaryPhoto || ((currentProfile && currentProfile.primaryPhoto) || "")) === normalizePhotoUrl(url);
+        if (isPrimaryNow) {
+          const pb = document.createElement("div");
+          pb.className = "photoBadge";
+          pb.textContent = "Profile";
+          wrap.appendChild(pb);
+        }
+
 
           wrap.appendChild(badge);
 
