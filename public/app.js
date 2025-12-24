@@ -8,6 +8,17 @@ function setDevCreditsBalance(n) {
   devCreditsBalanceEl.textContent = Number.isFinite(n) ? String(n) : String(n || "");
 }
 
+function normalizePhotoUrl(p) {
+  if (!p) return "";
+  if (typeof p === "string") return p;
+  if (typeof p === "object") {
+    // common shapes: {url}, {src}, {downloadURL}, {dataUrl}
+    return String(p.url || p.src || p.downloadURL || p.dataUrl || "");
+  }
+  return String(p);
+}
+
+
 async function refreshDevCreditsBalance() {
   try {
     if (!storage || !storage.idToken) { setDevCreditsBalance(""); return; }
@@ -527,16 +538,16 @@ async function hydrateProfileFromServer() {
     if (profile.location && typeof profile.location.lat === "number" && profileLatEl) profileLatEl.value = String(profile.location.lat);
     if (profile.location && typeof profile.location.lng === "number" && profileLngEl) profileLngEl.value = String(profile.location.lng);
     // Photos: prefer profile.photos, fallback to user.photos
-    const photos = (profile && Array.isArray(profile.photos) ? profile.photos :
+    const photosRaw = (profile && Array.isArray(profile.photos) ? profile.photos :
                    (resp.user && Array.isArray(resp.user.photos) ? resp.user.photos : []));
+    const photos = Array.isArray(photosRaw) ? photosRaw.map(normalizePhotoUrl).filter(Boolean) : [];
     if (Array.isArray(photos) && photoPreviewEl) {
       showingSavedPhotos = true;
-      savedPhotosCache = photos.slice(0, 6).map(p => String(p));
+      savedPhotosCache = photos.slice(0, 6);
       savedPhotoSelection = new Set();
       // Render previews
       photoPreviewEl.innerHTML = "";
-      photos.slice(0, 6).forEach((src, idx) => {
-        const url = String(src);
+      photos.slice(0, 6).forEach((url, idx) => {
         const wrap = document.createElement("div");
         wrap.className = "photoThumb";
         wrap.style.position = "relative";
