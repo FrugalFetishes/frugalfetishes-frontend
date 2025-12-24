@@ -2648,8 +2648,18 @@ photos.slice(0,6).forEach((url, idx) => {
       if (ev && ev.target && ev.target.closest && ev.target.closest("button")) return;
     }catch(e){}
     const key = String(url);
-    if (window.__ff_selectedPhotos.has(key)) window.__ff_selectedPhotos.delete(key);
+    const wasSelected = window.__ff_selectedPhotos.has(key);
+    if (wasSelected) window.__ff_selectedPhotos.delete(key);
     else window.__ff_selectedPhotos.add(key);
+
+    // keep legacy delete-selection set in sync (used by existing Delete button logic)
+    try{
+      if (typeof savedPhotoSelection !== "undefined" && savedPhotoSelection && typeof savedPhotoSelection.add === "function"){
+        if (wasSelected) savedPhotoSelection.delete(key);
+        else savedPhotoSelection.add(key);
+      }
+    }catch(e){}
+
     syncSelectedUI();
   });
 
