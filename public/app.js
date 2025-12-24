@@ -1834,31 +1834,90 @@ initBioCounter();
   // Delete Selected Photos button: deletes from saved gallery when viewing saved photos,
   // otherwise clears staged selection
   if (btnDeleteSelectedPhotosEl) btnDeleteSelectedPhotosEl.addEventListener("click", async () => {
+  // Delete Selected Photos button:
+  // Priority: if any saved photos are selected, delete those from the saved gallery.
+  // Otherwise: clear staged (unsaved) selection.
+  if (btnDeleteSelectedPhotosEl) btnDeleteSelectedPhotosEl.addEventListener("click", async () => {
     clearError();
     try {
-      if (showingSavedPhotos) {
-        if (!savedPhotoSelection || savedPhotoSelection.size === 0) {
-          setPhotoStatus("Select 1+ saved photos to delete.");
-          return;
-        }
+      const hasSavedSelection = !!(savedPhotoSelection && savedPhotoSelection.size);
+      if (hasSavedSelection) {
         const ok = confirm(`Delete ${savedPhotoSelection.size} selected photo(s)?`);
         if (!ok) return;
+
         setPhotoStatus("Deleting...");
-        const remaining = (savedPhotosCache || []).filter(p => !savedPhotoSelection.has(String(p)));
+        const current = Array.isArray(savedPhotosCache) ? savedPhotosCache.slice() : [];
+        const remaining = current.filter(p => !savedPhotoSelection.has(String(p)));
+
+        // Optimistic UI update (so user immediately sees the change)
+        savedPhotosCache = remaining.slice(0, 6).map(p => String(p));
+        savedPhotoSelection = new Set();
+        if (photoPreviewEl) {
+          photoPreviewEl.innerHTML = "";
+          showingSavedPhotos = true;
+          try { if (btnClearPhotos) btnClearPhotos.textContent = "Clear Selected"; } catch {}
+          try { if (btnDeleteSelectedPhotosEl) btnDeleteSelectedPhotosEl.style.display = ""; } catch {}
+          remaining.slice(0, 6).forEach((src, idx) => {
+            const url = String(src);
+            const wrap = document.createElement("div");
+            wrap.className = "photoThumb";
+            wrap.style.position = "relative";
+
+            const img = document.createElement("img");
+            img.src = url;
+            img.alt = `Photo ${idx + 1}`;
+            img.loading = "lazy";
+            img.style.width = "100%";
+            img.style.height = "auto";
+            img.style.borderRadius = "12px";
+            img.style.border = "1px solid var(--border)";
+            img.style.cursor = "pointer";
+
+            const badge = document.createElement("div");
+            badge.textContent = "Tap to select";
+            badge.style.position = "absolute";
+            badge.style.left = "8px";
+            badge.style.bottom = "8px";
+            badge.style.padding = "4px 6px";
+            badge.style.borderRadius = "8px";
+            badge.style.fontSize = "12px";
+            badge.style.background = "rgba(0,0,0,0.55)";
+            badge.style.color = "#fff";
+
+            wrap.addEventListener("click", () => {
+              if (savedPhotoSelection.has(url)) savedPhotoSelection.delete(url);
+              else savedPhotoSelection.add(url);
+              img.style.border = savedPhotoSelection.has(url) ? "2px solid #fff" : "1px solid var(--border)";
+              badge.textContent = savedPhotoSelection.has(url) ? "Selected" : "Tap to select";
+              setPhotoStatus(savedPhotoSelection.size ? `${savedPhotoSelection.size} selected to delete.` : "");
+            });
+
+            wrap.appendChild(img);
+            wrap.appendChild(badge);
+            photoPreviewEl.appendChild(wrap);
+          });
+        }
+
+        // Persist on server
         await updateProfile({ photos: remaining });
-        await hydrateProfileFromServer();
+
+        // Re-hydrate (best effort) to ensure UI matches backend
+        try { await hydrateProfileFromServer(); } catch {}
         setPhotoStatus("Deleted ✅");
-      } else {
-        selectedPhotos = [];
-        if (photoFilesEl) photoFilesEl.value = "";
-        renderPhotoPreviews();
-        setPhotoStatus("Selection cleared.");
+        return;
       }
+
+      // No saved selection: clear staged selection (not saved photos)
+      selectedPhotos = [];
+      if (photoFilesEl) photoFilesEl.value = "";
+      renderPhotoPreviews();
+      setPhotoStatus("Selection cleared.");
     } catch (e) {
       setPhotoStatus("");
       showError(`Delete failed: ${e.message}`);
     }
   });
+
 
   if (photoFilesEl) photoFilesEl.addEventListener("change", async () => {
     clearError();
