@@ -61,7 +61,6 @@ const backendDebugEl = $("backendDebug");
 
 const profileDisplayNameEl = $("profileDisplayName");
 const profileAgeEl = $("profileAge");
-const profileCityEl = $("profileCity");
 const profileInterestsEl = $("profileInterests");
 const profileLatEl = $("profileLat");
   const profileZipEl = $("profileZip");
@@ -515,7 +514,6 @@ async function hydrateProfileFromServer() {
 
     // Save as draft for this uid
     captureDraft();
-      scheduleProfileAutoSave("interests");
   } catch {}
 }
 
@@ -548,6 +546,22 @@ function setProfileStatus(msg) {
   if (profileStatusEl) setStatus(profileStatusEl, msg);
 }
 
+
+function clearProfileForm() {
+  if (profileDisplayNameEl) profileDisplayNameEl.value = "";
+  if (profileAgeEl) profileAgeEl.value = "";
+  if (profileCityEl) profileCityEl.value = "";
+  if (profileInterestsEl) profileInterestsEl.value = "";
+  if (profileLatEl) profileLatEl.value = "";
+  if (profileLngEl) profileLngEl.value = "";
+  if (typeof selectedInterests !== "undefined") selectedInterests = new Set();
+  if (interestChipsEl) {
+    interestChipsEl.querySelectorAll(".chip").forEach((btn) => btn.classList.remove("isSelected"));
+  }
+  if (profileBioEl) profileBioEl.value = "";
+  if (bioCountEl) bioCountEl.textContent = "0";
+  setProfileStatus("");
+}
 // Persist draft inputs locally so refresh doesn't wipe them.
 function draftKeyForUid(uid) {
   return `ff_profileDraft_v1_${uid || "anon"}`;
@@ -572,7 +586,7 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
-  if (uid) saveDraft(uid, d);
+  saveDraft(uid, d);
 }
 
 
@@ -625,7 +639,6 @@ function initInterestChips() {
       profileInterestCustomEl.value = "";
       syncInterestsHiddenInput();
       captureDraft();
-      scheduleProfileAutoSave("interests");
       // show as selected chip only if it exists in the predefined set
       if (interestChipsEl) {
         const match = interestChipsEl.querySelector(`.chip[data-value="${CSS.escape(v)}"]`);
@@ -646,7 +659,6 @@ function initBioCounter() {
     if (profileBioEl.value.length > 240) profileBioEl.value = profileBioEl.value.slice(0, 240);
     update();
     captureDraft();
-    scheduleProfileAutoSave("bio");
   });
   update();
 }
@@ -1556,7 +1568,8 @@ btnLogout.addEventListener("click", () => {
   if (threadStatusEl) setStatus(threadStatusEl, "");
   if (threadMetaEl) setStatus(threadMetaEl, "");
   if (filterStatusEl) setStatus(filterStatusEl, "");
-  clearError();
+    clearProfileForm();
+clearError();
   setAuthedUI();
 initInterestChips();
 initBioCounter();
