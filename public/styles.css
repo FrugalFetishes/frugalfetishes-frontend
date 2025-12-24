@@ -656,3 +656,9 @@ input, textarea, select{
   font-weight: 700;
 }
 .toast.hidden{ display:none; }
+
+/* Photo selection (delete selected) */
+.photoItem.selected {
+  outline: 3px solid var(--accent, #6c5ce7);
+  border-radius: 14px;
+}
