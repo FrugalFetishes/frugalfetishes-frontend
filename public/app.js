@@ -8,36 +8,6 @@ function setDevCreditsBalance(n) {
   devCreditsBalanceEl.textContent = Number.isFinite(n) ? String(n) : String(n || "");
 }
 
-function normalizePhotoUrl(p) {
-  if (!p) return "";
-  if (typeof p === "string") return p;
-  if (typeof p === "object") {
-    // common shapes: {url}, {src}, {downloadURL}, {dataUrl}
-    return String(p.url || p.src || p.downloadURL || p.dataUrl || "");
-  }
-  return String(p);
-}
-
-
-function setProfileHeroFromProfile(profile){
-  try{
-    if (!profile) return;
-    const photos = Array.isArray(profile.photos) ? profile.photos.map(normalizePhotoUrl).filter(Boolean) : [];
-    const primary = normalizePhotoUrl(profile.primaryPhoto) || (photos.length ? photos[0] : "");
-    if (profileHeroImgEl){
-      profileHeroImgEl.src = primary || "";
-      profileHeroImgEl.style.display = primary ? "block" : "none";
-    }
-    const name = (profile.displayName || profile.name || "").trim();
-    const ageNum = (typeof profile.age === "number") ? profile.age : (profile.age ? Number(profile.age) : null);
-    const label = (name ? name : "Your Profile") + ((ageNum && !Number.isNaN(ageNum)) ? `, ${ageNum}` : "");
-    if (profileHeroNameAgeEl) profileHeroNameAgeEl.textContent = label;
-  }catch(e){}
-}
-
-
-
-
 async function refreshDevCreditsBalance() {
   try {
     if (!storage || !storage.idToken) { setDevCreditsBalance(""); return; }
@@ -2428,19 +2398,122 @@ if (btnSaveProfileLiveEl) {
 
 
 
-function renderSavedPhotos(photos, profile){
+
+
+
+// -------- Profile UI helpers (OTP-safe; no auth/OTP changes) --------
+function normalizePhotoUrl(p){
   try{
-    const list = Array.isArray(photos) ? photos.map(normalizePhotoUrl).filter(Boolean) : [];
-    if (!photoPreviewEl) return;
-    photoPreviewEl.innerHTML = "";
-    if (list.length === 0) return;
+    if (!p) return "";
+    if (typeof p === "string") return p.trim();
+    if (typeof p === "object" && typeof p.url === "string") return p.url.trim();
+    return String(p).trim();
+  }catch(e){ return ""; }
+}
 
-    const currentPrimary = profile ? normalizePhotoUrl(profile.primaryPhoto) : "";
+function ensureProfileHero(){
+  try{
+    // Locate profile panel (works across slight HTML variants)
+    const panel = document.querySelector('[data-panel="profile"]') || document.getElementById("profileView") || document.getElementById("viewProfile");
+    if (!panel) return null;
 
-    list.slice(0,6).forEach((url, idx) => {
+    // Create hero only once
+    let hero = document.getElementById("profileHero");
+    if (!hero){
+      hero = document.createElement("div");
+      hero.id = "profileHero";
+      hero.style.position = "relative";
+      hero.style.width = "100%";
+      hero.style.aspectRatio = "4 / 5";
+      hero.style.borderRadius = "18px";
+      hero.style.overflow = "hidden";
+      hero.style.margin = "12px 0 14px 0";
+      hero.style.border = "1px solid rgba(255,255,255,0.12)";
+      hero.style.background = "rgba(0,0,0,0.18)";
+
+      const img = document.createElement("img");
+      img.id = "profileHeroImg";
+      img.alt = "Profile photo";
+      img.style.width = "100%";
+      img.style.height = "100%";
+      img.style.objectFit = "cover";
+      img.style.display = "none";
+
+      const overlay = document.createElement("div");
+      overlay.id = "profileHeroOverlay";
+      overlay.style.position = "absolute";
+      overlay.style.left = "0";
+      overlay.style.right = "0";
+      overlay.style.bottom = "0";
+      overlay.style.padding = "14px 14px 12px 14px";
+      overlay.style.background = "linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0))";
+
+      const nameAge = document.createElement("div");
+      nameAge.id = "profileHeroNameAge";
+      nameAge.style.fontSize = "20px";
+      nameAge.style.fontWeight = "800";
+      nameAge.style.color = "#fff";
+      nameAge.style.textShadow = "0 2px 10px rgba(0,0,0,0.6)";
+
+      overlay.appendChild(nameAge);
+      hero.appendChild(img);
+      hero.appendChild(overlay);
+
+      // Insert near top of profile panel (right after H2 if present)
+      const h2 = panel.querySelector("h2");
+      if (h2 && h2.parentNode){
+        h2.parentNode.insertBefore(hero, h2.nextSibling);
+      } else {
+        panel.insertBefore(hero, panel.firstChild);
+      }
+    }
+
+    // Ensure tile container exists
+    let tiles = document.getElementById("photoPreview");
+    if (!tiles){
+      tiles = document.createElement("div");
+      tiles.id = "photoPreview";
+      tiles.style.display = "grid";
+      tiles.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+      tiles.style.gap = "10px";
+      tiles.style.marginTop = "10px";
+      panel.appendChild(tiles);
+    }
+    return hero;
+  }catch(e){ return null; }
+}
+
+function setProfileHeroFromProfile(profile){
+  try{
+    ensureProfileHero();
+    const heroImg = document.getElementById("profileHeroImg");
+    const heroNameAge = document.getElementById("profileHeroNameAge");
+    const photos = Array.isArray(profile && profile.photos) ? profile.photos.map(normalizePhotoUrl).filter(Boolean) : [];
+    const primary = normalizePhotoUrl(profile && profile.primaryPhoto) || (photos.length ? photos[0] : "");
+    if (heroImg){
+      heroImg.src = primary || "";
+      heroImg.style.display = primary ? "block" : "none";
+    }
+    const name = ((profile && (profile.displayName || profile.name)) || "").trim();
+    const ageNum = (profile && profile.age !== undefined && profile.age !== null) ? Number(profile.age) : null;
+    const label = (name ? name : "Your Profile") + ((ageNum && !Number.isNaN(ageNum)) ? `, ${ageNum}` : "");
+    if (heroNameAge) heroNameAge.textContent = label;
+  }catch(e){}
+}
+
+function renderSavedPhotos(profile){
+  try{
+    ensureProfileHero();
+    const tiles = document.getElementById("photoPreview");
+    if (!tiles) return;
+
+    const photos = Array.isArray(profile && profile.photos) ? profile.photos.map(normalizePhotoUrl).filter(Boolean) : [];
+    tiles.innerHTML = "";
+    photos.slice(0,6).forEach((url, idx) => {
       const wrap = document.createElement("div");
       wrap.className = "photoThumb";
       wrap.style.position = "relative";
+      wrap.style.width = "100%";
       wrap.style.borderRadius = "14px";
       wrap.style.overflow = "hidden";
 
@@ -2453,29 +2526,26 @@ function renderSavedPhotos(photos, profile){
       img.style.objectFit = "cover";
       img.style.display = "block";
 
-      // Selection for delete (click tile)
-      wrap.addEventListener("click", () => {
-        try{
-          const key = String(url);
-          if (savedPhotoSelection && savedPhotoSelection.has(key)) savedPhotoSelection.delete(key);
-          else if (savedPhotoSelection) savedPhotoSelection.add(key);
-          img.style.border = (savedPhotoSelection && savedPhotoSelection.has(key)) ? "2px solid #fff" : "1px solid var(--border)";
-          setPhotoStatus(`${savedPhotoSelection ? savedPhotoSelection.size : 0} selected to delete.`);
-        }catch(e){}
-      });
-
-      // ★ Set as profile photo
       const star = document.createElement("button");
       star.type = "button";
-      star.className = "photoStarBtn";
       star.textContent = "★";
       star.setAttribute("aria-label", "Set as profile photo");
-      star.setAttribute("aria-pressed", (currentPrimary && currentPrimary === normalizePhotoUrl(url)) ? "true" : "false");
+      star.style.position = "absolute";
+      star.style.top = "8px";
+      star.style.right = "8px";
+      star.style.zIndex = "5";
+      star.style.border = "1px solid rgba(255,255,255,0.35)";
+      star.style.background = "rgba(0,0,0,0.45)";
+      star.style.color = "#fff";
+      star.style.borderRadius = "999px";
+      star.style.padding = "6px 8px";
+      star.style.fontSize = "12px";
+      star.style.cursor = "pointer";
+
       star.addEventListener("click", async (ev) => {
-        ev.preventDefault();
-        ev.stopPropagation();
+        ev.preventDefault(); ev.stopPropagation();
         try{
-          const idToken = storage.idToken || localStorage.getItem("ff_idToken") || "";
+          const idToken = (storage && storage.idToken) || localStorage.getItem("ff_idToken") || "";
           if (!idToken) return;
           const resp = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
             method: "POST",
@@ -2484,67 +2554,20 @@ function renderSavedPhotos(photos, profile){
           });
           const data = await resp.json().catch(()=>null);
           if (!resp.ok || !data || data.ok !== true) return;
-          // Update local hero
-          try{ setProfileHeroFromProfile((data.profile) || profile || {}); }catch(e){}
-          // Re-hydrate to reflect persisted primary
-          try{ await hydrateProfileFromServer(); }catch(e){}
+          // Update hero immediately from server
+          try{
+            if (data.profile) setProfileHeroFromProfile(data.profile);
+          }catch(e){}
         }catch(e){}
       });
 
       wrap.appendChild(img);
       wrap.appendChild(star);
-      photoPreviewEl.appendChild(wrap);
+      tiles.appendChild(wrap);
     });
+
+    // Default hero image
+    setProfileHeroFromProfile(profile || {});
   }catch(e){}
 }
 
-
-
-
-
-function renderSavedPhotos(photos){
-  try{
-    const list = Array.isArray(photos) ? photos.map(normalizePhotoUrl).filter(Boolean) : [];
-    if (!photoPreviewEl) return;
-    photoPreviewEl.innerHTML = "";
-    if (list.length === 0) return;
-
-    list.slice(0,6).forEach((url, idx) => {
-      const wrap = document.createElement("div");
-      wrap.className = "photoThumb";
-      wrap.style.position = "relative";
-      wrap.style.borderRadius = "14px";
-      wrap.style.overflow = "hidden";
-
-      const img = document.createElement("img");
-      img.src = String(url);
-      img.alt = `Photo ${idx+1}`;
-      img.loading = "lazy";
-      img.style.width = "100%";
-      img.style.height = "110px";
-      img.style.objectFit = "cover";
-      img.style.display = "block";
-
-      const star = document.createElement("button");
-      star.type = "button";
-      star.className = "photoStarBtn";
-      star.textContent = "★";
-      star.setAttribute("aria-label", "Set as profile photo");
-      star.addEventListener("click", async (ev) => {
-        ev.preventDefault(); ev.stopPropagation();
-        const idToken = (storage && storage.idToken) || localStorage.getItem("ff_idToken") || "";
-        if (!idToken) return;
-        await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
-          body: JSON.stringify({ primaryPhoto: String(url) })
-        });
-        try{ await hydrateProfileFromServer(); }catch(e){}
-      });
-
-      wrap.appendChild(img);
-      wrap.appendChild(star);
-      photoPreviewEl.appendChild(wrap);
-    });
-  }catch(e){}
-}
