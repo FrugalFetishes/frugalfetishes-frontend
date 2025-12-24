@@ -546,22 +546,6 @@ function setProfileStatus(msg) {
   if (profileStatusEl) setStatus(profileStatusEl, msg);
 }
 
-
-function clearProfileForm() {
-  if (profileDisplayNameEl) profileDisplayNameEl.value = "";
-  if (profileAgeEl) profileAgeEl.value = "";
-  if (profileCityEl) profileCityEl.value = "";
-  if (profileInterestsEl) profileInterestsEl.value = "";
-  if (profileLatEl) profileLatEl.value = "";
-  if (profileLngEl) profileLngEl.value = "";
-  if (typeof selectedInterests !== "undefined") selectedInterests = new Set();
-  if (interestChipsEl) {
-    interestChipsEl.querySelectorAll(".chip").forEach((btn) => btn.classList.remove("isSelected"));
-  }
-  if (profileBioEl) profileBioEl.value = "";
-  if (bioCountEl) bioCountEl.textContent = "0";
-  setProfileStatus("");
-}
 // Persist draft inputs locally so refresh doesn't wipe them.
 function draftKeyForUid(uid) {
   return `ff_profileDraft_v1_${uid || "anon"}`;
@@ -571,6 +555,19 @@ function loadDraft(uid) {
   const key = draftKeyForUid(uid);
   try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return {}; }
 }
+
+function clearProfileForm() {
+  if (profileDisplayNameEl) profileDisplayNameEl.value = "";
+  if (profileAgeEl) profileAgeEl.value = "";
+  if (profileCityEl) profileCityEl.value = "";
+  if (profileInterestsEl) profileInterestsEl.value = "";
+  if (profileLatEl) profileLatEl.value = "";
+  if (profileLngEl) profileLngEl.value = "";
+  if (profileBioEl) profileBioEl.value = "";
+  if (bioCountEl) bioCountEl.textContent = "0";
+  if (typeof setProfileStatus === "function") setProfileStatus("");
+}
+
 function saveDraft(uid, d) {
   const key = draftKeyForUid(uid);
   try { localStorage.setItem(key, JSON.stringify(d || {})); } catch {}
@@ -586,6 +583,7 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
+  if (!uid) return;
   saveDraft(uid, d);
 }
 
@@ -1568,8 +1566,8 @@ btnLogout.addEventListener("click", () => {
   if (threadStatusEl) setStatus(threadStatusEl, "");
   if (threadMetaEl) setStatus(threadMetaEl, "");
   if (filterStatusEl) setStatus(filterStatusEl, "");
-    clearProfileForm();
-clearError();
+  clearError();
+  clearProfileForm();
   setAuthedUI();
 initInterestChips();
 initBioCounter();
