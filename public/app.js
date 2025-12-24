@@ -561,6 +561,11 @@ function saveDraft(uid, d) {
 }
 function captureDraft() {
   const uid = getUidFromIdToken(storage.idToken);
+  // Cleanup legacy broken draft keys (pre-UID saveDraft bug)
+  try {
+    localStorage.removeItem("ff_profileDraft_v1_[object Object]");
+    localStorage.removeItem("ff_profileDraft_v1_anon");
+  } catch {}
 
   const d = {
     displayName: profileDisplayNameEl ? profileDisplayNameEl.value : "",
@@ -570,8 +575,9 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
-  saveDraft(d);
+  saveDraft(uid, d);
 }
+
 
 
 function syncInterestsHiddenInput() {
