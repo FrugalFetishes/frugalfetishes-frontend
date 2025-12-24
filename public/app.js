@@ -197,8 +197,6 @@ const publicProfileCache = new Map(); // uid -> { displayName, photoUrl }
 let deckIndex = 0;
 let deckItems = [];
 let currentProfile = null;
-let selectedPrimaryPhoto = "";
-
 let isExpanded = false;
 let actionLocked = false;
 let touchStart = null;
@@ -380,7 +378,7 @@ async function exchangeCustomTokenForIdToken(customToken) {
   const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${encodeURIComponent(FIREBASE_WEB_API_KEY)}`;
   return jsonFetch(url, {
     method: "POST",
-    body: JSON.stringify({token: customToken, returnSecureToken: true})
+    body: JSON.stringify({ token: customToken, returnSecureToken: true })
   });
 }
 
@@ -584,51 +582,7 @@ async function hydrateProfileFromServer() {
           setPhotoStatus(savedPhotoSelection.size ? `${savedPhotoSelection.size} selected to delete.` : "");
         });
 
-        // Set as profile photo
-          const star = document.createElement("button");
-          star.type = "button";
-          star.className = "photoStarBtn";
-          star.textContent = "★";
-          star.setAttribute("aria-label", "Set as profile photo");
-          const isPrimary = normalizePhotoUrl(selectedPrimaryPhoto) === normalizePhotoUrl(url);
-          star.setAttribute("aria-pressed", isPrimary ? "true" : "false");
-          star.addEventListener("click", async (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            try{
-              const idToken = storage.idToken || localStorage.getItem("ff_idToken") || "";
-              if (!idToken) return;
-              selectedPrimaryPhoto = String(url);
-              if (currentProfile) currentProfile.primaryPhoto = String(url);
-
-              const resp = selectedPrimaryPhoto = String(url);
-              await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
-                body: JSON.stringify({ primaryPhoto: String(url) })
-              });
-              const data = await resp.json().catch(() => null);
-              if (!resp.ok || !data || data.ok !== true) {
-                throw new Error((data && data.error) ? data.error : `Failed (${resp.status})`);
-              }
-              // Rehydrate so it sticks across refresh/logout
-              try{ await hydrateProfileFromServer(); }catch(e){}
-            }catch(e){}
-          });
-
-          wrap.appendChild(img);
-          wrap.appendChild(star);
-
-        // Primary badge
-        const isPrimaryNow = normalizePhotoUrl(selectedPrimaryPhoto || ((currentProfile && currentProfile.primaryPhoto) || "")) === normalizePhotoUrl(url);
-        if (isPrimaryNow) {
-          const pb = document.createElement("div");
-          pb.className = "photoBadge";
-          pb.textContent = "Profile";
-          wrap.appendChild(pb);
-        }
-
-
+        wrap.appendChild(img);
         wrap.appendChild(badge);
         photoPreviewEl.appendChild(wrap);
       });
@@ -806,50 +760,7 @@ function renderPhotoPreviews() {
       setPhotoStatus(`${selectedPhotos.length} selected.`);
     });
 
-    // Set as profile photo
-          const star = document.createElement("button");
-          star.type = "button";
-          star.className = "photoStarBtn";
-          star.textContent = "★";
-          star.setAttribute("aria-label", "Set as profile photo");
-          const isPrimary = normalizePhotoUrl(selectedPrimaryPhoto) === normalizePhotoUrl(url);
-          star.setAttribute("aria-pressed", isPrimary ? "true" : "false");
-          star.addEventListener("click", async (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            try{
-              const idToken = storage.idToken || localStorage.getItem("ff_idToken") || "";
-              if (!idToken) return;
-              selectedPrimaryPhoto = String(url);
-              if (currentProfile) currentProfile.primaryPhoto = String(url);
-
-              const resp = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
-                body: JSON.stringify({ primaryPhoto: String(url) })
-              });
-              const data = await resp.json().catch(() => null);
-              if (!resp.ok || !data || data.ok !== true) {
-                throw new Error((data && data.error) ? data.error : `Failed (${resp.status})`);
-              }
-              // Rehydrate so it sticks across refresh/logout
-              try{ await hydrateProfileFromServer(); }catch(e){}
-            }catch(e){}
-          });
-
-          wrap.appendChild(img);
-          wrap.appendChild(star);
-
-        // Primary badge
-        const isPrimaryNow = normalizePhotoUrl(selectedPrimaryPhoto || ((currentProfile && currentProfile.primaryPhoto) || "")) === normalizePhotoUrl(url);
-        if (isPrimaryNow) {
-          const pb = document.createElement("div");
-          pb.className = "photoBadge";
-          pb.textContent = "Profile";
-          wrap.appendChild(pb);
-        }
-
-
+    wrap.appendChild(img);
     wrap.appendChild(rm);
     photoPreviewEl.appendChild(wrap);
   });
@@ -1860,7 +1771,7 @@ initBioCounter();
       if (Object.keys(payload).length === 0) throw new Error("Nothing to save. Fill at least one field.");
 
       setProfileStatus("Saving profile...");
-      await updateProfile(Object.assign(payload, (selectedPrimaryPhoto ? { primaryPhoto: selectedPrimaryPhoto } : {}))\);
+      await updateProfile(payload);
       setProfileStatus("Saved ✅ (lastActive/profileUpdated set server-side)");
     } catch (e) {
       setProfileStatus("");
@@ -1976,50 +1887,7 @@ initBioCounter();
           badge.className = "photoBadge";
           badge.textContent = "Tap to select";
 
-          // Set as profile photo
-          const star = document.createElement("button");
-          star.type = "button";
-          star.className = "photoStarBtn";
-          star.textContent = "★";
-          star.setAttribute("aria-label", "Set as profile photo");
-          const isPrimary = normalizePhotoUrl(selectedPrimaryPhoto) === normalizePhotoUrl(url);
-          star.setAttribute("aria-pressed", isPrimary ? "true" : "false");
-          star.addEventListener("click", async (ev) => {
-            ev.preventDefault();
-            ev.stopPropagation();
-            try{
-              const idToken = storage.idToken || localStorage.getItem("ff_idToken") || "";
-              if (!idToken) return;
-              selectedPrimaryPhoto = String(url);
-              if (currentProfile) currentProfile.primaryPhoto = String(url);
-
-              const resp = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
-                body: JSON.stringify({ primaryPhoto: String(url) })
-              });
-              const data = await resp.json().catch(() => null);
-              if (!resp.ok || !data || data.ok !== true) {
-                throw new Error((data && data.error) ? data.error : `Failed (${resp.status})`);
-              }
-              // Rehydrate so it sticks across refresh/logout
-              try{ await hydrateProfileFromServer(); }catch(e){}
-            }catch(e){}
-          });
-
           wrap.appendChild(img);
-          wrap.appendChild(star);
-
-        // Primary badge
-        const isPrimaryNow = normalizePhotoUrl(selectedPrimaryPhoto || ((currentProfile && currentProfile.primaryPhoto) || "")) === normalizePhotoUrl(url);
-        if (isPrimaryNow) {
-          const pb = document.createElement("div");
-          pb.className = "photoBadge";
-          pb.textContent = "Profile";
-          wrap.appendChild(pb);
-        }
-
-
           wrap.appendChild(badge);
 
           wrap.addEventListener("click", () => {
@@ -2225,14 +2093,6 @@ function setActiveTab(tabName) {
   // Hide dev feed list by default unless dev tab
   if (feedListEl) {
     feedListEl.hidden = tabName !== "dev";
-  }
-
-  // Ensure Profile UI (including photo tiles) hydrates when opening Profile tab
-  if (tabName === "profile") {
-    try {
-      // Defer to allow panel to unhide first
-      setTimeout(() => { try { hydrateProfileFromServer(); } catch {} }, 0);
-    } catch {}
   }
 }
 
@@ -2544,3 +2404,52 @@ if (btnSaveProfileLiveEl) {
     await saveProfileFlow();
   });
 }
+
+
+
+function renderSavedPhotos(photos){
+  try{
+    const list = Array.isArray(photos) ? photos.map(normalizePhotoUrl).filter(Boolean) : [];
+    if (!photoPreviewEl) return;
+    photoPreviewEl.innerHTML = "";
+    if (list.length === 0) return;
+
+    list.slice(0,6).forEach((url, idx) => {
+      const wrap = document.createElement("div");
+      wrap.className = "photoThumb";
+      wrap.style.position = "relative";
+      wrap.style.borderRadius = "14px";
+      wrap.style.overflow = "hidden";
+
+      const img = document.createElement("img");
+      img.src = String(url);
+      img.alt = `Photo ${idx+1}`;
+      img.loading = "lazy";
+      img.style.width = "100%";
+      img.style.height = "110px";
+      img.style.objectFit = "cover";
+      img.style.display = "block";
+
+      wrap.appendChild(img);
+      photoPreviewEl.appendChild(wrap);
+    });
+  }catch(e){}
+}
+
+
+
+
+// Ensure profile photos render whenever user opens Profile
+(function bindProfileRefresh(){
+  const candidates = ["navProfile","tabProfile","btnProfile","profileTab"];
+  for (const id of candidates){
+    const el = document.getElementById(id);
+    if (el){
+      el.addEventListener("click", () => {
+        try{ hydrateProfileFromServer(); }catch(e){}
+      });
+      return;
+    }
+  }
+})();
+
