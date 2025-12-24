@@ -495,20 +495,11 @@ async function hydrateProfileFromServer() {
     // Photos: prefer profile.photos, fallback to user.photos
     const photos = (profile && Array.isArray(profile.photos) ? profile.photos :
                    (resp.user && Array.isArray(resp.user.photos) ? resp.user.photos : []));
-    if (Array.isArray(photos) && photoPreviewEl) {
-      // Render previews
-      photoPreviewEl.innerHTML = "";
-      photos.slice(0, 6).forEach((src, idx) => {
-        const img = document.createElement("img");
-        img.src = String(src);
-        img.alt = `Photo ${idx + 1}`;
-        img.loading = "lazy";
-        img.style.width = "100%";
-        img.style.height = "auto";
-        img.style.borderRadius = "12px";
-        img.style.border = "1px solid var(--border)";
-        photoPreviewEl.appendChild(img);
-      });
+    if (Array.isArray(photos)) {
+      selectedPhotos = photos.slice(0, 6).map(s => String(s));
+      selectedPhotoIdxs = new Set();
+      renderPhotoPreviews();
+      if (selectedPhotos.length) setPhotoStatus(`${selectedPhotos.length} saved photo${selectedPhotos.length === 1 ? "" : "s"} loaded.`);
     }
 
 
@@ -650,6 +641,7 @@ function initBioCounter() {
 
 // Photo upload (MVP): store small data URLs in users/{uid}.photos[]
 let selectedPhotos = []; // data URLs
+let selectedPhotoIdxs = new Set(); // indices in selectedPhotos selected for deletion
 
 function setPhotoStatus(msg) {
   if (photoStatusEl) setStatus(photoStatusEl, msg);
@@ -663,6 +655,13 @@ function renderPhotoPreviews() {
   selectedPhotos.forEach((src, idx) => {
     const wrap = document.createElement("div");
     wrap.className = "photoItem";
+    // Toggle selection for deletion
+    if (selectedPhotoIdxs.has(idx)) wrap.classList.add("selected");
+    wrap.addEventListener("click", () => {
+      if (selectedPhotoIdxs.has(idx)) selectedPhotoIdxs.delete(idx);
+      else selectedPhotoIdxs.add(idx);
+      renderPhotoPreviews();
+    });
 
     const img = document.createElement("img");
     img.src = src;
@@ -1647,57 +1646,41 @@ initBioCounter();
     if (locationStatusEl) locationStatusEl.textContent = "Location cleared.";
   });
 
-  btnSaveProfile.addEventListener("click", async () => {
-  const photos = document.querySelectorAll(".photoThumb img");
-  if (!photos || photos.length === 0) {
-    alert("Please add at least one photo to continue.");
-    return;
-  }
-
-    clearError();
-    btnSaveProfile.disabled = true;
+  // Ensure a Save Profile button exists (older HTML builds may not include it)
+  const saveBtn = (btnSaveProfile || (() => {
     try {
-      const payload = {};
-      const dn = profileDisplayNameEl ? profileDisplayNameEl.value.trim() : "";
-      const city = profileCityEl ? profileCityEl.value.trim() : "";
-      const ageRaw = profileAgeEl ? profileAgeEl.value : "";
-      syncInterestsHiddenInput();
-      const interestsRaw = profileInterestsEl ? profileInterestsEl.value : "";
-      const latRaw = profileLatEl ? profileLatEl.value : "";
-      const lngRaw = profileLngEl ? profileLngEl.value : "";
+      const b = document.createElement("button");
+      b.id = "btnSaveProfile";
+      b.type = "button";
+      b.className = "btn";
+      b.textContent = "Save Profile";
+      // Try to place it near the profile status line if possible
+      const status = profileStatusEl || document.getElementById("profileStatus");
+      if (status && status.parentElement) status.parentElement.insertBefore(b, status);
+      else document.body.appendChild(b);
+      return b;
+    } catch { return null; }
+  })());
 
-      if (dn) payload.displayName = dn;
-      if (city) payload.city = city;
+  if (saveBtn) saveBtn.addEventListener("click", async () => {
+    clearError();
+    saveBtn.disabled = true;
+    try {
+      // Merge draft fields + photos into a single profile update
+      const payload = (typeof captureDraft === "function" ? (captureDraft() || {}) : {});
+      if (selectedPhotos && selectedPhotos.length) payload.photos = selectedPhotos.slice(0, 6);
 
-      const bio = profileBioEl ? profileBioEl.value.trim() : "";
-      if (bio) payload.bio = bio;
-
-      if (ageRaw !== "") {
-        const ageNum = Number(ageRaw);
-        if (!Number.isFinite(ageNum)) throw new Error("Age must be a number.");
-        payload.age = ageNum;
-      }
-
-      const interests = parseInterests(interestsRaw);
-      if (interests.length) payload.interests = interests;
-
-      if (latRaw !== "" || lngRaw !== "") {
-        const latNum = Number(latRaw);
-        const lngNum = Number(lngRaw);
-        if (!Number.isFinite(latNum) || !Number.isFinite(lngNum)) throw new Error("Location lat/lng must be numbers.");
-        payload.location = { lat: latNum, lng: lngNum };
-      }
-
-      if (Object.keys(payload).length === 0) throw new Error("Nothing to save. Fill at least one field.");
+      if (!payload || Object.keys(payload).length === 0) throw new Error("Nothing to save. Fill at least one field.");
 
       setProfileStatus("Saving profile...");
       await updateProfile(payload);
-      setProfileStatus("Saved ✅ (lastActive/profileUpdated set server-side)");
+      setProfileStatus("Saved ✅");
+      try { showToast("Profile saved ✅"); } catch {}
     } catch (e) {
       setProfileStatus("");
       showError(`Profile update failed: ${e.message}`);
     } finally {
-      btnSaveProfile.disabled = false;
+      saveBtn.disabled = false;
     }
   });
 
@@ -1738,10 +1721,20 @@ initBioCounter();
 
   // Photo selection handlers (safe if Photos UI isn't present)
   if (btnClearPhotos) btnClearPhotos.addEventListener("click", () => {
-    selectedPhotos = [];
-    if (photoFilesEl) photoFilesEl.value = "";
-    renderPhotoPreviews();
-    setPhotoStatus("Cleared.");
+    // Delete selected photos (or clear all if none selected)
+    if (selectedPhotoIdxs && selectedPhotoIdxs.size) {
+      const before = selectedPhotos.length;
+      selectedPhotos = selectedPhotos.filter((_, idx) => !selectedPhotoIdxs.has(idx));
+      const removed = before - selectedPhotos.length;
+      selectedPhotoIdxs = new Set();
+      renderPhotoPreviews();
+      setPhotoStatus(`Deleted ${removed} photo${removed === 1 ? "" : "s"} ✅`);
+    } else {
+      selectedPhotos = [];
+      if (photoFilesEl) photoFilesEl.value = "";
+      renderPhotoPreviews();
+      setPhotoStatus("Cleared.");
+    }
   });
 
   if (photoFilesEl) photoFilesEl.addEventListener("change", async () => {
@@ -2154,9 +2147,3 @@ function isValidEmail(email) {
   // simple, practical validation
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || ""));
 }
-
-
-
-
-// BOOTSTRAP FIX
-window.addEventListener('DOMContentLoaded', ()=>{ try{ if (typeof init==='function') init(); }catch(e){ console.error('init error', e);} });
