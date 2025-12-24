@@ -338,7 +338,7 @@ function installSaveProfileHandler() {
         if (Array.isArray(selectedPhotos) && selectedPhotos.length > 0) {
           const btnSavePhotos = $("btnSavePhotos");
           if (btnSavePhotos && typeof btnSavePhotos.click === "function") {
-            btnSavePhotos.click();
+            await ffSavePhotosFlow();
           }
         }
       } catch (e) {}
@@ -1975,9 +1975,10 @@ initBioCounter();
     }
   });
 
-if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
-    
-    try {
+
+// Shared Save Photos flow so Save Profile can invoke it reliably
+async function ffSavePhotosFlow() {
+try {
       setPhotoStatus("Saving photos…");
       const idToken = await getValidIdToken();
 
@@ -1987,8 +1988,13 @@ if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
         const me = await jsonFetch(`${BACKEND_BASE_URL}/api/profile/me`, {
           method: "GET",
           headers: { "Authorization": `Bearer ${idToken}` },
-        });
-        existing = (me && me.profile && Array.isArray(me.profile.photos)) ? me.profile.photos : [];
+}
+
+  // Save Photos button
+  if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
+    await ffSavePhotosFlow();
+  });
+existing = (me && me.profile && Array.isArray(me.profile.photos)) ? me.profile.photos : [];
       } catch (e) {
         existing = [];
       }
