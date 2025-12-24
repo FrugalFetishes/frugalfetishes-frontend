@@ -1878,10 +1878,7 @@ initBioCounter();
     if (btn1000) btn1000.addEventListener("click", () => doAdd(1000));
   } catch (e) {
     // ignore
-  
-  // After a hard refresh, token may already be present; hydrate profile so saved photos render.
-  try { if (storage && storage.idToken) hydrateProfileFromServer(); } catch (e) {}
-}
+  }
 })();
 
 })();
@@ -1900,7 +1897,12 @@ function setActiveTab(tabName) {
     else p.hidden = true;
   });
 
-  // Hide dev feed list by default unless dev tab
+  
+  // When opening Profile tab, hydrate from server so saved photos/fields render after refresh.
+  if (tabName === "profile") {
+    try { hydrateProfileFromServer(); } catch (e) {}
+  }
+// Hide dev feed list by default unless dev tab
   if (feedListEl) {
     feedListEl.hidden = tabName !== "dev";
   }
