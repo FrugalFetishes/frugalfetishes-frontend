@@ -82,6 +82,7 @@ let selectedInterests = new Set();
 
 
 const photoFilesEl = $("photoFiles");
+const btnSaveProfile = $("btnSaveProfile");
 const btnSavePhotos = $("btnSavePhotos");
 const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
@@ -552,12 +553,10 @@ function draftKeyForUid(uid) {
 }
 
 function loadDraft(uid) {
-  if (!uid) return {};
   const key = draftKeyForUid(uid);
   try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return {}; }
 }
 function saveDraft(uid, d) {
-  if (!uid) return;
   const key = draftKeyForUid(uid);
   try { localStorage.setItem(key, JSON.stringify(d || {})); } catch {}
 }
@@ -572,6 +571,7 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
+  if (!uid) return;
   saveDraft(uid, d);
 }
 
@@ -620,6 +620,61 @@ function initInterestChips() {
   if (btnAddInterest && profileInterestCustomEl) {
     btnAddInterest.addEventListener("click", () => {
       const v = profileInterestCustomEl.value.trim().toLowerCase();
+
+
+// Manual save (user-requested): persists Profile fields to Firestore via backend.
+// DOES NOT change OTP/auth flow; only runs when user is already signed in.
+if (btnSaveProfile) {
+  btnSaveProfile.addEventListener("click", async () => {
+    try {
+      setProfileStatus("Saving…");
+      const displayName = (profileDisplayNameEl ? profileDisplayNameEl.value : "").trim();
+      const age = Number(profileAgeEl ? profileAgeEl.value : NaN);
+      const city = (profileCityEl ? profileCityEl.value : "").trim();
+      const interests = parseInterests(profileInterestsEl ? profileInterestsEl.value : "");
+      const lat = Number(profileLatEl ? profileLatEl.value : NaN);
+      const lng = Number(profileLngEl ? profileLngEl.value : NaN);
+      const bio = (profileBioEl ? profileBioEl.value : "").trim();
+
+      const fields = {
+        displayName,
+        age: Number.isFinite(age) ? age : undefined,
+        city,
+        interests,
+        location: (Number.isFinite(lat) && Number.isFinite(lng)) ? { lat, lng } : undefined,
+        bio
+      };
+
+      // Remove undefined keys (keeps payload clean)
+      Object.keys(fields).forEach((k) => (fields[k] === undefined ? delete fields[k] : null));
+
+      const resp = await updateProfile(fields);
+      if (resp && resp.ok === false) {
+        setProfileStatus(resp.error ? `Save failed: ${resp.error}` : "Save failed.");
+        return;
+      }
+
+      // Also store a per-UID local draft as a convenience (refresh-safe)
+      const uid = getUidFromIdToken(storage.idToken);
+      if (uid) {
+        saveDraft(uid, {
+          displayName,
+          age: (profileAgeEl ? profileAgeEl.value : ""),
+          city,
+          interests: interests.join(", "),
+          lat: (profileLatEl ? profileLatEl.value : ""),
+          lng: (profileLngEl ? profileLngEl.value : ""),
+          bio
+        });
+      }
+
+      setProfileStatus("Saved ✅");
+    } catch (e) {
+      console.error("Save profile failed:", e);
+      setProfileStatus("Save failed.");
+    }
+  });
+}
       if (!v) return;
       selectedInterests.add(v);
       profileInterestCustomEl.value = "";
@@ -1555,25 +1610,6 @@ btnLogout.addEventListener("click", () => {
   if (threadMetaEl) setStatus(threadMetaEl, "");
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
-  // Clear profile fields + any anonymous/shared draft so next login doesn't inherit previous user's values
-  try {
-    if (profileDisplayNameEl) profileDisplayNameEl.value = "";
-    if (profileAgeEl) profileAgeEl.value = "";
-    if (profileCityEl) profileCityEl.value = "";
-    if (profileInterestsEl) profileInterestsEl.value = "";
-    if (profileLatEl) profileLatEl.value = "";
-    if (profileLngEl) profileLngEl.value = "";
-    if (profileBioEl) profileBioEl.value = "";
-    selectedInterests = new Set();
-    // Remove any leftover anon/shared profile draft keys
-    for (let i = localStorage.length - 1; i >= 0; i--) {
-      const k = localStorage.key(i);
-      if (!k) continue;
-      if (k.startsWith("ff_profileDraft_v1_") && (k.endsWith("_anon") || k.includes("[object Object]"))) {
-        localStorage.removeItem(k);
-      }
-    }
-  } catch {}
   setAuthedUI();
 initInterestChips();
 initBioCounter();
