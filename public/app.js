@@ -19,6 +19,25 @@ function normalizePhotoUrl(p) {
 }
 
 
+function setProfileHeroFromProfile(profile){
+  try{
+    if (!profile) return;
+    const photos = Array.isArray(profile.photos) ? profile.photos.map(normalizePhotoUrl).filter(Boolean) : [];
+    const primary = normalizePhotoUrl(profile.primaryPhoto) || (photos.length ? photos[0] : "");
+    if (profileHeroImgEl){
+      profileHeroImgEl.src = primary || "";
+      profileHeroImgEl.style.display = primary ? "block" : "none";
+    }
+    const name = (profile.displayName || profile.name || "").trim();
+    const ageNum = (typeof profile.age === "number") ? profile.age : (profile.age ? Number(profile.age) : null);
+    const label = (name ? name : "Your Profile") + ((ageNum && !Number.isNaN(ageNum)) ? `, ${ageNum}` : "");
+    if (profileHeroNameAgeEl) profileHeroNameAgeEl.textContent = label;
+  }catch(e){}
+}
+
+
+
+
 async function refreshDevCreditsBalance() {
   try {
     if (!storage || !storage.idToken) { setDevCreditsBalance(""); return; }
@@ -112,6 +131,9 @@ try { if (btnSavePhotos) btnSavePhotos.style.display = "none"; } catch (e) {}
 const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
 const photoPreviewEl = $("photoPreview");
+const profileHeroImgEl = $("profileHeroImg");
+const profileHeroNameAgeEl = $("profileHeroNameAge");
+
 
 const btnDeleteSelectedPhotos = (function ensureDeleteSelectedPhotosBtn(){
   // Try to find existing button
@@ -2407,12 +2429,14 @@ if (btnSaveProfileLiveEl) {
 
 
 
-function renderSavedPhotos(photos){
+function renderSavedPhotos(photos, profile){
   try{
     const list = Array.isArray(photos) ? photos.map(normalizePhotoUrl).filter(Boolean) : [];
     if (!photoPreviewEl) return;
     photoPreviewEl.innerHTML = "";
     if (list.length === 0) return;
+
+    const currentPrimary = profile ? normalizePhotoUrl(profile.primaryPhoto) : "";
 
     list.slice(0,6).forEach((url, idx) => {
       const wrap = document.createElement("div");
@@ -2430,26 +2454,48 @@ function renderSavedPhotos(photos){
       img.style.objectFit = "cover";
       img.style.display = "block";
 
+      // Selection for delete (click tile)
+      wrap.addEventListener("click", () => {
+        try{
+          const key = String(url);
+          if (savedPhotoSelection && savedPhotoSelection.has(key)) savedPhotoSelection.delete(key);
+          else if (savedPhotoSelection) savedPhotoSelection.add(key);
+          img.style.border = (savedPhotoSelection && savedPhotoSelection.has(key)) ? "2px solid #fff" : "1px solid var(--border)";
+          setPhotoStatus(`${savedPhotoSelection ? savedPhotoSelection.size : 0} selected to delete.`);
+        }catch(e){}
+      });
+
+      // ★ Set as profile photo
+      const star = document.createElement("button");
+      star.type = "button";
+      star.className = "photoStarBtn";
+      star.textContent = "★";
+      star.setAttribute("aria-label", "Set as profile photo");
+      star.setAttribute("aria-pressed", (currentPrimary && currentPrimary === normalizePhotoUrl(url)) ? "true" : "false");
+      star.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        try{
+          const idToken = storage.idToken || localStorage.getItem("ff_idToken") || "";
+          if (!idToken) return;
+          const resp = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
+            body: JSON.stringify({ primaryPhoto: String(url) })
+          });
+          const data = await resp.json().catch(()=>null);
+          if (!resp.ok || !data || data.ok !== true) return;
+          // Update local hero
+          try{ setProfileHeroFromProfile((data.profile) || profile || {}); }catch(e){}
+          // Re-hydrate to reflect persisted primary
+          try{ await hydrateProfileFromServer(); }catch(e){}
+        }catch(e){}
+      });
+
       wrap.appendChild(img);
+      wrap.appendChild(star);
       photoPreviewEl.appendChild(wrap);
     });
   }catch(e){}
 }
-
-
-
-
-// Ensure profile photos render whenever user opens Profile
-(function bindProfileRefresh(){
-  const candidates = ["navProfile","tabProfile","btnProfile","profileTab"];
-  for (const id of candidates){
-    const el = document.getElementById(id);
-    if (el){
-      el.addEventListener("click", () => {
-        try{ hydrateProfileFromServer(); }catch(e){}
-      });
-      return;
-    }
-  }
-})();
 
