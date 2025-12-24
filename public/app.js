@@ -82,7 +82,6 @@ let selectedInterests = new Set();
 
 
 const photoFilesEl = $("photoFiles");
-const btnSaveProfile = $("btnSaveProfile");
 const btnSavePhotos = $("btnSavePhotos");
 const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
@@ -571,8 +570,7 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
-  if (!uid) return;
-  saveDraft(uid, d);
+  saveDraft(d);
 }
 
 
@@ -620,61 +618,6 @@ function initInterestChips() {
   if (btnAddInterest && profileInterestCustomEl) {
     btnAddInterest.addEventListener("click", () => {
       const v = profileInterestCustomEl.value.trim().toLowerCase();
-
-
-// Manual save (user-requested): persists Profile fields to Firestore via backend.
-// DOES NOT change OTP/auth flow; only runs when user is already signed in.
-if (btnSaveProfile) {
-  btnSaveProfile.addEventListener("click", async () => {
-    try {
-      setProfileStatus("Saving…");
-      const displayName = (profileDisplayNameEl ? profileDisplayNameEl.value : "").trim();
-      const age = Number(profileAgeEl ? profileAgeEl.value : NaN);
-      const city = (profileCityEl ? profileCityEl.value : "").trim();
-      const interests = parseInterests(profileInterestsEl ? profileInterestsEl.value : "");
-      const lat = Number(profileLatEl ? profileLatEl.value : NaN);
-      const lng = Number(profileLngEl ? profileLngEl.value : NaN);
-      const bio = (profileBioEl ? profileBioEl.value : "").trim();
-
-      const fields = {
-        displayName,
-        age: Number.isFinite(age) ? age : undefined,
-        city,
-        interests,
-        location: (Number.isFinite(lat) && Number.isFinite(lng)) ? { lat, lng } : undefined,
-        bio
-      };
-
-      // Remove undefined keys (keeps payload clean)
-      Object.keys(fields).forEach((k) => (fields[k] === undefined ? delete fields[k] : null));
-
-      const resp = await updateProfile(fields);
-      if (resp && resp.ok === false) {
-        setProfileStatus(resp.error ? `Save failed: ${resp.error}` : "Save failed.");
-        return;
-      }
-
-      // Also store a per-UID local draft as a convenience (refresh-safe)
-      const uid = getUidFromIdToken(storage.idToken);
-      if (uid) {
-        saveDraft(uid, {
-          displayName,
-          age: (profileAgeEl ? profileAgeEl.value : ""),
-          city,
-          interests: interests.join(", "),
-          lat: (profileLatEl ? profileLatEl.value : ""),
-          lng: (profileLngEl ? profileLngEl.value : ""),
-          bio
-        });
-      }
-
-      setProfileStatus("Saved ✅");
-    } catch (e) {
-      console.error("Save profile failed:", e);
-      setProfileStatus("Save failed.");
-    }
-  });
-}
       if (!v) return;
       selectedInterests.add(v);
       profileInterestCustomEl.value = "";
