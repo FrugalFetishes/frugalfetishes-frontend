@@ -2115,7 +2115,12 @@ function setActiveTab(tabName) {
   if (feedListEl) {
     feedListEl.hidden = tabName !== "dev";
   }
+
+  if (tabName === "profile") {
+    try { hydrateProfileFromServer(); } catch (e) {}
+  }
 }
+
 
 // ====== Discover Deck ======
 function firstPhotoUrl(p) {
