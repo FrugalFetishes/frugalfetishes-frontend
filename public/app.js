@@ -1536,10 +1536,6 @@ if (btnSendMessage) {
 
 
 btnLogout.addEventListener("click", () => {
-  // LOGOUT CONFIRMATION (UI only — does not touch OTP/auth flow)
-  try { if (typeof showToast === "function") showToast("You have been logged out."); } catch (e) {}
-  if (otpEl) otpEl.value = "";
-
   storage.idToken = null;
   storage.refreshToken = null;
   storage.idTokenExpiresAt = 0;
@@ -1558,6 +1554,11 @@ btnLogout.addEventListener("click", () => {
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
+  // LOGOUT CONFIRMATION (UI only; does not touch OTP/auth flow)
+  try { showToast("You have been logged out."); } catch (e) {}
+  try { if (authStatusEl) setStatus(authStatusEl, "You have been logged out."); } catch (e) {}
+  try { if (otpEl) otpEl.value = ""; } catch (e) {}
+
 initInterestChips();
 initBioCounter();
   // Tabs
