@@ -102,6 +102,25 @@ const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
 const photoPreviewEl = $("photoPreview");
 
+const btnDeleteSelectedPhotos = (function ensureDeleteSelectedPhotosBtn(){
+  // Try to find existing button
+  let b = $("btnDeleteSelectedPhotos");
+  if (b) return b;
+
+  // Place next to Clear Selected (btnClearPhotos) if possible
+  const anchor = $("btnClearPhotos");
+  if (!anchor || !anchor.parentNode) return null;
+
+  b = document.createElement("button");
+  b.id = "btnDeleteSelectedPhotos";
+  b.className = anchor.className || "btn";
+  b.type = "button";
+  b.textContent = "Delete Selected Photos";
+  b.style.marginLeft = "8px";
+  anchor.parentNode.insertBefore(b, anchor.nextSibling);
+  return b;
+})();
+
 const filterCityEl = $("filterCity");
 const filterInterestEl = $("filterInterest");
 const btnApplyFilters = $("btnApplyFilters");
@@ -527,7 +546,8 @@ async function hydrateProfileFromServer() {
         img.alt = `Photo ${idx + 1}`;
         img.loading = "lazy";
         img.style.width = "100%";
-        img.style.height = "auto";
+        img.style.height = "120px";
+        img.style.objectFit = "cover";
         img.style.borderRadius = "12px";
         img.style.border = savedPhotoSelection.has(url) ? "2px solid #fff" : "1px solid var(--border)";
         img.style.cursor = "pointer";
@@ -1797,7 +1817,7 @@ initBioCounter();
         const ok = confirm(`Delete ${savedPhotoSelection.size} selected photo(s)?`);
         if (!ok) return;
         setPhotoStatus("Deleting...");
-        const remaining = (savedPhotosCache || []).filter(p => !savedPhotoSelection.has(p));
+        const remaining = (savedPhotosCache || []).filter(p => !savedPhotoSelection.has(String(p)));
         await updateProfile({ photos: remaining });
         await hydrateProfileFromServer();
         setPhotoStatus("Deleted ✅");
