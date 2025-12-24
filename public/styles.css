@@ -656,3 +656,5 @@ input, textarea, select{
   font-weight: 700;
 }
 .toast.hidden{ display:none; }
+
+#btnSavePhotos{display:none !important;}
