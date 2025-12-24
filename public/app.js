@@ -1,6 +1,6 @@
 
 function setDevCreditsStatus(msg) {
-  if (devCreditsStatusEl) devCreditsStatusEl.textContent = msg || ""; 
+  if (devCreditsStatusEl) devCreditsStatusEl.textContent = msg || "";
 }
 
 function setDevCreditsBalance(n) {
@@ -2621,44 +2621,75 @@ function ff_renderTiles(profile){
   const photos = Array.isArray(profile && profile.photos) ? profile.photos.map(ff_norm).filter(Boolean) : [];
   tiles.innerHTML = "";
   photos.slice(0,6).forEach((url, idx) => {
-    const wrap = document.createElement("div");
-    wrap.className = "photoThumb";
-    wrap.style.position = "relative";
-    wrap.style.width = "100%";
-    wrap.style.borderRadius = "14px";
-    wrap.style.overflow = "hidden";
+      const wrap = document.createElement("div");
+      wrap.className = "photoThumb";
+      wrap.style.position = "relative";
+      wrap.style.width = "100%";
+      wrap.style.borderRadius = "14px";
+      wrap.style.overflow = "hidden";
+      wrap.dataset.url = String(url);
 
-    const img = document.createElement("img");
-    img.src = String(url);
-    img.alt = `Photo ${idx+1}`;
-    img.loading = "lazy";
-    img.style.width = "100%";
-    img.style.height = "110px";
-    img.style.objectFit = "cover";
-    img.style.display = "block";
+      if (!window.__ff_selectedPhotos) window.__ff_selectedPhotos = new Set();
 
-    const star = document.createElement("button");
-    star.type = "button";
-    star.textContent = "★";
-    star.setAttribute("aria-label", "Set as profile photo");
-    star.style.position = "absolute";
-    star.style.top = "8px";
-    star.style.right = "8px";
-    star.style.zIndex = "9999";
-    star.style.border = "1px solid rgba(255,255,255,0.35)";
-    star.style.background = "rgba(0,0,0,0.45)";
-    star.style.color = "#fff";
-    star.style.borderRadius = "999px";
-    star.style.padding = "6px 8px";
-    star.style.fontSize = "14px";
-    star.style.lineHeight = "14px";
-    star.style.cursor = "pointer";
+      const syncSelectedUI = () => {
+        const isSel = window.__ff_selectedPhotos.has(String(url));
+        if (isSel) wrap.classList.add("selected");
+        else wrap.classList.remove("selected");
+        const lbl = document.getElementById("selectedCount") || document.getElementById("selectedToDeleteLabel");
+        if (lbl){
+          const n = window.__ff_selectedPhotos.size;
+          lbl.textContent = n ? `${n} selected to delete` : "";
+        }
+      };
 
-    star.addEventListener("click", async (ev) => {
-      ev.preventDefault(); ev.stopPropagation();
-      try{
-        await ff_setPrimaryPhoto(url);
-      }catch(e){}
+      wrap.addEventListener("click", (ev) => {
+        // clicking star should not toggle selection
+        try{
+          if (ev && ev.target && ev.target.closest && ev.target.closest("button")) return;
+        }catch(e){}
+        const key = String(url);
+        if (window.__ff_selectedPhotos.has(key)) window.__ff_selectedPhotos.delete(key);
+        else window.__ff_selectedPhotos.add(key);
+        syncSelectedUI();
+      });
+
+      const img = document.createElement("img");
+      img.src = String(url);
+      img.alt = `Photo ${idx+1}`;
+      img.loading = "lazy";
+      img.style.width = "100%";
+      img.style.height = "110px";
+      img.style.objectFit = "cover";
+      img.style.display = "block";
+
+      const star = document.createElement("button");
+      star.type = "button";
+      star.textContent = "★";
+      star.setAttribute("aria-label", "Set as profile photo");
+      star.style.position = "absolute";
+      star.style.top = "8px";
+      star.style.right = "8px";
+      star.style.zIndex = "9999";
+      star.style.border = "1px solid rgba(255,255,255,0.35)";
+      star.style.background = "rgba(0,0,0,0.45)";
+      star.style.color = "#fff";
+      star.style.borderRadius = "999px";
+      star.style.padding = "6px 8px";
+      star.style.fontSize = "14px";
+      star.style.lineHeight = "14px";
+      star.style.cursor = "pointer";
+
+      star.addEventListener("click", async (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        try{
+          await ff_setPrimaryPhoto(url);
+        }catch(e){}
+      });
+
+      wrap.appendChild(img);
+      wrap.appendChild(star);
+      tiles.appendChild(wrap);
+      syncSelectedUI();
     });
 
     wrap.appendChild(img);
@@ -2696,4 +2727,34 @@ function ff_renderTiles(profile){
 })();
 
 // -------- End Profile UI helpers --------
+
+
+
+
+/* === FF_SELECTED_FIX_START === */
+(function ff_selectedStylesOnce(){
+  if (document.getElementById("ffSelectedStyles")) return;
+  const st = document.createElement("style");
+  st.id = "ffSelectedStyles";
+  st.textContent = `
+    #photoPreview .photoThumb.selected{ outline: 3px solid rgba(255,255,255,0.75); outline-offset: -3px; }
+    #photoPreview .photoThumb.selected::after{
+      content: "✓";
+      position: absolute;
+      left: 8px;
+      top: 8px;
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      font-size: 12px;
+      color: #111;
+      background: rgba(255,255,255,0.9);
+    }
+  `;
+  document.head.appendChild(st);
+})();
+/* === FF_SELECTED_FIX_END === */
 
