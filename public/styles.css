@@ -664,7 +664,7 @@ input, textarea, select{
 }
 
 
-/* --- Profile Hero (dating-app style) --- */
+/* --- Profile Hero (dating-app style, mobile-first) --- */
 .profileHero{
   position: relative;
   width: 100%;
@@ -672,7 +672,7 @@ input, textarea, select{
   border-radius: 18px;
   overflow: hidden;
   border: 1px solid var(--border);
-  background: rgba(0,0,0,0.18);
+  background: rgba(0,0,0,0.25);
   margin: 12px 0 14px 0;
 }
 .profileHeroImg{
@@ -684,12 +684,113 @@ input, textarea, select{
 .profileHeroOverlay{
   position: absolute;
   left: 0; right: 0; bottom: 0;
-  padding: 14px;
-  background: linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0));
+  padding: 14px 14px 12px 14px;
+  background: linear-gradient(to top, rgba(0,0,0,0.75), rgba(0,0,0,0.0));
 }
 .profileHeroNameAge{
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
+  letter-spacing: 0.2px;
   color: #fff;
   text-shadow: 0 2px 10px rgba(0,0,0,0.6);
+}
+
+/* Photo tiles polish + set-as-profile */
+#photoPreview{
+  display:grid;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  gap:10px;
+  margin-top:10px;
+}
+#photoPreview .photoThumb{
+  position: relative;
+  border-radius: 14px;
+  overflow: hidden;
+}
+#photoPreview .photoThumb img{
+  width: 100%;
+  height: 120px;
+  object-fit: cover;
+  display:block;
+}
+.photoThumb .photoStarBtn{
+  position:absolute;
+  top:8px;
+  right:8px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor:pointer;
+}
+.photoThumb .photoStarBtn[aria-pressed="true"]{
+  background: rgba(255,255,255,0.15);
+  border-color: rgba(255,255,255,0.7);
+}
+.photoThumb .photoBadge{
+  position:absolute;
+  left:8px;
+  bottom:8px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  font-size: 12px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+}
+
+
+
+/* --- Minimal uniform tile sizing (non-destructive) --- */
+#photoPreview{
+  display:grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+#photoPreview .photoThumb img{
+  height: 110px;
+  width: 100%;
+  object-fit: cover;
+  object-position: center;
+}
+
+@media (min-width: 480px){
+  #photoPreview .photoThumb img{ height: 120px; }
+}
+
+
+
+/* --- Ensure photo tiles are a 3-column grid --- */
+#photoPreview{
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+#photoPreview .photoThumb{
+  position: relative;
+  width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+}
+#photoPreview .photoThumb img{
+  width: 100%;
+  height: 110px;
+  object-fit: cover;
+  display: block;
+}
+
+/* --- Star button overlay --- */
+.photoStarBtn{
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: 1px solid rgba(255,255,255,0.35);
+  background: rgba(0,0,0,0.45);
+  color: #fff;
+  border-radius: 999px;
+  padding: 6px 8px;
+  font-size: 12px;
+  cursor: pointer;
 }
