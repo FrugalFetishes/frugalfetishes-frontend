@@ -656,6 +656,3 @@ input, textarea, select{
   font-weight: 700;
 }
 .toast.hidden{ display:none; }
-
-/* Emergency: prevent app UI flashing under landing */
-#appView, #userUI, #mainApp, #tabs, #panelFeed, #panelProfile { display: none; }
