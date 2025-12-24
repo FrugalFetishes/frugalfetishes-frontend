@@ -74,39 +74,6 @@ const btnSetMiami = $("btnSetMiami");
 const btnSetOrlando = $("btnSetOrlando");
 const profileStatusEl = $("profileStatus");
 
-// Ensure a visible status area exists for Profile saves
-let profileStatusLiveEl = profileStatusEl;
-if (!profileStatusLiveEl) {
-  const profilePanel = $("panelProfile") || $("profilePanel") || document.querySelector('[data-panel="profile"]') || document.querySelector("#profile") || null;
-  const div = document.createElement("div");
-  div.id = "profileStatus";
-  div.style.marginTop = "8px";
-  div.style.opacity = "0.95";
-  div.style.fontSize = "14px";
-  div.textContent = "";
-  (profilePanel || document.body).appendChild(div);
-  profileStatusLiveEl = div;
-}
-
-// Create Save Profile button if it doesn't exist (Profile-only; no OTP/auth changes)
-let btnSaveProfileLiveEl = $("btnSaveProfile");
-if (!btnSaveProfileLiveEl) {
-  const profilePanel = $("panelProfile") || $("profilePanel") || document.querySelector('[data-panel="profile"]') || document.querySelector("#profile") || null;
-  const btn = document.createElement("button");
-  btn.id = "btnSaveProfile";
-  btn.type = "button";
-  btn.textContent = "Save Profile";
-  btn.style.marginTop = "10px";
-  btn.style.padding = "10px 14px";
-  btn.style.borderRadius = "10px";
-  btn.style.border = "1px solid rgba(255,255,255,0.25)";
-  btn.style.background = "rgba(255,255,255,0.10)";
-  btn.style.color = "inherit";
-  btn.style.cursor = "pointer";
-  (profilePanel || document.body).appendChild(btn);
-  btnSaveProfileLiveEl = btn;
-}
-
 const profileBioEl = $("profileBio");
 const bioCountEl = $("bioCount");
 const interestChipsEl = $("interestChips");
@@ -117,26 +84,6 @@ let selectedInterests = new Set();
 
 const photoFilesEl = $("photoFiles");
 const btnSavePhotos = $("btnSavePhotos");
-
-// Delete selected photos button (Profile-only)
-let btnDeleteSelectedPhotosEl = $("btnDeleteSelectedPhotos");
-if (!btnDeleteSelectedPhotosEl) {
-  const profilePanel = $("panelProfile") || $("profilePanel") || document.querySelector('[data-panel="profile"]') || document.querySelector("#profile") || null;
-  const btn = document.createElement("button");
-  btn.id = "btnDeleteSelectedPhotos";
-  btn.type = "button";
-  btn.textContent = "Delete Selected Photos";
-  btn.style.marginTop = "10px";
-  btn.style.marginLeft = "8px";
-  btn.style.padding = "10px 14px";
-  btn.style.borderRadius = "10px";
-  btn.style.border = "1px solid rgba(255,255,255,0.25)";
-  btn.style.background = "rgba(255,255,255,0.06)";
-  btn.style.color = "inherit";
-  btn.style.cursor = "pointer";
-  (profilePanel || document.body).appendChild(btn);
-  btnDeleteSelectedPhotosEl = btn;
-}
 const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
 const photoPreviewEl = $("photoPreview");
@@ -274,80 +221,6 @@ function showToast(msg){
 
 function setStatus(el, message) {
   el.textContent = message || "";
-}
-
-// Save Profile handler (event-delegated so it cannot miss the button)
-// Profile-only: uses existing /api/profile/update, does not modify OTP/auth flow.
-let ff_saveProfileHandlerInstalled = false;
-function installSaveProfileHandler() {
-  if (ff_saveProfileHandlerInstalled) return;
-  ff_saveProfileHandlerInstalled = true;
-
-  document.addEventListener("click", async (e) => {
-    const t = e && e.target;
-    if (!t || t.id !== "btnSaveProfile") return;
-
-    try {
-      if (!storage || !storage.idToken) {
-        try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, "Please sign in first."); } catch (err) {}
-        try { showToast("Please sign in first."); } catch (err) {}
-        return;
-      }
-
-      try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, "Saving…"); } catch (err) {}
-      try { showToast("Saving profile…"); } catch (err) {}
-
-      const d = (typeof captureDraft === "function" ? (captureDraft() || {}) : {});
-      const ageNum = parseInt(String(d.age || "").trim(), 10);
-      const interestsArr = String(d.interests || "")
-        .split(",")
-        .map(s => s.trim())
-        .filter(Boolean);
-
-      const payload = {
-        displayName: String(d.displayName || "").trim(),
-        city: String(d.city || "").trim(),
-        interests: interestsArr,
-      };
-      if (Number.isFinite(ageNum)) payload.age = ageNum;
-      if (d.location && typeof d.location === "object") payload.location = d.location;
-
-      const res = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${storage.idToken}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const t2 = await res.text().catch(() => "");
-        console.warn("Save Profile failed:", res.status, t2);
-        try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, `Save failed (${res.status})`); } catch (err) {}
-        try { showToast(`Save failed (${res.status})`); } catch (err) {}
-        return;
-      }
-
-      try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, "Saved ✅"); } catch (err) {}
-      try { showToast("Profile saved ✅"); } catch (err) {}
-      try { hydrateProfileFromServer(); } catch (err) {}
-    
-      // If there are staged photos selected, trigger Save Photos too.
-      try {
-        if (Array.isArray(selectedPhotos) && selectedPhotos.length > 0) {
-          const btnSavePhotos = $("btnSavePhotos");
-          if (btnSavePhotos && typeof btnSavePhotos.click === "function") {
-            await ffSavePhotosFlow();
-          }
-        }
-      } catch (e) {}
-} catch (err) {
-      console.error(err);
-      try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, "Save failed"); } catch (e2) {}
-      try { showToast("Save failed"); } catch (e2) {}
-    }
-  });
 }
 
 // ===== Feed loading UX helpers (surgical; no OTP/auth changes) =====
@@ -598,7 +471,7 @@ async function updateProfile(fields) {
   return jsonFetch(`${BACKEND_BASE_URL}/api/profile/update`, {
     method: "POST",
     headers: { "Authorization": `Bearer ${idToken}` },
-    body: fields
+    body: JSON.stringify(fields)
   });
 }
 
@@ -626,57 +499,23 @@ async function hydrateProfileFromServer() {
     if (Array.isArray(photos) && photoPreviewEl) {
       // Render previews
       photoPreviewEl.innerHTML = "";
-      // Cache saved photos and reset selection
-      savedPhotosCache = Array.isArray(photos) ? photos.slice(0, 6).map(p => String(p)) : [];
-      deletePhotoSelection = new Set();
-
       photos.slice(0, 6).forEach((src, idx) => {
-        const url = String(src);
-        const wrap = document.createElement("div");
-        wrap.style.position = "relative";
-        wrap.style.display = "inline-block";
-        wrap.style.width = "120px";
-        wrap.style.margin = "6px";
-
         const img = document.createElement("img");
-        img.src = url;
+        img.src = String(src);
         img.alt = `Photo ${idx + 1}`;
         img.loading = "lazy";
-        img.style.width = "120px";
-        img.style.height = "120px";
-        img.style.objectFit = "cover";
+        img.style.width = "100%";
+        img.style.height = "auto";
         img.style.borderRadius = "12px";
-        img.style.border = deletePhotoSelection.has(url) ? "2px solid #fff" : "1px solid var(--border)";
-        img.style.cursor = "pointer";
-
-        const badge = document.createElement("div");
-        badge.textContent = deletePhotoSelection.has(url) ? "Selected" : "Tap to select";
-        badge.style.position = "absolute";
-        badge.style.left = "8px";
-        badge.style.bottom = "8px";
-        badge.style.padding = "4px 6px";
-        badge.style.borderRadius = "8px";
-        badge.style.fontSize = "12px";
-        badge.style.background = "rgba(0,0,0,0.55)";
-        badge.style.color = "#fff";
-
-        wrap.addEventListener("click", () => {
-          if (deletePhotoSelection.has(url)) deletePhotoSelection.delete(url);
-          else deletePhotoSelection.add(url);
-          // Re-render quickly by toggling styles
-          img.style.border = deletePhotoSelection.has(url) ? "2px solid #fff" : "1px solid var(--border)";
-          badge.textContent = deletePhotoSelection.has(url) ? "Selected" : "Tap to select";
-        });
-
-        wrap.appendChild(img);
-        wrap.appendChild(badge);
-        photoPreviewEl.appendChild(wrap);
+        img.style.border = "1px solid var(--border)";
+        photoPreviewEl.appendChild(img);
       });
     }
 
 
     // Save as draft for this uid
     captureDraft();
+      scheduleProfileAutoSave("interests");
   } catch {}
 }
 
@@ -733,8 +572,7 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
-  saveDraft(uid, d);
-  return d;
+  if (uid) saveDraft(uid, d);
 }
 
 
@@ -768,7 +606,7 @@ function initInterestChips() {
   if (profileInterestsEl && profileInterestsEl.value) initInterestChipsFromValue(profileInterestsEl.value);
 
   interestChipsEl.querySelectorAll(".chip").forEach((btn) => {
-    if (btn) btn.addEventListener("click", () => {
+    btn.addEventListener("click", () => {
       const v = (btn.getAttribute("data-value") || "").trim();
       if (!v) return;
       if (selectedInterests.has(v)) selectedInterests.delete(v);
@@ -780,13 +618,14 @@ function initInterestChips() {
   });
 
   if (btnAddInterest && profileInterestCustomEl) {
-    if (btnAddInterest) btnAddInterest.addEventListener("click", () => {
+    btnAddInterest.addEventListener("click", () => {
       const v = profileInterestCustomEl.value.trim().toLowerCase();
       if (!v) return;
       selectedInterests.add(v);
       profileInterestCustomEl.value = "";
       syncInterestsHiddenInput();
       captureDraft();
+      scheduleProfileAutoSave("interests");
       // show as selected chip only if it exists in the predefined set
       if (interestChipsEl) {
         const match = interestChipsEl.querySelector(`.chip[data-value="${CSS.escape(v)}"]`);
@@ -803,10 +642,11 @@ function initBioCounter() {
     const n = (profileBioEl.value || "").length;
     bioCountEl.textContent = String(n);
   };
-  if (profileBioEl) profileBioEl.addEventListener("input", () => {
+  profileBioEl.addEventListener("input", () => {
     if (profileBioEl.value.length > 240) profileBioEl.value = profileBioEl.value.slice(0, 240);
     update();
     captureDraft();
+    scheduleProfileAutoSave("bio");
   });
   update();
 }
@@ -837,7 +677,7 @@ function renderPhotoPreviews() {
     rm.type = "button";
     rm.className = "secondary";
     rm.textContent = "Remove";
-    if (rm) rm.addEventListener("click", () => {
+    rm.addEventListener("click", () => {
       selectedPhotos.splice(idx, 1);
       renderPhotoPreviews();
       setPhotoStatus(`${selectedPhotos.length} selected.`);
@@ -1191,7 +1031,7 @@ rowTop.appendChild(titleWrap);
     const btn = document.createElement("button");
     btn.className = "btn primary";
     btn.textContent = "Open Chat";
-    if (btn) btn.addEventListener("click", () => {
+    btn.addEventListener("click", () => {
       selectedMatchId = matchId || "";
       selectedOtherUid = otherUid || "";
       if (threadMetaEl) setStatus(threadMetaEl, selectedOtherUid ? `Chat with ${name}` : `Chat`);
@@ -1267,7 +1107,7 @@ function renderFeed(items) {
     likeStatus.className = "muted";
     likeStatus.style.marginTop = "6px";
 
-    if (likeBtn) likeBtn.addEventListener("click", async () => {
+    likeBtn.addEventListener("click", async () => {
       clearError();
       likeBtn.disabled = true;
       likeStatus.textContent = "Liking...";
@@ -1370,7 +1210,7 @@ function clearFilters() {
   if (filterStatusEl) setStatus(filterStatusEl, `Showing ${allFeedItems.length} profiles.`);
 }
 
-if (btnStart) btnStart.addEventListener("click", async () => {
+btnStart.addEventListener("click", async () => {
   clearError();
   setStatus(startResultEl, "");
   const emailRaw = emailEl ? emailEl.value : "";
@@ -1397,7 +1237,7 @@ if (btnStart) btnStart.addEventListener("click", async () => {
   }
 });
 
-if (btnVerify) btnVerify.addEventListener("click", async () => {
+btnVerify.addEventListener("click", async () => {
   clearError();
   const email = (emailEl.value || "").trim();
   const otp = (otpEl.value || "").trim();
@@ -1436,9 +1276,6 @@ if (btnVerify) btnVerify.addEventListener("click", async () => {
     }
 
 setAuthedUI();
-  // New login session: clear staged photos from any previous user
-  try { selectedPhotos = []; renderPhotoPreviews(); } catch (e) {}
-  try { if (photoInputEl) photoInputEl.value = ""; } catch (e) {}
 initInterestChips();
 initBioCounter();
   hydrateProfileFromServer();
@@ -1458,7 +1295,7 @@ initBioCounter();
 
   // Dev feed toggle
   if (btnToggleDevFeed && feedListEl) {
-    if (btnToggleDevFeed) btnToggleDevFeed.addEventListener("click", () => {
+    btnToggleDevFeed.addEventListener("click", () => {
       feedListEl.hidden = !feedListEl.hidden;
     });
   }
@@ -1540,10 +1377,10 @@ initBioCounter();
 
 if (!uiWired) {
   uiWired = true;
-  if (btnSendMessage) btnSendMessage.addEventListener("click", sendMessageUI);
+  btnSendMessage.addEventListener("click", sendMessageUI);
 
   if (messageTextEl) {
-    if (messageTextEl) messageTextEl.addEventListener("keydown", (e) => {
+    messageTextEl.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         sendMessageUI();
@@ -1584,7 +1421,7 @@ initBioCounter();
 
   // Dev feed toggle
   if (btnToggleDevFeed && feedListEl) {
-    if (btnToggleDevFeed) btnToggleDevFeed.addEventListener("click", () => {
+    btnToggleDevFeed.addEventListener("click", () => {
       feedListEl.hidden = !feedListEl.hidden;
     });
   }
@@ -1596,7 +1433,7 @@ initBioCounter();
   }
 });
 
-if (btnLoadFeed) btnLoadFeed.addEventListener("click", async () => {
+btnLoadFeed.addEventListener("click", async () => {
   clearError();
   setFeedLoading(false, "");
   btnLoadFeed.disabled = true;
@@ -1618,7 +1455,7 @@ if (btnLoadFeed) btnLoadFeed.addEventListener("click", async () => {
   }
 });
 
-if (btnCredits) btnCredits.addEventListener("click", async () => {
+btnCredits.addEventListener("click", async () => {
   clearError();
   btnCredits.disabled = true;
   try {
@@ -1632,7 +1469,7 @@ if (btnCredits) btnCredits.addEventListener("click", async () => {
 });
 
 if (btnLoadMatches) {
-  if (btnLoadMatches) btnLoadMatches.addEventListener("click", async () => {
+  btnLoadMatches.addEventListener("click", async () => {
     clearError();
     if (matchesStatusEl) setStatus(matchesStatusEl, "");
     if (matchesListEl) matchesListEl.innerHTML = "";
@@ -1654,7 +1491,7 @@ if (btnLoadMatches) {
 
 
 if (btnLoadThread) {
-  if (btnLoadThread) btnLoadThread.addEventListener("click", async () => {
+  btnLoadThread.addEventListener("click", async () => {
     clearError();
     if (threadStatusEl) setStatus(threadStatusEl, "");
     if (threadListEl) threadListEl.innerHTML = "";
@@ -1676,7 +1513,7 @@ if (btnLoadThread) {
 }
 
 if (btnSendMessage) {
-  if (btnSendMessage) btnSendMessage.addEventListener("click", async () => {
+  btnSendMessage.addEventListener("click", async () => {
     clearError();
     btnSendMessage.disabled = true;
     try {
@@ -1702,7 +1539,7 @@ if (btnSendMessage) {
 
 
 
-if (btnLogout) btnLogout.addEventListener("click", () => {
+btnLogout.addEventListener("click", () => {
   storage.idToken = null;
   storage.refreshToken = null;
   storage.idTokenExpiresAt = 0;
@@ -1721,16 +1558,6 @@ if (btnLogout) btnLogout.addEventListener("click", () => {
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
-  // Clear any staged photo selections so they don't bleed into the next user session
-  try { selectedPhotos = []; renderPhotoPreviews(); } catch (e) {}
-  try { if (photoInputEl) photoInputEl.value = ""; } catch (e) {}
-  try { if (photoStatusEl) setStatus(photoStatusEl, ""); } catch (e) {}
-
-  // Logout confirmation (UI only)
-  try { if (otpEl) otpEl.value = ""; } catch (e) {}
-  try { showToast("You have been logged out."); } catch (e) {}
-  try { if (authStatusEl) setStatus(authStatusEl, "You have been logged out."); } catch (e) {}
-
 initInterestChips();
 initBioCounter();
   // Tabs
@@ -1749,7 +1576,7 @@ initBioCounter();
 
   // Dev feed toggle
   if (btnToggleDevFeed && feedListEl) {
-    if (btnToggleDevFeed) btnToggleDevFeed.addEventListener("click", () => {
+    btnToggleDevFeed.addEventListener("click", () => {
       feedListEl.hidden = !feedListEl.hidden;
     });
   }
@@ -1758,7 +1585,6 @@ initBioCounter();
 });
 
 (function init() {
-  try { installSaveProfileHandler(); } catch (e) {}
   if (!emailEl.value) emailEl.value = "test@example.com";
 
   // Profile editor: restore draft inputs (safe if section isn't present)
@@ -1790,7 +1616,7 @@ initBioCounter();
     setProfileStatus("Orlando preset applied.");
   });
 
-  if (btnUseLocation) btnUseLocation.addEventListener("click", () => {
+  if (btnSaveProfile) if (btnUseLocation) btnUseLocation.addEventListener("click", () => {
     try {
       if (!navigator.geolocation) {
         if (locationStatusEl) locationStatusEl.textContent = "Geolocation not supported on this device/browser. Please type your city instead.";
@@ -1825,7 +1651,7 @@ initBioCounter();
     if (locationStatusEl) locationStatusEl.textContent = "Location cleared.";
   });
 
-  if (btnSaveProfile) btnSaveProfile.addEventListener("click", async () => {
+  btnSaveProfile.addEventListener("click", async () => {
   const photos = document.querySelectorAll(".photoThumb img");
   if (!photos || photos.length === 0) {
     alert("Please add at least one photo to continue.");
@@ -1902,7 +1728,7 @@ initBioCounter();
 
   // Dev feed toggle
   if (btnToggleDevFeed && feedListEl) {
-    if (btnToggleDevFeed) btnToggleDevFeed.addEventListener("click", () => {
+    btnToggleDevFeed.addEventListener("click", () => {
       feedListEl.hidden = !feedListEl.hidden;
     });
   }
@@ -1946,83 +1772,20 @@ initBioCounter();
     }
   });
 
-  
-  if (btnDeleteSelectedPhotosEl) btnDeleteSelectedPhotosEl.addEventListener("click", async () => {
-    try {
-      if (!savedPhotosCache || savedPhotosCache.length === 0) {
-        setPhotoStatus("No saved photos to delete.");
-        return;
-      }
-      if (!deletePhotoSelection || deletePhotoSelection.size === 0) {
-        setPhotoStatus("Select 1+ photos to delete.");
-        return;
-      }
-      const ok = confirm(`Delete ${deletePhotoSelection.size} selected photo(s)?`);
-      if (!ok) return;
-
-      setPhotoStatus("Deleting…");
-      const remaining = savedPhotosCache.filter(p => !deletePhotoSelection.has(p));
-      await updateProfile({ photos: remaining });
-      try { selectedPhotos = []; renderPhotoPreviews(); } catch (e) {}
-      try { if (photoInputEl) photoInputEl.value = ""; } catch (e) {}
-      await hydrateProfileFromServer();
-      setPhotoStatus("Deleted ✅");
-      try { showToast("Deleted ✅"); } catch (e) {}
-    } catch (err) {
-      console.error(err);
-      setPhotoStatus("Delete failed");
-      try { showToast("Delete failed"); } catch (e) {}
-    }
-  });
-
-
-// Shared Save Photos flow so Save Profile can invoke it reliably
-async function ffSavePhotosFlow() {
-try {
-      setPhotoStatus("Saving photos…");
-      const idToken = await getValidIdToken();
-
-      // Fetch existing photos so we don't overwrite the current gallery
-      let existing = [];
-      try {
-        const me = await jsonFetch(`${BACKEND_BASE_URL}/api/profile/me`, {
-          method: "GET",
-          headers: { "Authorization": `Bearer ${idToken}` },
-}
-
-  // Save Photos button
   if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
-    await ffSavePhotosFlow();
-  });
-existing = (me && me.profile && Array.isArray(me.profile.photos)) ? me.profile.photos : [];
-      } catch (e) {
-        existing = [];
-      }
-
-      // Merge: existing + staged (keep order, de-dupe), max 6
-      const staged = Array.isArray(selectedPhotos) ? selectedPhotos : [];
-      const merged = [];
-      const seen = new Set();
-      for (const p of [...existing, ...staged]) {
-        if (!p || typeof p !== "string") continue;
-        if (seen.has(p)) continue;
-        seen.add(p);
-        merged.push(p);
-        if (merged.length >= 6) break;
-      }
-
-      await updateProfile({ photos: merged });
-
+    clearError();
+    btnSavePhotos.disabled = true;
+    try {
+      if (!selectedPhotos.length) throw new Error("No photos selected.");
+      setPhotoStatus("Saving photos...");
+      await updateProfile({ photos: selectedPhotos });
       setPhotoStatus("Photos saved ✅");
-      // Clear staging and rehydrate from server so UI matches persisted state
-      try { selectedPhotos = []; renderPhotoPreviews(); } catch (e2) {}
-      try { await hydrateProfileFromServer(); } catch (e2) {}
-    } catch (err) {
-      console.error(err);
-      setPhotoStatus("Photo save failed");
-      try { showToast("Photo save failed"); } catch (e2) {}
+    } catch (e) {
+      setPhotoStatus("");
+      showError(`Photo save failed: ${e.message}`);
+    } finally {
+      btnSavePhotos.disabled = false;
     }
-
   });
 
 
@@ -2109,8 +1872,8 @@ existing = (me && me.profile && Array.isArray(me.profile.photos)) ? me.profile.p
       }
     };
 
-    if (btn100) btn100.addEventListener("click", () => doAdd(100));
-    if (btn1000) btn1000.addEventListener("click", () => doAdd(1000));
+    btn100.addEventListener("click", () => doAdd(100));
+    btn1000.addEventListener("click", () => doAdd(1000));
   } catch (e) {
     // ignore
   }
@@ -2132,12 +1895,7 @@ function setActiveTab(tabName) {
     else p.hidden = true;
   });
 
-  
-  // When opening Profile tab, hydrate from server so saved photos/fields render after refresh.
-  if (tabName === "profile") {
-    try { hydrateProfileFromServer(); } catch (e) {}
-  }
-// Hide dev feed list by default unless dev tab
+  // Hide dev feed list by default unless dev tab
   if (feedListEl) {
     feedListEl.hidden = tabName !== "dev";
   }
@@ -2331,13 +2089,13 @@ function collapseSheet() {
 function attachSwipeHandlers() {
   if (!swipeCardEl) return;
 
-  if (swipeCardEl) swipeCardEl.addEventListener("touchstart", (e) => {
+  swipeCardEl.addEventListener("touchstart", (e) => {
     const t = e.changedTouches && e.changedTouches[0];
     if (!t) return;
     touchStart = { x: t.clientX, y: t.clientY, time: Date.now() };
   }, { passive: true });
 
-  if (swipeCardEl) swipeCardEl.addEventListener("touchend", (e) => {
+  swipeCardEl.addEventListener("touchend", (e) => {
     const t = e.changedTouches && e.changedTouches[0];
     if (!t || !touchStart) return;
 
@@ -2375,16 +2133,16 @@ function attachSwipeHandlers() {
   try {
     if (swipePhotoEl) {
       swipePhotoEl.style.cursor = "pointer";
-      if (swipePhotoEl) swipePhotoEl.addEventListener("click", onTapExpand);
+      swipePhotoEl.addEventListener("click", onTapExpand);
     }
     if (swipeTitleEl) {
       swipeTitleEl.style.cursor = "pointer";
-      if (swipeTitleEl) swipeTitleEl.addEventListener("click", onTapExpand);
+      swipeTitleEl.addEventListener("click", onTapExpand);
     }
   } catch {}
 
   // Keyboard shortcuts: Left=pass, Right=like, Up=expand, Esc=close
-  if (swipeCardEl) swipeCardEl.addEventListener("keydown", (e) => {
+  swipeCardEl.addEventListener("keydown", (e) => {
     if (e.key === "ArrowLeft") { e.preventDefault(); passCurrent(); }
     if (e.key === "ArrowRight") { e.preventDefault(); likeCurrent(); }
     if (e.key === "ArrowUp") { e.preventDefault(); expandCurrent(); }
