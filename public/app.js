@@ -74,6 +74,19 @@ const btnSetMiami = $("btnSetMiami");
 const btnSetOrlando = $("btnSetOrlando");
 const profileStatusEl = $("profileStatus");
 
+let _profileStatusEl = profileStatusEl;
+if (!_profileStatusEl) {
+  const profilePanel = $("panelProfile") || $("profilePanel") || document.querySelector('[data-panel="profile"]') || document.querySelector("#profile") || null;
+  const div = document.createElement("div");
+  div.id = "profileStatus";
+  div.style.marginTop = "8px";
+  div.style.opacity = "0.9";
+  div.style.fontSize = "14px";
+  div.textContent = "";
+  (profilePanel || document.body).appendChild(div);
+  _profileStatusEl = div;
+}
+
 
 // --- PROFILE SAVE BUTTON (dynamic; avoids touching landing/OTP HTML) ---
 let btnSaveProfileEl = $("btnSaveProfile");
@@ -563,7 +576,7 @@ function parseInterests(raw) {
 }
 
 function setProfileStatus(msg) {
-  if (profileStatusEl) setStatus(profileStatusEl, msg);
+  if (_profileStatusEl) setStatus(_profileStatusEl, msg);
 }
 
 // Persist draft inputs locally so refresh doesn't wipe them.
@@ -591,6 +604,8 @@ function captureDraft() {
     lng: profileLngEl ? profileLngEl.value : "",
   };
   saveDraft(uid, d);
+
+  return d;
 }
 
 
@@ -1668,19 +1683,29 @@ initBioCounter();
   if (btnSaveProfileEl) btnSaveProfileEl.addEventListener("click", async () => {
     try {
       if (!storage || !storage.idToken) {
-        try { if (profileStatusEl) setStatus(profileStatusEl, "Please sign in first."); } catch (e) {}
+        try { if (_profileStatusEl) setStatus(_profileStatusEl, "Please sign in first."); } catch (e) {}
         return;
       }
-      try { if (profileStatusEl) setStatus(profileStatusEl, "Saving…"); } catch (e) {}
-      const draft = captureDraft();
+      try { if (_profileStatusEl) setStatus(_profileStatusEl, "Saving…"); } catch (e) {}
+      const draft = captureDraft() || {};
       // Build payload (only profile fields; does not touch auth)
+      const ageNum = parseInt(String(draft.age || "").trim(), 10);
+      const interestsArr = String(draft.interests || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const latNum = parseFloat(String(draft.lat || "").trim());
+      const lngNum = parseFloat(String(draft.lng || "").trim());
+      const hasLoc = Number.isFinite(latNum) && Number.isFinite(lngNum);
+
       const payload = {
-        displayName: (draft.displayName || "").trim(),
-        age: draft.age,
-        city: (draft.city || "").trim(),
-        interests: Array.isArray(draft.interests) ? draft.interests : [],
-        location: draft.location && typeof draft.location === "object" ? draft.location : undefined,
+        displayName: String(draft.displayName || "").trim(),
+        city: String(draft.city || "").trim(),
+        interests: interestsArr,
       };
+      if (Number.isFinite(ageNum)) payload.age = ageNum;
+      if (hasLoc) payload.location = { lat: latNum, lng: lngNum };
 
       const res = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
         method: "POST",
@@ -1693,17 +1718,17 @@ initBioCounter();
 
       if (!res.ok) {
         const t = await res.text().catch(() => "");
-        try { if (profileStatusEl) setStatus(profileStatusEl, `Save failed (${res.status})`); } catch (e) {}
+        try { if (_profileStatusEl) setStatus(_profileStatusEl, `Save failed (${res.status})`); } catch (e) {}
         console.warn("profile/update failed:", res.status, t);
         return;
       }
 
-      try { if (profileStatusEl) setStatus(profileStatusEl, "Saved ✅"); } catch (e) {}
+      try { if (_profileStatusEl) setStatus(_profileStatusEl, "Saved ✅"); } catch (e) {}
       // Refresh from server so UI reflects what actually persisted (incl. photos)
       try { hydrateProfileFromServer(); } catch (e) {}
     } catch (err) {
       console.error(err);
-      try { if (profileStatusEl) setStatus(profileStatusEl, "Save failed"); } catch (e) {}
+      try { if (_profileStatusEl) setStatus(_profileStatusEl, "Save failed"); } catch (e) {}
     }
   });
 
