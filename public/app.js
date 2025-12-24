@@ -1830,55 +1830,6 @@ initBioCounter();
         setPhotoStatus("Deleting...");
         const remaining = (savedPhotosCache || []).filter(p => !savedPhotoSelection.has(String(p)));
         await updateProfile({ photos: remaining });
-
-        // Immediately refresh UI (don't rely on a subsequent fetch/caching)
-        savedPhotosCache = (remaining || []).slice(0, 6);
-        savedPhotoSelection = new Set();
-        if (photoPreviewEl) {
-          photoPreviewEl.innerHTML = "";
-          (savedPhotosCache || []).forEach((url, idx) => {
-            const u = normalizePhotoUrl(url);
-            if (!u) return;
-
-            const wrap = document.createElement("div");
-            wrap.className = "photoThumb";
-            wrap.style.position = "relative";
-
-            const img = document.createElement("img");
-            img.src = u;
-            img.alt = `Photo ${idx + 1}`;
-            img.loading = "lazy";
-            img.style.width = "100%";
-            img.style.height = "120px";
-            img.style.objectFit = "cover";
-            img.style.borderRadius = "12px";
-            img.style.border = "1px solid var(--border)";
-
-            const badge = document.createElement("div");
-            badge.textContent = "Tap to select";
-            badge.style.position = "absolute";
-            badge.style.left = "8px";
-            badge.style.bottom = "8px";
-            badge.style.padding = "4px 6px";
-            badge.style.borderRadius = "8px";
-            badge.style.fontSize = "12px";
-            badge.style.background = "rgba(0,0,0,0.55)";
-            badge.style.color = "#fff";
-
-            wrap.addEventListener("click", () => {
-              if (savedPhotoSelection.has(u)) savedPhotoSelection.delete(u);
-              else savedPhotoSelection.add(u);
-              img.style.border = savedPhotoSelection.has(u) ? "2px solid #fff" : "1px solid var(--border)";
-              badge.textContent = savedPhotoSelection.has(u) ? "Selected" : "Tap to select";
-              setPhotoStatus(`${savedPhotoSelection.size} selected to delete.`);
-            });
-
-            wrap.appendChild(img);
-            wrap.appendChild(badge);
-            photoPreviewEl.appendChild(wrap);
-          });
-        }
-
         await hydrateProfileFromServer();
         setPhotoStatus("Deleted ✅");
       } else {
@@ -1895,13 +1846,78 @@ initBioCounter();
 
   // Dedicated "Delete Selected Photos" button (keeps OTP/login untouched)
   if (btnDeleteSelectedPhotos) btnDeleteSelectedPhotos.addEventListener("click", async () => {
+    clearError();
     try {
-      // Reuse the existing delete/clear logic already wired on btnClearPhotos
-      if (btnClearPhotos) btnClearPhotos.click();
+      if (!showingSavedPhotos) {
+        setPhotoStatus("Select saved photos in the gallery first.");
+        return;
+      }
+      if (!savedPhotoSelection || savedPhotoSelection.size === 0) {
+        setPhotoStatus("Select 1+ saved photos to delete.");
+        return;
+      }
+
+      const ok = confirm(`Delete ${savedPhotoSelection.size} selected photo(s)?`);
+      if (!ok) return;
+
+      setPhotoStatus("Deleting...");
+
+      const remaining = (savedPhotosCache || [])
+        .map(normalizePhotoUrl)
+        .filter(Boolean)
+        .filter(p => !savedPhotoSelection.has(String(p)));
+
+      await updateProfile({ photos: remaining });
+
+      // Immediately reflect in UI (then hydrate from server)
+      if (photoPreviewEl) {
+        photoPreviewEl.innerHTML = "";
+        remaining.slice(0, 6).forEach((url, idx) => {
+          const wrap = document.createElement("div");
+          wrap.className = "photoTile";
+          wrap.dataset.photoUrl = String(url);
+
+          const img = document.createElement("img");
+          img.src = String(url);
+          img.alt = `Photo ${idx + 1}`;
+          img.loading = "lazy";
+
+          const badge = document.createElement("div");
+          badge.className = "photoBadge";
+          badge.textContent = "Tap to select";
+
+          wrap.appendChild(img);
+          wrap.appendChild(badge);
+
+          wrap.addEventListener("click", () => {
+            const key = String(url);
+            if (savedPhotoSelection.has(key)) {
+              savedPhotoSelection.delete(key);
+              wrap.classList.remove("selected");
+              badge.textContent = "Tap to select";
+            } else {
+              savedPhotoSelection.add(key);
+              wrap.classList.add("selected");
+              badge.textContent = "Selected";
+            }
+            setPhotoStatus(`${savedPhotoSelection.size} selected to delete.`);
+          });
+
+          photoPreviewEl.appendChild(wrap);
+        });
+      }
+
+      savedPhotosCache = remaining.slice(0, 6);
+      savedPhotoSelection = new Set();
+
+      await hydrateProfileFromServer();
+      setPhotoStatus("Deleted ✅");
     } catch (e) {
-      // no-op
+      setPhotoStatus("");
+      showError(`Delete failed: ${e.message}`);
     }
   });
+
 
 
   if (photoFilesEl) photoFilesEl.addEventListener("change", async () => {
