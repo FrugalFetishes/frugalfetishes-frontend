@@ -568,7 +568,7 @@ async function updateProfile(fields) {
   return jsonFetch(`${BACKEND_BASE_URL}/api/profile/update`, {
     method: "POST",
     headers: { "Authorization": `Bearer ${idToken}` },
-    body: JSON.stringify(fields)
+    body: fields
   });
 }
 
@@ -1881,12 +1881,7 @@ initBioCounter();
       setPhotoStatus("Saving photos...");
       await updateProfile({ photos: selectedPhotos });
       setPhotoStatus("Photos saved ✅");
-      // After saving, clear staged photos and rehydrate from server so saved photos render
-      try { selectedPhotos = []; } catch (e) {}
-      try { if (photoFilesEl) photoFilesEl.value = ""; } catch (e) {}
-      try { renderPhotoPreviews(); } catch (e) {}
-      try { await hydrateProfileFromServer(); } catch (e) {}
-
+      try { await hydrateProfileFromServer(); } catch (e2) {}
     } catch (e) {
       setPhotoStatus("");
       showError(`Photo save failed: ${e.message}`);
