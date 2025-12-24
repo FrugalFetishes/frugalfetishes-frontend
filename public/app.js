@@ -1371,6 +1371,9 @@ if (btnVerify) btnVerify.addEventListener("click", async () => {
     }
 
 setAuthedUI();
+  // New login session: clear staged photos from any previous user
+  try { selectedPhotos = []; renderPhotoPreviews(); } catch (e) {}
+  try { if (photoInputEl) photoInputEl.value = ""; } catch (e) {}
 initInterestChips();
 initBioCounter();
   hydrateProfileFromServer();
@@ -1653,6 +1656,11 @@ if (btnLogout) btnLogout.addEventListener("click", () => {
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
+  // Clear any staged photo selections so they don't bleed into the next user session
+  try { selectedPhotos = []; renderPhotoPreviews(); } catch (e) {}
+  try { if (photoInputEl) photoInputEl.value = ""; } catch (e) {}
+  try { if (photoStatusEl) setStatus(photoStatusEl, ""); } catch (e) {}
+
   // Logout confirmation (UI only)
   try { if (otpEl) otpEl.value = ""; } catch (e) {}
   try { showToast("You have been logged out."); } catch (e) {}
@@ -1874,20 +1882,47 @@ initBioCounter();
   });
 
   if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
-    clearError();
-    btnSavePhotos.disabled = true;
+    
     try {
-      if (!selectedPhotos.length) throw new Error("No photos selected.");
-      setPhotoStatus("Saving photos...");
-      await updateProfile({ photos: selectedPhotos });
+      setPhotoStatus("Saving photos…");
+      const idToken = await getValidIdToken();
+
+      // Fetch existing photos so we don't overwrite the current gallery
+      let existing = [];
+      try {
+        const me = await jsonFetch(`${BACKEND_BASE_URL}/api/profile/me`, {
+          method: "GET",
+          headers: { "Authorization": `Bearer ${idToken}` },
+        });
+        existing = (me && me.profile && Array.isArray(me.profile.photos)) ? me.profile.photos : [];
+      } catch (e) {
+        existing = [];
+      }
+
+      // Merge: existing + staged (keep order, de-dupe), max 6
+      const staged = Array.isArray(selectedPhotos) ? selectedPhotos : [];
+      const merged = [];
+      const seen = new Set();
+      for (const p of [...existing, ...staged]) {
+        if (!p || typeof p !== "string") continue;
+        if (seen.has(p)) continue;
+        seen.add(p);
+        merged.push(p);
+        if (merged.length >= 6) break;
+      }
+
+      await updateProfile({ photos: merged });
+
       setPhotoStatus("Photos saved ✅");
+      // Clear staging and rehydrate from server so UI matches persisted state
+      try { selectedPhotos = []; renderPhotoPreviews(); } catch (e2) {}
       try { await hydrateProfileFromServer(); } catch (e2) {}
-    } catch (e) {
-      setPhotoStatus("");
-      showError(`Photo save failed: ${e.message}`);
-    } finally {
-      btnSavePhotos.disabled = false;
+    } catch (err) {
+      console.error(err);
+      setPhotoStatus("Photo save failed");
+      try { showToast("Photo save failed"); } catch (e2) {}
     }
+
   });
 
 
