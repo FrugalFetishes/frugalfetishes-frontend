@@ -117,6 +117,26 @@ let selectedInterests = new Set();
 
 const photoFilesEl = $("photoFiles");
 const btnSavePhotos = $("btnSavePhotos");
+
+// Delete selected photos button (Profile-only)
+let btnDeleteSelectedPhotosEl = $("btnDeleteSelectedPhotos");
+if (!btnDeleteSelectedPhotosEl) {
+  const profilePanel = $("panelProfile") || $("profilePanel") || document.querySelector('[data-panel="profile"]') || document.querySelector("#profile") || null;
+  const btn = document.createElement("button");
+  btn.id = "btnDeleteSelectedPhotos";
+  btn.type = "button";
+  btn.textContent = "Delete Selected Photos";
+  btn.style.marginTop = "10px";
+  btn.style.marginLeft = "8px";
+  btn.style.padding = "10px 14px";
+  btn.style.borderRadius = "10px";
+  btn.style.border = "1px solid rgba(255,255,255,0.25)";
+  btn.style.background = "rgba(255,255,255,0.06)";
+  btn.style.color = "inherit";
+  btn.style.cursor = "pointer";
+  (profilePanel || document.body).appendChild(btn);
+  btnDeleteSelectedPhotosEl = btn;
+}
 const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
 const photoPreviewEl = $("photoPreview");
@@ -596,16 +616,51 @@ async function hydrateProfileFromServer() {
     if (Array.isArray(photos) && photoPreviewEl) {
       // Render previews
       photoPreviewEl.innerHTML = "";
+      // Cache saved photos and reset selection
+      savedPhotosCache = Array.isArray(photos) ? photos.slice(0, 6).map(p => String(p)) : [];
+      deletePhotoSelection = new Set();
+
       photos.slice(0, 6).forEach((src, idx) => {
+        const url = String(src);
+        const wrap = document.createElement("div");
+        wrap.style.position = "relative";
+        wrap.style.display = "inline-block";
+        wrap.style.width = "120px";
+        wrap.style.margin = "6px";
+
         const img = document.createElement("img");
-        img.src = String(src);
+        img.src = url;
         img.alt = `Photo ${idx + 1}`;
         img.loading = "lazy";
-        img.style.width = "100%";
-        img.style.height = "auto";
+        img.style.width = "120px";
+        img.style.height = "120px";
+        img.style.objectFit = "cover";
         img.style.borderRadius = "12px";
-        img.style.border = "1px solid var(--border)";
-        photoPreviewEl.appendChild(img);
+        img.style.border = deletePhotoSelection.has(url) ? "2px solid #fff" : "1px solid var(--border)";
+        img.style.cursor = "pointer";
+
+        const badge = document.createElement("div");
+        badge.textContent = deletePhotoSelection.has(url) ? "Selected" : "Tap to select";
+        badge.style.position = "absolute";
+        badge.style.left = "8px";
+        badge.style.bottom = "8px";
+        badge.style.padding = "4px 6px";
+        badge.style.borderRadius = "8px";
+        badge.style.fontSize = "12px";
+        badge.style.background = "rgba(0,0,0,0.55)";
+        badge.style.color = "#fff";
+
+        wrap.addEventListener("click", () => {
+          if (deletePhotoSelection.has(url)) deletePhotoSelection.delete(url);
+          else deletePhotoSelection.add(url);
+          // Re-render quickly by toggling styles
+          img.style.border = deletePhotoSelection.has(url) ? "2px solid #fff" : "1px solid var(--border)";
+          badge.textContent = deletePhotoSelection.has(url) ? "Selected" : "Tap to select";
+        });
+
+        wrap.appendChild(img);
+        wrap.appendChild(badge);
+        photoPreviewEl.appendChild(wrap);
       });
     }
 
@@ -1881,7 +1936,36 @@ initBioCounter();
     }
   });
 
-  if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
+  
+  if (btnDeleteSelectedPhotosEl) btnDeleteSelectedPhotosEl.addEventListener("click", async () => {
+    try {
+      if (!savedPhotosCache || savedPhotosCache.length === 0) {
+        setPhotoStatus("No saved photos to delete.");
+        return;
+      }
+      if (!deletePhotoSelection || deletePhotoSelection.size === 0) {
+        setPhotoStatus("Select 1+ photos to delete.");
+        return;
+      }
+      const ok = confirm(`Delete ${deletePhotoSelection.size} selected photo(s)?`);
+      if (!ok) return;
+
+      setPhotoStatus("Deleting…");
+      const remaining = savedPhotosCache.filter(p => !deletePhotoSelection.has(p));
+      await updateProfile({ photos: remaining });
+      try { selectedPhotos = []; renderPhotoPreviews(); } catch (e) {}
+      try { if (photoInputEl) photoInputEl.value = ""; } catch (e) {}
+      await hydrateProfileFromServer();
+      setPhotoStatus("Deleted ✅");
+      try { showToast("Deleted ✅"); } catch (e) {}
+    } catch (err) {
+      console.error(err);
+      setPhotoStatus("Delete failed");
+      try { showToast("Delete failed"); } catch (e) {}
+    }
+  });
+
+if (btnSavePhotos) btnSavePhotos.addEventListener("click", async () => {
     
     try {
       setPhotoStatus("Saving photos…");
