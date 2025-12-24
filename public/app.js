@@ -2759,3 +2759,202 @@ photos.slice(0,6).forEach((url, idx) => {
   `;
   document.head.appendChild(st);
 })();
+
+
+/* === FF: Tinder-style swipe on Discover (UI-only; does NOT touch OTP) === */
+(function ff_enableDiscoverSwipe(){
+  if (window.__ffDiscoverSwipeInit) return;
+  window.__ffDiscoverSwipeInit = true;
+
+  const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+  function findDiscoverCard(){
+    const root =
+      document.getElementById("discoverView") ||
+      document.getElementById("discoverSection") ||
+      document.querySelector("[data-view='discover']") ||
+      document.querySelector(".discoverView") ||
+      document.body;
+
+    // Prefer an explicit card wrapper if present
+    const card =
+      root.querySelector("#ffDiscoverCard") ||
+      root.querySelector(".ff-discover-card") ||
+      root.querySelector(".discoverCard") ||
+      root.querySelector(".card") ||
+      null;
+
+    // If no wrapper, try to infer from the first profile image in discover
+    const img =
+      root.querySelector("img[data-discover-photo]") ||
+      root.querySelector("#discoverImg") ||
+      root.querySelector("#discoverImage") ||
+      root.querySelector(".discoverPhoto img") ||
+      root.querySelector(".discoverCard img") ||
+      root.querySelector(".card img") ||
+      null;
+
+    if (card) return card;
+    if (img) return img.closest(".discoverCard") || img.closest(".card") || img.parentElement;
+    return null;
+  }
+
+  function findLikePassButtons(){
+    const root =
+      document.getElementById("discoverView") ||
+      document.getElementById("discoverSection") ||
+      document.querySelector("[data-view='discover']") ||
+      document.querySelector(".discoverView") ||
+      document.body;
+
+    const like =
+      root.querySelector("#likeBtn") ||
+      root.querySelector("button[data-action='like']") ||
+      root.querySelector("button.ff-like") ||
+      null;
+
+    const pass =
+      root.querySelector("#passBtn") ||
+      root.querySelector("button[data-action='pass']") ||
+      root.querySelector("button.ff-pass") ||
+      null;
+
+    return { like, pass };
+  }
+
+  function applyCardChrome(card){
+    try{
+      card.id = card.id || "ffDiscoverCard";
+      card.classList.add("ff-discover-card");
+      card.style.touchAction = "pan-y";
+      card.style.userSelect = "none";
+      card.style.willChange = "transform";
+      card.style.transform = "translate3d(0,0,0)";
+    }catch(e){}
+  }
+
+  function bindSwipe(card){
+    if (!card || card.__ffSwipeBound) return;
+    card.__ffSwipeBound = true;
+
+    applyCardChrome(card);
+
+    let startX = 0, startY = 0, curX = 0, curY = 0, dragging = false, pointerId = null;
+
+    const reset = (animate=true) => {
+      dragging = false;
+      pointerId = null;
+      card.style.transition = animate ? "transform 180ms ease" : "none";
+      card.style.transform = "translate3d(0,0,0) rotate(0deg)";
+      setTimeout(()=>{ try{ card.style.transition = "none"; }catch(e){} }, 200);
+    };
+
+    const flyOut = (dir) => {
+      const w = Math.max(320, window.innerWidth || 320);
+      const x = dir === "right" ? w : -w;
+      const r = dir === "right" ? 12 : -12;
+      card.style.transition = "transform 220ms ease";
+      card.style.transform = `translate3d(${x}px, 0, 0) rotate(${r}deg)`;
+      setTimeout(()=>{ reset(false); }, 260);
+    };
+
+    const trigger = (dir) => {
+      const { like, pass } = findLikePassButtons();
+      if (dir === "right"){
+        if (like) like.click();
+      } else {
+        if (pass) pass.click();
+      }
+    };
+
+    const onDown = (ev) => {
+      // only left mouse / touch / pen
+      if (ev.button !== undefined && ev.button !== 0) return;
+      dragging = true;
+      pointerId = ev.pointerId || null;
+      startX = ev.clientX || 0;
+      startY = ev.clientY || 0;
+      curX = 0;
+      curY = 0;
+      try{ card.setPointerCapture && pointerId!=null && card.setPointerCapture(pointerId); }catch(e){}
+      card.style.transition = "none";
+    };
+
+    const onMove = (ev) => {
+      if (!dragging) return;
+      if (pointerId!=null && ev.pointerId!=null && ev.pointerId !== pointerId) return;
+
+      const dx = (ev.clientX || 0) - startX;
+      const dy = (ev.clientY || 0) - startY;
+
+      // If mostly vertical, ignore (allow page scroll)
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 18){
+        reset(false);
+        return;
+      }
+
+      curX = dx;
+      curY = dy;
+      const rot = clamp(dx / 22, -12, 12);
+      card.style.transform = `translate3d(${dx}px, ${dy*0.15}px, 0) rotate(${rot}deg)`;
+    };
+
+    const onUp = () => {
+      if (!dragging) return;
+      const dx = curX || 0;
+      const threshold = Math.min(120, Math.max(70, (window.innerWidth||360)*0.22));
+      if (dx > threshold){
+        flyOut("right");
+        trigger("right");
+      } else if (dx < -threshold){
+        flyOut("left");
+        trigger("left");
+      } else {
+        reset(true);
+      }
+    };
+
+    card.addEventListener("pointerdown", onDown);
+    card.addEventListener("pointermove", onMove);
+    card.addEventListener("pointerup", onUp);
+    card.addEventListener("pointercancel", onUp);
+
+    // Desktop helpers: click left/right halves to pass/like
+    card.addEventListener("click", (ev) => {
+      // ignore click if it was a drag
+      if (Math.abs(curX) > 8) return;
+      const rect = card.getBoundingClientRect();
+      const x = (ev.clientX || 0) - rect.left;
+      if (x < rect.width * 0.5) {
+        const { pass } = findLikePassButtons();
+        if (pass) pass.click();
+      } else {
+        const { like } = findLikePassButtons();
+        if (like) like.click();
+      }
+    });
+
+    // Keyboard: left/right
+    window.addEventListener("keydown", (ev) => {
+      if (ev.key === "ArrowLeft"){
+        const { pass } = findLikePassButtons();
+        if (pass) pass.click();
+      } else if (ev.key === "ArrowRight"){
+        const { like } = findLikePassButtons();
+        if (like) like.click();
+      }
+    });
+  }
+
+  function tick(){
+    try{
+      const card = findDiscoverCard();
+      if (card) bindSwipe(card);
+    }catch(e){}
+  }
+
+  // keep trying: discover card is re-rendered after like/pass
+  tick();
+  setInterval(tick, 800);
+})();
+
