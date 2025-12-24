@@ -61,6 +61,7 @@ const backendDebugEl = $("backendDebug");
 
 const profileDisplayNameEl = $("profileDisplayName");
 const profileAgeEl = $("profileAge");
+const profileCityEl = $("profileCity");
 const profileInterestsEl = $("profileInterests");
 const profileLatEl = $("profileLat");
   const profileZipEl = $("profileZip");
@@ -570,7 +571,7 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
-  saveDraft(d);
+  saveDraft(uid, d);
 }
 
 
@@ -1554,6 +1555,11 @@ if (btnLogout) btnLogout.addEventListener("click", () => {
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
   setAuthedUI();
+  // Logout confirmation (UI only)
+  try { if (otpEl) otpEl.value = ""; } catch (e) {}
+  try { showToast("You have been logged out."); } catch (e) {}
+  try { if (authStatusEl) setStatus(authStatusEl, "You have been logged out."); } catch (e) {}
+
 initInterestChips();
 initBioCounter();
   // Tabs
@@ -1612,7 +1618,7 @@ initBioCounter();
     setProfileStatus("Orlando preset applied.");
   });
 
-  if (btnSaveProfile) if (btnUseLocation) btnUseLocation.addEventListener("click", () => {
+  if (btnUseLocation) btnUseLocation.addEventListener("click", () => {
     try {
       if (!navigator.geolocation) {
         if (locationStatusEl) locationStatusEl.textContent = "Geolocation not supported on this device/browser. Please type your city instead.";
@@ -1760,9 +1766,8 @@ initBioCounter();
         selectedPhotos.push(resized);
       }
       if (selectedPhotos.length > 6) selectedPhotos = selectedPhotos.slice(0, 6);
-      selectedPhotos = dataUrls;
       renderPhotoPreviews();
-setPhotoStatus(`${selectedPhotos.length} selected.`);
+      setPhotoStatus(`${selectedPhotos.length} selected.`);
     } catch (e) {
       setPhotoStatus("");
       showError(`Photo processing failed: ${e.message}`);
@@ -1777,8 +1782,6 @@ setPhotoStatus(`${selectedPhotos.length} selected.`);
       setPhotoStatus("Saving photos...");
       await updateProfile({ photos: selectedPhotos });
       setPhotoStatus("Photos saved ✅");
-      try { selectedPhotos = []; renderPhotoPreviews(); } catch (e) {}
-      try { await hydrateProfileFromServer(); } catch (e) {}
     } catch (e) {
       setPhotoStatus("");
       showError(`Photo save failed: ${e.message}`);
