@@ -74,38 +74,39 @@ const btnSetMiami = $("btnSetMiami");
 const btnSetOrlando = $("btnSetOrlando");
 const profileStatusEl = $("profileStatus");
 
-let _profileStatusEl = profileStatusEl;
-if (!_profileStatusEl) {
+// Ensure a visible status area exists for Profile saves
+let profileStatusLiveEl = profileStatusEl;
+if (!profileStatusLiveEl) {
   const profilePanel = $("panelProfile") || $("profilePanel") || document.querySelector('[data-panel="profile"]') || document.querySelector("#profile") || null;
   const div = document.createElement("div");
   div.id = "profileStatus";
   div.style.marginTop = "8px";
-  div.style.opacity = "0.9";
+  div.style.opacity = "0.95";
   div.style.fontSize = "14px";
   div.textContent = "";
   (profilePanel || document.body).appendChild(div);
-  _profileStatusEl = div;
+  profileStatusLiveEl = div;
 }
 
-
-// --- PROFILE SAVE BUTTON (dynamic; avoids touching landing/OTP HTML) ---
-let btnSaveProfileEl = $("btnSaveProfile");
-if (!btnSaveProfileEl) {
-  // Try to attach into the profile panel/container if present
+// Create Save Profile button if it doesn't exist (Profile-only; no OTP/auth changes)
+let btnSaveProfileLiveEl = $("btnSaveProfile");
+if (!btnSaveProfileLiveEl) {
   const profilePanel = $("panelProfile") || $("profilePanel") || document.querySelector('[data-panel="profile"]') || document.querySelector("#profile") || null;
-  btnSaveProfileEl = document.createElement("button");
-  btnSaveProfileEl.id = "btnSaveProfile";
-  btnSaveProfileEl.type = "button";
-  btnSaveProfileEl.textContent = "Save Profile";
-  btnSaveProfileEl.style.marginTop = "10px";
-  btnSaveProfileEl.style.padding = "10px 14px";
-  btnSaveProfileEl.style.borderRadius = "10px";
-  btnSaveProfileEl.style.border = "1px solid rgba(255,255,255,0.25)";
-  btnSaveProfileEl.style.background = "rgba(255,255,255,0.08)";
-  btnSaveProfileEl.style.color = "inherit";
-  btnSaveProfileEl.style.cursor = "pointer";
-  (profilePanel || document.body).appendChild(btnSaveProfileEl);
+  const btn = document.createElement("button");
+  btn.id = "btnSaveProfile";
+  btn.type = "button";
+  btn.textContent = "Save Profile";
+  btn.style.marginTop = "10px";
+  btn.style.padding = "10px 14px";
+  btn.style.borderRadius = "10px";
+  btn.style.border = "1px solid rgba(255,255,255,0.25)";
+  btn.style.background = "rgba(255,255,255,0.10)";
+  btn.style.color = "inherit";
+  btn.style.cursor = "pointer";
+  (profilePanel || document.body).appendChild(btn);
+  btnSaveProfileLiveEl = btn;
 }
+
 const profileBioEl = $("profileBio");
 const bioCountEl = $("bioCount");
 const interestChipsEl = $("interestChips");
@@ -253,6 +254,70 @@ function showToast(msg){
 
 function setStatus(el, message) {
   el.textContent = message || "";
+}
+
+// Save Profile handler (event-delegated so it cannot miss the button)
+// Profile-only: uses existing /api/profile/update, does not modify OTP/auth flow.
+let ff_saveProfileHandlerInstalled = false;
+function installSaveProfileHandler() {
+  if (ff_saveProfileHandlerInstalled) return;
+  ff_saveProfileHandlerInstalled = true;
+
+  document.addEventListener("click", async (e) => {
+    const t = e && e.target;
+    if (!t || t.id !== "btnSaveProfile") return;
+
+    try {
+      if (!storage || !storage.idToken) {
+        try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, "Please sign in first."); } catch (err) {}
+        try { showToast("Please sign in first."); } catch (err) {}
+        return;
+      }
+
+      try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, "Saving…"); } catch (err) {}
+      try { showToast("Saving profile…"); } catch (err) {}
+
+      const d = (typeof captureDraft === "function" ? (captureDraft() || {}) : {});
+      const ageNum = parseInt(String(d.age || "").trim(), 10);
+      const interestsArr = String(d.interests || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
+
+      const payload = {
+        displayName: String(d.displayName || "").trim(),
+        city: String(d.city || "").trim(),
+        interests: interestsArr,
+      };
+      if (Number.isFinite(ageNum)) payload.age = ageNum;
+      if (d.location && typeof d.location === "object") payload.location = d.location;
+
+      const res = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${storage.idToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const t2 = await res.text().catch(() => "");
+        console.warn("Save Profile failed:", res.status, t2);
+        try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, `Save failed (${res.status})`); } catch (err) {}
+        try { showToast(`Save failed (${res.status})`); } catch (err) {}
+        return;
+      }
+
+      try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, "Saved ✅"); } catch (err) {}
+      try { showToast("Profile saved ✅"); } catch (err) {}
+      try { hydrateProfileFromServer(); } catch (err) {}
+    } catch (err) {
+      console.error(err);
+      try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, "Save failed"); } catch (e2) {}
+      try { showToast("Save failed"); } catch (e2) {}
+    }
+  });
 }
 
 // ===== Feed loading UX helpers (surgical; no OTP/auth changes) =====
@@ -576,7 +641,7 @@ function parseInterests(raw) {
 }
 
 function setProfileStatus(msg) {
-  if (_profileStatusEl) setStatus(_profileStatusEl, msg);
+  if (profileStatusEl) setStatus(profileStatusEl, msg);
 }
 
 // Persist draft inputs locally so refresh doesn't wipe them.
@@ -604,7 +669,6 @@ function captureDraft() {
     lng: profileLngEl ? profileLngEl.value : "",
   };
   saveDraft(uid, d);
-
   return d;
 }
 
@@ -1621,6 +1685,7 @@ initBioCounter();
 });
 
 (function init() {
+  try { installSaveProfileHandler(); } catch (e) {}
   if (!emailEl.value) emailEl.value = "test@example.com";
 
   // Profile editor: restore draft inputs (safe if section isn't present)
@@ -1680,59 +1745,6 @@ initBioCounter();
       if (locationStatusEl) locationStatusEl.textContent = "Location failed. Please type your city instead.";
     }
   });
-  if (btnSaveProfileEl) btnSaveProfileEl.addEventListener("click", async () => {
-    try {
-      if (!storage || !storage.idToken) {
-        try { if (_profileStatusEl) setStatus(_profileStatusEl, "Please sign in first."); } catch (e) {}
-        return;
-      }
-      try { if (_profileStatusEl) setStatus(_profileStatusEl, "Saving…"); } catch (e) {}
-      const draft = captureDraft() || {};
-      // Build payload (only profile fields; does not touch auth)
-      const ageNum = parseInt(String(draft.age || "").trim(), 10);
-      const interestsArr = String(draft.interests || "")
-        .split(",")
-        .map(s => s.trim())
-        .filter(Boolean);
-
-      const latNum = parseFloat(String(draft.lat || "").trim());
-      const lngNum = parseFloat(String(draft.lng || "").trim());
-      const hasLoc = Number.isFinite(latNum) && Number.isFinite(lngNum);
-
-      const payload = {
-        displayName: String(draft.displayName || "").trim(),
-        city: String(draft.city || "").trim(),
-        interests: interestsArr,
-      };
-      if (Number.isFinite(ageNum)) payload.age = ageNum;
-      if (hasLoc) payload.location = { lat: latNum, lng: lngNum };
-
-      const res = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${storage.idToken}`,
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        try { if (_profileStatusEl) setStatus(_profileStatusEl, `Save failed (${res.status})`); } catch (e) {}
-        console.warn("profile/update failed:", res.status, t);
-        return;
-      }
-
-      try { if (_profileStatusEl) setStatus(_profileStatusEl, "Saved ✅"); } catch (e) {}
-      // Refresh from server so UI reflects what actually persisted (incl. photos)
-      try { hydrateProfileFromServer(); } catch (e) {}
-    } catch (err) {
-      console.error(err);
-      try { if (_profileStatusEl) setStatus(_profileStatusEl, "Save failed"); } catch (e) {}
-    }
-  });
-
-
 
   if (btnClearLocation) btnClearLocation.addEventListener("click", () => {
     if (profileLatEl) profileLatEl.value = "";
