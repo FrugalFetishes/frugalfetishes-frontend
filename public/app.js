@@ -74,6 +74,25 @@ const btnSetMiami = $("btnSetMiami");
 const btnSetOrlando = $("btnSetOrlando");
 const profileStatusEl = $("profileStatus");
 
+
+// --- PROFILE SAVE BUTTON (dynamic; avoids touching landing/OTP HTML) ---
+let btnSaveProfileEl = $("btnSaveProfile");
+if (!btnSaveProfileEl) {
+  // Try to attach into the profile panel/container if present
+  const profilePanel = $("panelProfile") || $("profilePanel") || document.querySelector('[data-panel="profile"]') || document.querySelector("#profile") || null;
+  btnSaveProfileEl = document.createElement("button");
+  btnSaveProfileEl.id = "btnSaveProfile";
+  btnSaveProfileEl.type = "button";
+  btnSaveProfileEl.textContent = "Save Profile";
+  btnSaveProfileEl.style.marginTop = "10px";
+  btnSaveProfileEl.style.padding = "10px 14px";
+  btnSaveProfileEl.style.borderRadius = "10px";
+  btnSaveProfileEl.style.border = "1px solid rgba(255,255,255,0.25)";
+  btnSaveProfileEl.style.background = "rgba(255,255,255,0.08)";
+  btnSaveProfileEl.style.color = "inherit";
+  btnSaveProfileEl.style.cursor = "pointer";
+  (profilePanel || document.body).appendChild(btnSaveProfileEl);
+}
 const profileBioEl = $("profileBio");
 const bioCountEl = $("bioCount");
 const interestChipsEl = $("interestChips");
@@ -1646,6 +1665,49 @@ initBioCounter();
       if (locationStatusEl) locationStatusEl.textContent = "Location failed. Please type your city instead.";
     }
   });
+  if (btnSaveProfileEl) btnSaveProfileEl.addEventListener("click", async () => {
+    try {
+      if (!storage || !storage.idToken) {
+        try { if (profileStatusEl) setStatus(profileStatusEl, "Please sign in first."); } catch (e) {}
+        return;
+      }
+      try { if (profileStatusEl) setStatus(profileStatusEl, "Saving…"); } catch (e) {}
+      const draft = captureDraft();
+      // Build payload (only profile fields; does not touch auth)
+      const payload = {
+        displayName: (draft.displayName || "").trim(),
+        age: draft.age,
+        city: (draft.city || "").trim(),
+        interests: Array.isArray(draft.interests) ? draft.interests : [],
+        location: draft.location && typeof draft.location === "object" ? draft.location : undefined,
+      };
+
+      const res = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${storage.idToken}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        try { if (profileStatusEl) setStatus(profileStatusEl, `Save failed (${res.status})`); } catch (e) {}
+        console.warn("profile/update failed:", res.status, t);
+        return;
+      }
+
+      try { if (profileStatusEl) setStatus(profileStatusEl, "Saved ✅"); } catch (e) {}
+      // Refresh from server so UI reflects what actually persisted (incl. photos)
+      try { hydrateProfileFromServer(); } catch (e) {}
+    } catch (err) {
+      console.error(err);
+      try { if (profileStatusEl) setStatus(profileStatusEl, "Save failed"); } catch (e) {}
+    }
+  });
+
+
 
   if (btnClearLocation) btnClearLocation.addEventListener("click", () => {
     if (profileLatEl) profileLatEl.value = "";
