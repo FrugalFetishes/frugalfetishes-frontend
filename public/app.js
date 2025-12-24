@@ -172,9 +172,7 @@ function getUidFromIdToken(idToken) {
 
 // ====== Storage ======
 const storage = {
-  
-  sessionValid: false,
-get idToken() { return localStorage.getItem("ff_idToken"); },
+  get idToken() { return localStorage.getItem("ff_idToken"); },
   set idToken(v) {
     if (v) localStorage.setItem("ff_idToken", v);
     else localStorage.removeItem("ff_idToken");
@@ -271,7 +269,7 @@ async function checkBackend() {
 
 
 function setAuthedUI() {
-  const signedIn = !!storage.idToken && storage.sessionValid === true;
+  const signedIn = !!storage.idToken;
   // Keep existing class toggle, but also force display to avoid "stacked views" if CSS differs.
   if (landingView) {
     landingView.classList.toggle("hidden", signedIn);
@@ -1273,7 +1271,7 @@ if (btnVerify) btnVerify.addEventListener("click", async () => {
       if (ex.expiresIn) { const ms = Number(ex.expiresIn) * 1000; storage.idTokenExpiresAt = Date.now() + ms - 60_000; }
     }
 
-validateSession();
+setAuthedUI();
 initInterestChips();
 initBioCounter();
   hydrateProfileFromServer();
@@ -1582,50 +1580,17 @@ initBioCounter();
   attachSwipeHandlers();
 });
 
-
-async function validateSession() {
-  try {
-    // Default to logged-out until proven valid
-    storage.sessionValid = false;
-
-    if (!storage.idToken) {
-      setAuthedUI();
-      return false;
-    }
-
-    // Validate token by calling a protected endpoint
-    const res = await fetch(`${BACKEND_BASE_URL}/api/profile/me`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${storage.idToken}` },
-    });
-
-    if (!res.ok) {
-      // Token missing/invalid OR endpoint missing on this backend build
-      storage.idToken = "";
-      storage.uid = "";
-      storage.refreshToken = "";
-      storage.sessionValid = false;
-      try { localStorage.removeItem("ff_idToken"); } catch (e) {}
-      try { localStorage.removeItem("ff_refreshToken"); } catch (e) {}
-      try { localStorage.removeItem("ff_uid"); } catch (e) {}
-      setAuthedUI();
-      return false;
-    }
-
-    storage.sessionValid = true;
-    setAuthedUI();
-    return true;
-  } catch (e) {
-    // Fail closed: show landing only
-    storage.sessionValid = false;
-    setAuthedUI();
-    return false;
-  }
-}
-
 (function init() {
-  // Emergency guard: prevent User UI from showing under Landing unless token is validated
-  try { storage.sessionValid = false; } catch (e) {}
+  // === EMERGENCY: FORCE LOGGED-OUT START (OTP RECOVERY) ===
+  // Prevent "UserUI under landing" and restore OTP flow by clearing any stale auth tokens on load.
+  try {
+    storage.idToken = null;
+    storage.refreshToken = null;
+    storage.idTokenExpiresAt = 0;
+    // Clear per-user profile drafts that can leak state across sessions
+    Object.keys(localStorage).filter(k => k.startsWith("ff_profileDraft_")).forEach(k => localStorage.removeItem(k));
+  } catch (e) {}
+  try { setAuthedUI(); } catch (e) {}
 
   if (!emailEl.value) emailEl.value = "test@example.com";
 
