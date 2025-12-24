@@ -1844,6 +1844,17 @@ initBioCounter();
     }
   });
 
+  // Dedicated "Delete Selected Photos" button (keeps OTP/login untouched)
+  if (btnDeleteSelectedPhotos) btnDeleteSelectedPhotos.addEventListener("click", async () => {
+    try {
+      // Reuse the existing delete/clear logic already wired on btnClearPhotos
+      if (btnClearPhotos) btnClearPhotos.click();
+    } catch (e) {
+      // no-op
+    }
+  });
+
+
   if (photoFilesEl) photoFilesEl.addEventListener("change", async () => {
     clearError();
     setPhotoStatus("Processing photos...");
