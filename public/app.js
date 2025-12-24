@@ -2620,82 +2620,77 @@ function ff_renderTiles(profile){
 
   const photos = Array.isArray(profile && profile.photos) ? profile.photos.map(ff_norm).filter(Boolean) : [];
   tiles.innerHTML = "";
-  photos.slice(0,6).forEach((url, idx) => {
-      const wrap = document.createElement("div");
-      wrap.className = "photoThumb";
-      wrap.style.position = "relative";
-      wrap.style.width = "100%";
-      wrap.style.borderRadius = "14px";
-      wrap.style.overflow = "hidden";
-      wrap.dataset.url = String(url);
+  
+photos.slice(0,6).forEach((url, idx) => {
+  const wrap = document.createElement("div");
+  wrap.className = "photoThumb";
+  wrap.style.position = "relative";
+  wrap.style.width = "100%";
+  wrap.style.borderRadius = "14px";
+  wrap.style.overflow = "hidden";
+  wrap.dataset.url = String(url);
 
-      if (!window.__ff_selectedPhotos) window.__ff_selectedPhotos = new Set();
+  if (!window.__ff_selectedPhotos) window.__ff_selectedPhotos = new Set();
 
-      const syncSelectedUI = () => {
-        const isSel = window.__ff_selectedPhotos.has(String(url));
-        if (isSel) wrap.classList.add("selected");
-        else wrap.classList.remove("selected");
-        const lbl = document.getElementById("selectedCount") || document.getElementById("selectedToDeleteLabel");
-        if (lbl){
-          const n = window.__ff_selectedPhotos.size;
-          lbl.textContent = n ? `${n} selected to delete` : "";
-        }
-      };
+  const syncSelectedUI = () => {
+    const isSel = window.__ff_selectedPhotos.has(String(url));
+    if (isSel) wrap.classList.add("selected");
+    else wrap.classList.remove("selected");
+    const lbl = document.getElementById("selectedCount") || document.getElementById("selectedToDeleteLabel");
+    if (lbl){
+      const n = window.__ff_selectedPhotos.size;
+      lbl.textContent = n ? `${n} selected to delete` : "";
+    }
+  };
 
-      wrap.addEventListener("click", (ev) => {
-        // clicking star should not toggle selection
-        try{
-          if (ev && ev.target && ev.target.closest && ev.target.closest("button")) return;
-        }catch(e){}
-        const key = String(url);
-        if (window.__ff_selectedPhotos.has(key)) window.__ff_selectedPhotos.delete(key);
-        else window.__ff_selectedPhotos.add(key);
-        syncSelectedUI();
-      });
-
-      const img = document.createElement("img");
-      img.src = String(url);
-      img.alt = `Photo ${idx+1}`;
-      img.loading = "lazy";
-      img.style.width = "100%";
-      img.style.height = "110px";
-      img.style.objectFit = "cover";
-      img.style.display = "block";
-
-      const star = document.createElement("button");
-      star.type = "button";
-      star.textContent = "★";
-      star.setAttribute("aria-label", "Set as profile photo");
-      star.style.position = "absolute";
-      star.style.top = "8px";
-      star.style.right = "8px";
-      star.style.zIndex = "9999";
-      star.style.border = "1px solid rgba(255,255,255,0.35)";
-      star.style.background = "rgba(0,0,0,0.45)";
-      star.style.color = "#fff";
-      star.style.borderRadius = "999px";
-      star.style.padding = "6px 8px";
-      star.style.fontSize = "14px";
-      star.style.lineHeight = "14px";
-      star.style.cursor = "pointer";
-
-      star.addEventListener("click", async (ev) => {
-        ev.preventDefault(); ev.stopPropagation();
-        try{
-          await ff_setPrimaryPhoto(url);
-        }catch(e){}
-      });
-
-      wrap.appendChild(img);
-      wrap.appendChild(star);
-      tiles.appendChild(wrap);
-      syncSelectedUI();
-    });
-
-    wrap.appendChild(img);
-    wrap.appendChild(star);
-    tiles.appendChild(wrap);
+  wrap.addEventListener("click", (ev) => {
+    try{
+      if (ev && ev.target && ev.target.closest && ev.target.closest("button")) return;
+    }catch(e){}
+    const key = String(url);
+    if (window.__ff_selectedPhotos.has(key)) window.__ff_selectedPhotos.delete(key);
+    else window.__ff_selectedPhotos.add(key);
+    syncSelectedUI();
   });
+
+  const img = document.createElement("img");
+  img.src = String(url);
+  img.alt = `Photo ${idx+1}`;
+  img.loading = "lazy";
+  img.style.width = "100%";
+  img.style.height = "110px";
+  img.style.objectFit = "cover";
+  img.style.display = "block";
+
+  const star = document.createElement("button");
+  star.type = "button";
+  star.textContent = "★";
+  star.setAttribute("aria-label", "Set as profile photo");
+  star.style.position = "absolute";
+  star.style.top = "8px";
+  star.style.right = "8px";
+  star.style.zIndex = "9999";
+  star.style.border = "1px solid rgba(255,255,255,0.35)";
+  star.style.background = "rgba(0,0,0,0.45)";
+  star.style.color = "#fff";
+  star.style.borderRadius = "999px";
+  star.style.padding = "6px 8px";
+  star.style.fontSize = "14px";
+  star.style.lineHeight = "14px";
+  star.style.cursor = "pointer";
+
+  star.addEventListener("click", async (ev) => {
+    ev.preventDefault(); ev.stopPropagation();
+    try{
+      await ff_setPrimaryPhoto(url);
+    }catch(e){}
+  });
+
+  wrap.appendChild(img);
+  wrap.appendChild(star);
+  tiles.appendChild(wrap);
+  syncSelectedUI();
+});
 
   // Default hero
   ff_setHero(profile || {});
@@ -2730,8 +2725,6 @@ function ff_renderTiles(profile){
 
 
 
-
-/* === FF_SELECTED_FIX_START === */
 (function ff_selectedStylesOnce(){
   if (document.getElementById("ffSelectedStyles")) return;
   const st = document.createElement("style");
@@ -2756,5 +2749,3 @@ function ff_renderTiles(profile){
   `;
   document.head.appendChild(st);
 })();
-/* === FF_SELECTED_FIX_END === */
-
