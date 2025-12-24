@@ -515,7 +515,7 @@ async function updateProfile(fields) {
   return jsonFetch(`${BACKEND_BASE_URL}/api/profile/update`, {
     method: "POST",
     headers: { "Authorization": `Bearer ${idToken}` },
-    body: JSON.stringify(fields)
+    body: fields
   });
 }
 
