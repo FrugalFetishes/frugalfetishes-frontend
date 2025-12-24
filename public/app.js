@@ -555,22 +555,78 @@ function loadDraft(uid) {
   const key = draftKeyForUid(uid);
   try { return JSON.parse(localStorage.getItem(key) || "{}"); } catch { return {}; }
 }
-
-function clearProfileForm() {
-  if (profileDisplayNameEl) profileDisplayNameEl.value = "";
-  if (profileAgeEl) profileAgeEl.value = "";
-  if (profileCityEl) profileCityEl.value = "";
-  if (profileInterestsEl) profileInterestsEl.value = "";
-  if (profileLatEl) profileLatEl.value = "";
-  if (profileLngEl) profileLngEl.value = "";
-  if (profileBioEl) profileBioEl.value = "";
-  if (bioCountEl) bioCountEl.textContent = "0";
-  if (typeof setProfileStatus === "function") setProfileStatus("");
-}
-
 function saveDraft(uid, d) {
   const key = draftKeyForUid(uid);
   try { localStorage.setItem(key, JSON.stringify(d || {})); } catch {}
+}
+
+let profileAutoSaveTimer = null;
+let profileAutoSaveInFlight = false;
+let profileAutoSaveQueued = false;
+
+function scheduleProfileAutoSave() {
+  // Only when signed in
+  if (!storage.idToken) return;
+
+  if (profileAutoSaveTimer) clearTimeout(profileAutoSaveTimer);
+  profileAutoSaveTimer = setTimeout(async () => {
+    const payload = {};
+    const dn = profileDisplayNameEl ? profileDisplayNameEl.value.trim() : "";
+    const city = profileCityEl ? profileCityEl.value.trim() : "";
+    const ageRaw = profileAgeEl ? profileAgeEl.value : "";
+    const bio = profileBioEl ? profileBioEl.value.trim() : "";
+    syncInterestsHiddenInput();
+    const interestsRaw = profileInterestsEl ? profileInterestsEl.value : "";
+    const latRaw = profileLatEl ? profileLatEl.value : "";
+    const lngRaw = profileLngEl ? profileLngEl.value : "";
+
+    if (dn) payload.displayName = dn;
+    if (city) payload.city = city;
+
+    // Send bio (backend may ignore; safe)
+    if (bio) payload.bio = bio;
+
+    if (ageRaw !== "") {
+      const ageNum = Number(ageRaw);
+      if (Number.isFinite(ageNum)) payload.age = ageNum;
+    }
+
+    const interests = parseInterests(interestsRaw);
+    if (interests.length) payload.interests = interests;
+
+    if (latRaw !== "" || lngRaw !== "") {
+      const latNum = Number(latRaw);
+      const lngNum = Number(lngRaw);
+      if (Number.isFinite(latNum) && Number.isFinite(lngNum)) payload.location = { lat: latNum, lng: lngNum };
+    }
+
+    if (Object.keys(payload).length === 0) {
+      setProfileStatus("");
+      return;
+    }
+
+    // If a save is already running, queue exactly one more run
+    if (profileAutoSaveInFlight) {
+      profileAutoSaveQueued = true;
+      return;
+    }
+
+    profileAutoSaveInFlight = true;
+    try {
+      setProfileStatus("Saving…");
+      await updateProfile(payload);
+      setProfileStatus("Saved ✅");
+    } catch (e) {
+      // Don't crash the app on autosave errors
+      setProfileStatus("");
+    } finally {
+      profileAutoSaveInFlight = false;
+      if (profileAutoSaveQueued) {
+        profileAutoSaveQueued = false;
+        scheduleProfileAutoSave();
+      }
+    }
+  }, 900);
 }
 function captureDraft() {
   const uid = getUidFromIdToken(storage.idToken);
@@ -583,9 +639,10 @@ function captureDraft() {
     lat: profileLatEl ? profileLatEl.value : "",
     lng: profileLngEl ? profileLngEl.value : "",
   };
-  if (!uid) return;
-  saveDraft(uid, d);
+  if (uid) saveDraft(uid, d);
+  scheduleProfileAutoSave();
 }
+
 
 
 function syncInterestsHiddenInput() {
@@ -1288,6 +1345,20 @@ btnVerify.addEventListener("click", async () => {
 setAuthedUI();
 initInterestChips();
 initBioCounter();
+  // Profile autosave listeners (no Save button required)
+  const profileInputs = [profileDisplayNameEl, profileAgeEl, profileCityEl, profileBioEl, profileLatEl, profileLngEl];
+  profileInputs.forEach((el) => {
+    if (!el) return;
+    el.addEventListener("input", () => {
+      captureDraft();
+      scheduleProfileAutoSave();
+    });
+    el.addEventListener("change", () => {
+      captureDraft();
+      scheduleProfileAutoSave();
+    });
+  });
+
   hydrateProfileFromServer();
   // Tabs
   if (tabButtons && tabButtons.length) {
@@ -1550,10 +1621,13 @@ if (btnSendMessage) {
 
 
 btnLogout.addEventListener("click", () => {
+  // Clear session tokens (frontend-only)
   storage.idToken = null;
   storage.refreshToken = null;
   storage.idTokenExpiresAt = 0;
   lastCodeId = null;
+
+  // Clear UI state
   setStatus(startResultEl, "");
   setStatus(feedStatusEl, "");
   allFeedItems = [];
@@ -1567,30 +1641,26 @@ btnLogout.addEventListener("click", () => {
   if (threadMetaEl) setStatus(threadMetaEl, "");
   if (filterStatusEl) setStatus(filterStatusEl, "");
   clearError();
-  clearProfileForm();
+
+  // Clear profile inputs immediately
+  if (profileDisplayNameEl) profileDisplayNameEl.value = "";
+  if (profileAgeEl) profileAgeEl.value = "";
+  if (profileCityEl) profileCityEl.value = "";
+  if (profileBioEl) profileBioEl.value = "";
+  selectedInterests = new Set();
+  syncInterestsHiddenInput();
+  if (typeof renderInterestChips === "function") renderInterestChips();
+
+  // Reset autosave state
+  if (profileAutoSaveTimer) clearTimeout(profileAutoSaveTimer);
+  profileAutoSaveTimer = null;
+  profileAutoSaveInFlight = false;
+  profileAutoSaveQueued = false;
+
+  // Return to landing
   setAuthedUI();
-initInterestChips();
-initBioCounter();
-  // Tabs
-  if (tabButtons && tabButtons.length) {
-    tabButtons.forEach(btn => btn.addEventListener("click", () => setActiveTab(btn.getAttribute("data-tab"))));
-    setActiveTab("discover");
-  }
-
-  // Discover actions
-  if (btnPassEl) btnPassEl.addEventListener("click", passCurrent);
-  if (btnLikeEl) btnLikeEl.addEventListener("click", () => likeCurrent());
-  if (btnExpandEl) btnExpandEl.addEventListener("click", expandCurrent);
-  if (btnCollapseEl) btnCollapseEl.addEventListener("click", collapseSheet);
-  if (btnPass2El) btnPass2El.addEventListener("click", passCurrent);
-  if (btnLike2El) btnLike2El.addEventListener("click", () => likeCurrent());
-
-  // Dev feed toggle
-  if (btnToggleDevFeed && feedListEl) {
-    btnToggleDevFeed.addEventListener("click", () => {
-      feedListEl.hidden = !feedListEl.hidden;
-    });
-  }
+});
+}
 
   attachSwipeHandlers();
 });
