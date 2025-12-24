@@ -332,7 +332,17 @@ function installSaveProfileHandler() {
       try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, "Saved ✅"); } catch (err) {}
       try { showToast("Profile saved ✅"); } catch (err) {}
       try { hydrateProfileFromServer(); } catch (err) {}
-    } catch (err) {
+    
+      // If there are staged photos selected, trigger Save Photos too.
+      try {
+        if (Array.isArray(selectedPhotos) && selectedPhotos.length > 0) {
+          const btnSavePhotos = $("btnSavePhotos");
+          if (btnSavePhotos && typeof btnSavePhotos.click === "function") {
+            btnSavePhotos.click();
+          }
+        }
+      } catch (e) {}
+} catch (err) {
       console.error(err);
       try { if (profileStatusLiveEl) setStatus(profileStatusLiveEl, "Save failed"); } catch (e2) {}
       try { showToast("Save failed"); } catch (e2) {}
