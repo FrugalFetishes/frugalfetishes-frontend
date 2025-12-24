@@ -307,7 +307,6 @@ function installSaveProfileHandler() {
       const payload = {
         displayName: String(d.displayName || "").trim(),
         city: String(d.city || "").trim(),
-      zip: String(d.zip || "").trim(),
         interests: interestsArr,
       };
       if (Number.isFinite(ageNum)) payload.age = ageNum;
@@ -1777,7 +1776,6 @@ initBioCounter();
 
   if (btnSetMiami) btnSetMiami.addEventListener("click", () => {
     if (profileCityEl) profileCityEl.value = "Miami";
-      if (profileZipEl) profileZipEl.value = String(profile.zip || "");
     if (profileLatEl) profileLatEl.value = "25.7617";
     if (profileLngEl) profileLngEl.value = "-80.1918";
     captureDraft();
@@ -1849,7 +1847,6 @@ initBioCounter();
       if (dn) payload.displayName = dn;
       if (city) payload.city = city;
 
-  d.zip = (profileZipEl && profileZipEl.value) ? String(profileZipEl.value).trim() : "";
       const bio = profileBioEl ? profileBioEl.value.trim() : "";
       if (bio) payload.bio = bio;
 
