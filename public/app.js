@@ -19,6 +19,26 @@ function normalizePhotoUrl(p) {
 }
 
 
+function setProfileHeroFromProfile(profile){
+  try{
+    if (!profile) return;
+    const name = (profile.displayName || profile.name || "").trim();
+    const ageNum = (typeof profile.age === "number") ? profile.age : (profile.age ? Number(profile.age) : null);
+    const label = (name ? name : "Your Profile") + ((ageNum && !Number.isNaN(ageNum)) ? `, ${ageNum}` : "");
+    if (profileHeroNameAgeEl) profileHeroNameAgeEl.textContent = label;
+
+    const photos = Array.isArray(profile.photos) ? profile.photos.map(normalizePhotoUrl).filter(Boolean) : [];
+    const primary = normalizePhotoUrl(profile.primaryPhoto) || (photos.length ? photos[0] : "");
+    if (profileHeroImgEl){
+      profileHeroImgEl.src = primary || "";
+      profileHeroImgEl.style.display = primary ? "block" : "none";
+    }
+  }catch(e){}
+}
+
+
+
+
 async function refreshDevCreditsBalance() {
   try {
     if (!storage || !storage.idToken) { setDevCreditsBalance(""); return; }
@@ -112,6 +132,9 @@ try { if (btnSavePhotos) btnSavePhotos.style.display = "none"; } catch (e) {}
 const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
 const photoPreviewEl = $("photoPreview");
+const profileHeroImgEl = $("profileHeroImg");
+const profileHeroNameAgeEl = $("profileHeroNameAge");
+
 
 const btnDeleteSelectedPhotos = (function ensureDeleteSelectedPhotosBtn(){
   // Try to find existing button
@@ -378,9 +401,7 @@ async function exchangeCustomTokenForIdToken(customToken) {
   const url = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key=${encodeURIComponent(FIREBASE_WEB_API_KEY)}`;
   return jsonFetch(url, {
     method: "POST",
-    body: JSON.stringify({token: customToken, returnSecureToken: true,
-        primaryPhoto: selectedPrimaryPhoto || (currentProfile && currentProfile.primaryPhoto) || undefined
-      })
+    body: JSON.stringify({ token: customToken, returnSecureToken: true })
   });
 }
 
@@ -584,13 +605,13 @@ async function hydrateProfileFromServer() {
           setPhotoStatus(savedPhotoSelection.size ? `${savedPhotoSelection.size} selected to delete.` : "");
         });
 
-        // Set as profile photo
+        // Set-as-profile button (star)
           const star = document.createElement("button");
           star.type = "button";
           star.className = "photoStarBtn";
           star.textContent = "★";
           star.setAttribute("aria-label", "Set as profile photo");
-          const isPrimary = normalizePhotoUrl(selectedPrimaryPhoto) === normalizePhotoUrl(url);
+          const isPrimary = normalizePhotoUrl((currentProfile && currentProfile.primaryPhoto) || "") === normalizePhotoUrl(url);
           star.setAttribute("aria-pressed", isPrimary ? "true" : "false");
           star.addEventListener("click", async (ev) => {
             ev.preventDefault();
@@ -598,19 +619,13 @@ async function hydrateProfileFromServer() {
             try{
               const idToken = storage.idToken || localStorage.getItem("ff_idToken") || "";
               if (!idToken) return;
-              selectedPrimaryPhoto = String(url);
-              if (currentProfile) currentProfile.primaryPhoto = String(url);
-
-              const resp = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+              await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
                 body: JSON.stringify({ primaryPhoto: String(url) })
               });
-              const data = await resp.json().catch(() => null);
-              if (!resp.ok || !data || data.ok !== true) {
-                throw new Error((data && data.error) ? data.error : `Failed (${resp.status})`);
-              }
-              // Rehydrate so it sticks across refresh/logout
+              if (currentProfile) currentProfile.primaryPhoto = String(url);
+              setProfileHeroFromProfile(currentProfile || {});
               try{ await hydrateProfileFromServer(); }catch(e){}
             }catch(e){}
           });
@@ -795,13 +810,13 @@ function renderPhotoPreviews() {
       setPhotoStatus(`${selectedPhotos.length} selected.`);
     });
 
-    // Set as profile photo
+    // Set-as-profile button (star)
           const star = document.createElement("button");
           star.type = "button";
           star.className = "photoStarBtn";
           star.textContent = "★";
           star.setAttribute("aria-label", "Set as profile photo");
-          const isPrimary = normalizePhotoUrl(selectedPrimaryPhoto) === normalizePhotoUrl(url);
+          const isPrimary = normalizePhotoUrl((currentProfile && currentProfile.primaryPhoto) || "") === normalizePhotoUrl(url);
           star.setAttribute("aria-pressed", isPrimary ? "true" : "false");
           star.addEventListener("click", async (ev) => {
             ev.preventDefault();
@@ -809,19 +824,13 @@ function renderPhotoPreviews() {
             try{
               const idToken = storage.idToken || localStorage.getItem("ff_idToken") || "";
               if (!idToken) return;
-              selectedPrimaryPhoto = String(url);
-              if (currentProfile) currentProfile.primaryPhoto = String(url);
-
-              const resp = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+              await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
                 body: JSON.stringify({ primaryPhoto: String(url) })
               });
-              const data = await resp.json().catch(() => null);
-              if (!resp.ok || !data || data.ok !== true) {
-                throw new Error((data && data.error) ? data.error : `Failed (${resp.status})`);
-              }
-              // Rehydrate so it sticks across refresh/logout
+              if (currentProfile) currentProfile.primaryPhoto = String(url);
+              setProfileHeroFromProfile(currentProfile || {});
               try{ await hydrateProfileFromServer(); }catch(e){}
             }catch(e){}
           });
@@ -1955,13 +1964,13 @@ initBioCounter();
           badge.className = "photoBadge";
           badge.textContent = "Tap to select";
 
-          // Set as profile photo
+          // Set-as-profile button (star)
           const star = document.createElement("button");
           star.type = "button";
           star.className = "photoStarBtn";
           star.textContent = "★";
           star.setAttribute("aria-label", "Set as profile photo");
-          const isPrimary = normalizePhotoUrl(selectedPrimaryPhoto) === normalizePhotoUrl(url);
+          const isPrimary = normalizePhotoUrl((currentProfile && currentProfile.primaryPhoto) || "") === normalizePhotoUrl(url);
           star.setAttribute("aria-pressed", isPrimary ? "true" : "false");
           star.addEventListener("click", async (ev) => {
             ev.preventDefault();
@@ -1969,19 +1978,13 @@ initBioCounter();
             try{
               const idToken = storage.idToken || localStorage.getItem("ff_idToken") || "";
               if (!idToken) return;
-              selectedPrimaryPhoto = String(url);
-              if (currentProfile) currentProfile.primaryPhoto = String(url);
-
-              const resp = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+              await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
                 body: JSON.stringify({ primaryPhoto: String(url) })
               });
-              const data = await resp.json().catch(() => null);
-              if (!resp.ok || !data || data.ok !== true) {
-                throw new Error((data && data.error) ? data.error : `Failed (${resp.status})`);
-              }
-              // Rehydrate so it sticks across refresh/logout
+              if (currentProfile) currentProfile.primaryPhoto = String(url);
+              setProfileHeroFromProfile(currentProfile || {});
               try{ await hydrateProfileFromServer(); }catch(e){}
             }catch(e){}
           });
