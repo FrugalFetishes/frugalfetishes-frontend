@@ -2115,12 +2115,7 @@ function setActiveTab(tabName) {
   if (feedListEl) {
     feedListEl.hidden = tabName !== "dev";
   }
-
-  if (tabName === "profile") {
-    try { hydrateProfileFromServer(); } catch (e) {}
-  }
 }
-
 
 // ====== Discover Deck ======
 function firstPhotoUrl(p) {
@@ -2506,3 +2501,50 @@ function renderSavedPhotos(photos, profile){
 
 
 
+
+function renderSavedPhotos(photos){
+  try{
+    const list = Array.isArray(photos) ? photos.map(normalizePhotoUrl).filter(Boolean) : [];
+    if (!photoPreviewEl) return;
+    photoPreviewEl.innerHTML = "";
+    if (list.length === 0) return;
+
+    list.slice(0,6).forEach((url, idx) => {
+      const wrap = document.createElement("div");
+      wrap.className = "photoThumb";
+      wrap.style.position = "relative";
+      wrap.style.borderRadius = "14px";
+      wrap.style.overflow = "hidden";
+
+      const img = document.createElement("img");
+      img.src = String(url);
+      img.alt = `Photo ${idx+1}`;
+      img.loading = "lazy";
+      img.style.width = "100%";
+      img.style.height = "110px";
+      img.style.objectFit = "cover";
+      img.style.display = "block";
+
+      const star = document.createElement("button");
+      star.type = "button";
+      star.className = "photoStarBtn";
+      star.textContent = "★";
+      star.setAttribute("aria-label", "Set as profile photo");
+      star.addEventListener("click", async (ev) => {
+        ev.preventDefault(); ev.stopPropagation();
+        const idToken = (storage && storage.idToken) || localStorage.getItem("ff_idToken") || "";
+        if (!idToken) return;
+        await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
+          body: JSON.stringify({ primaryPhoto: String(url) })
+        });
+        try{ await hydrateProfileFromServer(); }catch(e){}
+      });
+
+      wrap.appendChild(img);
+      wrap.appendChild(star);
+      photoPreviewEl.appendChild(wrap);
+    });
+  }catch(e){}
+}
