@@ -19,6 +19,25 @@ function normalizePhotoUrl(p) {
 }
 
 
+function setProfileHeroFromProfile(profile){
+  try{
+    if (!profile) return;
+    const photos = Array.isArray(profile.photos) ? profile.photos.map(normalizePhotoUrl).filter(Boolean) : [];
+    const primary = normalizePhotoUrl(profile.primaryPhoto) || (photos.length ? photos[0] : "");
+    if (profileHeroImgEl){
+      profileHeroImgEl.src = primary || "";
+      profileHeroImgEl.style.display = primary ? "block" : "none";
+    }
+    const name = (profile.displayName || profile.name || "").trim();
+    const ageNum = (typeof profile.age === "number") ? profile.age : (profile.age ? Number(profile.age) : null);
+    const label = (name ? name : "Your Profile") + ((ageNum && !Number.isNaN(ageNum)) ? `, ${ageNum}` : "");
+    if (profileHeroNameAgeEl) profileHeroNameAgeEl.textContent = label;
+  }catch(e){}
+}
+
+
+
+
 async function refreshDevCreditsBalance() {
   try {
     if (!storage || !storage.idToken) { setDevCreditsBalance(""); return; }
@@ -112,6 +131,9 @@ try { if (btnSavePhotos) btnSavePhotos.style.display = "none"; } catch (e) {}
 const btnClearPhotos = $("btnClearPhotos");
 const photoStatusEl = $("photoStatus");
 const photoPreviewEl = $("photoPreview");
+const profileHeroImgEl = $("profileHeroImg");
+const profileHeroNameAgeEl = $("profileHeroNameAge");
+
 
 const btnDeleteSelectedPhotos = (function ensureDeleteSelectedPhotosBtn(){
   // Try to find existing button
@@ -2414,9 +2436,62 @@ function renderSavedPhotos(photos){
     photoPreviewEl.innerHTML = "";
     if (list.length === 0) return;
 
+    
     list.slice(0,6).forEach((url, idx) => {
       const wrap = document.createElement("div");
       wrap.className = "photoThumb";
+      wrap.style.position = "relative";
+      wrap.style.borderRadius = "14px";
+      wrap.style.overflow = "hidden";
+
+      const img = document.createElement("img");
+      img.src = String(url);
+      img.alt = `Photo ${idx+1}`;
+      img.loading = "lazy";
+      img.style.width = "100%";
+      img.style.height = "110px";
+      img.style.objectFit = "cover";
+      img.style.display = "block";
+
+      // ★ Set as profile photo
+      const star = document.createElement("button");
+      star.type = "button";
+      star.className = "photoStarBtn";
+      star.textContent = "★";
+      star.setAttribute("aria-label", "Set as profile photo");
+      star.setAttribute("aria-pressed", "false");
+      star.addEventListener("click", async (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        try{
+          const idToken = (storage && storage.idToken) || localStorage.getItem("ff_idToken") || "";
+          if (!idToken) return;
+          const resp = await fetch(`${BACKEND_BASE_URL}/api/profile/update`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${idToken}` },
+            body: JSON.stringify({ primaryPhoto: String(url) })
+          });
+          const data = await resp.json().catch(()=>null);
+          if (!resp.ok || !data || data.ok !== true) return;
+
+          // Update hero immediately if present
+          try{
+            if (typeof setProfileHeroFromProfile === "function") {
+              const p = (data.profile || (data.user && data.user.profile) || {});
+              if (p && typeof p === "object") setProfileHeroFromProfile(p);
+            }
+          }catch(e){}
+
+          // Refresh tiles (updates pressed state if you later wire it)
+          try{ await hydrateProfileFromServer(); }catch(e){}
+        }catch(e){}
+      });
+
+      wrap.appendChild(img);
+      wrap.appendChild(star);
+      photoPreviewEl.appendChild(wrap);
+    });
+wrap.className = "photoThumb";
       wrap.style.position = "relative";
       wrap.style.borderRadius = "14px";
       wrap.style.overflow = "hidden";
