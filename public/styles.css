@@ -664,84 +664,27 @@ input, textarea, select{
 }
 
 
-/* --- Profile Hero (mobile-first) --- */
-.profileHero{
-  position: relative;
-  width: 100%;
-  aspect-ratio: 4 / 5;
-  border-radius: 18px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  background: rgba(0,0,0,0.18);
-  margin: 12px 0 14px 0;
-}
-.profileHeroImg{
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.profileHeroOverlay{
-  position: absolute;
-  left: 0; right: 0; bottom: 0;
-  padding: 14px;
-  background: linear-gradient(to top, rgba(0,0,0,0.78), rgba(0,0,0,0));
-}
-.profileHeroNameAge{
-  font-size: 20px;
-  font-weight: 800;
-  color: #fff;
-  text-shadow: 0 2px 10px rgba(0,0,0,0.6);
-}
-
-
-/* --- Profile photo tiles (uniform) --- */
+/* === OVERRIDE: force compact, uniform photo tiles (UI-only, OTP-safe) === */
 #photoPreview{
-  display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  display: grid !important;
+  grid-template-columns: repeat(3, clamp(86px, 26vw, 118px)) !important;
+  gap: 10px !important;
+  justify-content: start !important;
+  align-content: start !important;
 }
+
 #photoPreview .photoThumb{
-  position: relative;
-  width: 100%;
-  border-radius: 14px;
-  overflow: hidden;
+  width: 100% !important;
+  aspect-ratio: 1 / 1 !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+  justify-self: start !important;
 }
+
 #photoPreview .photoThumb img{
-  width: 100%;
-  height: 110px;
-  object-fit: cover;
-  display: block;
-}
-.photoStarBtn{
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  border: 1px solid rgba(255,255,255,0.35);
-  background: rgba(0,0,0,0.45);
-  color: #fff;
-  border-radius: 999px;
-  padding: 6px 8px;
-  font-size: 12px;
-  cursor: pointer;
-}
-/* === Photo tile size fix (safe, UI only) === */
-
-#photoPreview {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
 }
 
-#photoPreview .photoThumb {
-  width: 100%;
-  aspect-ratio: 1 / 1;
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-#photoPreview .photoThumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
