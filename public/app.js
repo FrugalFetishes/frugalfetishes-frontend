@@ -3020,6 +3020,54 @@ photos.slice(0,6).forEach((url, idx) => {
     return { like, pass };
   }
 
+
+  function ff_getExpandSheet(){
+    return document.getElementById("expandSheet") || document.getElementById("profileSheet") || null;
+  }
+
+  function triggerExpand(){
+    try{
+      const sheet = ff_getExpandSheet();
+      if (sheet){
+        sheet.style.display = "block";
+        sheet.classList.add("open");
+        return;
+      }
+      const root =
+        document.getElementById("discoverView") ||
+        document.getElementById("discoverSection") ||
+        document.querySelector("[data-view='discover']") ||
+        document.querySelector(".discoverView") ||
+        document.body;
+
+      const btn =
+        root.querySelector("#expandBtn") ||
+        root.querySelector("button[data-action='expand']") ||
+        root.querySelector("button.ff-expand") ||
+        null;
+      if (btn) btn.click();
+    }catch(e){}
+  }
+
+  function triggerCollapse(){
+    try{
+      const sheet = ff_getExpandSheet();
+      if (sheet){
+        sheet.classList.remove("open");
+        sheet.style.display = "none";
+        return;
+      }
+      const btn =
+        document.getElementById("sheetClose") ||
+        document.querySelector("#expandSheet .close") ||
+        document.querySelector("button[data-action='collapse']") ||
+        null;
+      if (btn) btn.click();
+    }catch(e){}
+  }
+
+
+
   function applyCardChrome(card){
     try{
       card.id = card.id || "ffDiscoverCard";
@@ -3037,14 +3085,18 @@ photos.slice(0,6).forEach((url, idx) => {
 
     applyCardChrome(card);
 
-    let startX = 0, startY = 0, curX = 0, curY = 0, dragging = false, pointerId = null;
+    let startX = 0, startY = 0, curX = 0, curY = 0, dragging = false, pointerId = null, vIntent = null;
 
     const reset = (animate=true) => {
       dragging = false;
       pointerId = null;
+      vIntent = null;
+      try{ card.style.touchAction = "pan-y"; }catch(e){}
       card.style.transition = animate ? "transform 180ms ease" : "none";
       card.style.transform = "translate3d(0,0,0) rotate(0deg)";
-      setTimeout(()=>{ try{ card.style.transition = "none"; }catch(e){} }, 200);
+      setTimeout(()=>{ try{ card.style.transition = "none";
+      vIntent = null;
+      try{ card.style.touchAction = "none"; }catch(e){} }catch(e){} }, 200);
     };
 
     const flyOut = (dir) => {
@@ -3095,6 +3147,11 @@ photos.slice(0,6).forEach((url, idx) => {
       }
 curX = dx;
       curY = dy;
+      // intent detection
+      const upTh = Math.min(140, Math.max(70, (window.innerHeight||640)*0.18));
+      if (dy < -upTh) vIntent = "up";
+      else if (dy > upTh) vIntent = "down";
+      else vIntent = null;
       const rot = clamp(dx / 22, -12, 12);
       card.style.transform = `translate3d(${dx}px, ${dy*0.15}px, 0) rotate(${rot}deg)`;
     };
@@ -3103,19 +3160,22 @@ curX = dx;
       if (!dragging) return;
       const dx = curX || 0;
       const dy = curY || 0;
-      const vThresh = Math.min(140, Math.max(90, (window.innerHeight||700)*0.18));
-      // Drag up to expand profile
-      if (dy < -vThresh) {
-        try { if (typeof expandCurrent === "function") expandCurrent(); } catch(e) {}
-        reset(true);
+
+      const upTh = Math.min(140, Math.max(70, (window.innerHeight||640)*0.18));
+
+      // Vertical swipe gestures
+      if (vIntent === "up" && dy < -upTh){
+        reset(false);
+        triggerExpand();
         return;
       }
-      // Drag down to collapse back to discover
-      if (dy > vThresh) {
-        try { if (typeof collapseSheet === "function") collapseSheet(); } catch(e) {}
-        reset(true);
+      if (vIntent === "down" && dy > upTh){
+        reset(false);
+        triggerCollapse();
         return;
       }
+
+      // Horizontal like/pass
       const threshold = Math.min(120, Math.max(70, (window.innerWidth||360)*0.22));
       if (dx > threshold){
         flyOut("right");
