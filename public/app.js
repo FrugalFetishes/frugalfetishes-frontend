@@ -217,104 +217,6 @@ const swipeSubEl = $("swipeSub");
 const btnPassEl = $("btnPass");
 const btnLikeEl = $("btnLike");
 const btnExpandEl = $("btnExpand");
-
-/* === FF: ensure Expand Sheet DOM exists before refs are captured (OTP-safe) === */
-(function ffEnsureExpandSheetEarly(){
-  try{
-    const make = () => {
-      if (document.getElementById("expandSheet")) return;
-      const sheet = document.createElement("div");
-      sheet.id = "expandSheet";
-      sheet.hidden = true;
-      sheet.style.position = "fixed";
-      sheet.style.left = "0";
-      sheet.style.right = "0";
-      sheet.style.bottom = "0";
-      sheet.style.top = "0";
-      sheet.style.zIndex = "9998";
-      sheet.style.background = "rgba(0,0,0,0.55)";
-      sheet.style.display = "grid";
-      sheet.style.placeItems = "end center";
-
-      const panel = document.createElement("div");
-      panel.style.width = "100%";
-      panel.style.maxWidth = "520px";
-      panel.style.maxHeight = "92vh";
-      panel.style.overflow = "auto";
-      panel.style.borderRadius = "22px 22px 0 0";
-      panel.style.background = "rgba(20,20,24,0.98)";
-      panel.style.border = "1px solid rgba(255,255,255,0.10)";
-      panel.style.boxShadow = "0 -20px 60px rgba(0,0,0,0.55)";
-      panel.style.padding = "14px 16px 18px";
-
-      const title = document.createElement("div");
-      title.id = "sheetTitle";
-      title.style.fontSize = "22px";
-      title.style.fontWeight = "800";
-      title.style.marginBottom = "6px";
-
-      const meta = document.createElement("div");
-      meta.style.display = "flex";
-      meta.style.gap = "10px";
-      meta.style.flexWrap = "wrap";
-      meta.style.opacity = "0.9";
-      meta.style.marginBottom = "10px";
-
-      const age = document.createElement("div"); age.id="sheetAge";
-      const city = document.createElement("div"); city.id="sheetCity";
-      const last = document.createElement("div"); last.id="sheetLastActive";
-      meta.appendChild(age); meta.appendChild(city); meta.appendChild(last);
-
-      const about = document.createElement("div");
-      about.id = "sheetAbout";
-      about.style.marginTop = "10px";
-      about.style.whiteSpace = "pre-wrap";
-      about.style.opacity = "0.95";
-
-      const interests = document.createElement("div");
-      interests.id = "sheetInterests";
-      interests.style.marginTop = "10px";
-      interests.style.display = "flex";
-      interests.style.flexWrap = "wrap";
-      interests.style.gap = "8px";
-
-      const photos = document.createElement("div");
-      photos.id = "sheetPhotos";
-      photos.style.marginTop = "12px";
-      photos.style.display = "grid";
-      photos.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
-      photos.style.gap = "10px";
-
-      const plan = document.createElement("div");
-      plan.id = "sheetPlan";
-      plan.style.marginTop = "10px";
-      plan.style.opacity = "0.85";
-      plan.style.fontSize = "12px";
-
-      panel.appendChild(title);
-      panel.appendChild(meta);
-      panel.appendChild(interests);
-      panel.appendChild(about);
-      panel.appendChild(photos);
-      panel.appendChild(plan);
-
-      sheet.appendChild(panel);
-      document.body.appendChild(sheet);
-
-      // Click backdrop to close
-      sheet.addEventListener("click", (ev) => {
-        if (ev.target === sheet) { sheet.hidden = true; }
-      });
-    };
-
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", make, { once: true });
-    } else {
-      make();
-    }
-  }catch(e){}
-})();
-
 const expandSheetEl = $("expandSheet");
 const btnCollapseEl = $("btnCollapse");
 const sheetTitleEl = $("sheetTitle");
@@ -3020,54 +2922,6 @@ photos.slice(0,6).forEach((url, idx) => {
     return { like, pass };
   }
 
-
-  function ff_getExpandSheet(){
-    return document.getElementById("expandSheet") || document.getElementById("profileSheet") || null;
-  }
-
-  function triggerExpand(){
-    try{
-      const sheet = ff_getExpandSheet();
-      if (sheet){
-        sheet.style.display = "block";
-        sheet.classList.add("open");
-        return;
-      }
-      const root =
-        document.getElementById("discoverView") ||
-        document.getElementById("discoverSection") ||
-        document.querySelector("[data-view='discover']") ||
-        document.querySelector(".discoverView") ||
-        document.body;
-
-      const btn =
-        root.querySelector("#expandBtn") ||
-        root.querySelector("button[data-action='expand']") ||
-        root.querySelector("button.ff-expand") ||
-        null;
-      if (btn) btn.click();
-    }catch(e){}
-  }
-
-  function triggerCollapse(){
-    try{
-      const sheet = ff_getExpandSheet();
-      if (sheet){
-        sheet.classList.remove("open");
-        sheet.style.display = "none";
-        return;
-      }
-      const btn =
-        document.getElementById("sheetClose") ||
-        document.querySelector("#expandSheet .close") ||
-        document.querySelector("button[data-action='collapse']") ||
-        null;
-      if (btn) btn.click();
-    }catch(e){}
-  }
-
-
-
   function applyCardChrome(card){
     try{
       card.id = card.id || "ffDiscoverCard";
@@ -3085,18 +2939,14 @@ photos.slice(0,6).forEach((url, idx) => {
 
     applyCardChrome(card);
 
-    let startX = 0, startY = 0, curX = 0, curY = 0, dragging = false, pointerId = null, vIntent = null;
+    let startX = 0, startY = 0, curX = 0, curY = 0, dragging = false, pointerId = null;
 
     const reset = (animate=true) => {
       dragging = false;
       pointerId = null;
-      vIntent = null;
-      try{ card.style.touchAction = "pan-y"; }catch(e){}
       card.style.transition = animate ? "transform 180ms ease" : "none";
       card.style.transform = "translate3d(0,0,0) rotate(0deg)";
-      setTimeout(()=>{ try{ card.style.transition = "none";
-      vIntent = null;
-      try{ card.style.touchAction = "none"; }catch(e){} }catch(e){} }, 200);
+      setTimeout(()=>{ try{ card.style.transition = "none"; }catch(e){} }, 200);
     };
 
     const flyOut = (dir) => {
@@ -3147,11 +2997,6 @@ photos.slice(0,6).forEach((url, idx) => {
       }
 curX = dx;
       curY = dy;
-      // intent detection
-      const upTh = Math.min(140, Math.max(70, (window.innerHeight||640)*0.18));
-      if (dy < -upTh) vIntent = "up";
-      else if (dy > upTh) vIntent = "down";
-      else vIntent = null;
       const rot = clamp(dx / 22, -12, 12);
       card.style.transform = `translate3d(${dx}px, ${dy*0.15}px, 0) rotate(${rot}deg)`;
     };
@@ -3160,22 +3005,19 @@ curX = dx;
       if (!dragging) return;
       const dx = curX || 0;
       const dy = curY || 0;
-
-      const upTh = Math.min(140, Math.max(70, (window.innerHeight||640)*0.18));
-
-      // Vertical swipe gestures
-      if (vIntent === "up" && dy < -upTh){
-        reset(false);
-        triggerExpand();
+      const vThresh = Math.min(140, Math.max(90, (window.innerHeight||700)*0.18));
+      // Drag up to expand profile
+      if (dy < -vThresh) {
+        try { if (typeof expandCurrent === "function") expandCurrent(); } catch(e) {}
+        reset(true);
         return;
       }
-      if (vIntent === "down" && dy > upTh){
-        reset(false);
-        triggerCollapse();
+      // Drag down to collapse back to discover
+      if (dy > vThresh) {
+        try { if (typeof collapseSheet === "function") collapseSheet(); } catch(e) {}
+        reset(true);
         return;
       }
-
-      // Horizontal like/pass
       const threshold = Math.min(120, Math.max(70, (window.innerWidth||360)*0.22));
       if (dx > threshold){
         flyOut("right");
@@ -3233,15 +3075,107 @@ curX = dx;
 })();
 
 
+/* === FF_VERTICAL_EXPAND_START === */
+// Tinder/Bumble style vertical gestures on the existing swipe card.
+// Up = expandCurrent(); Down (when expanded) = collapse sheet.
+(function ff_bindVerticalExpand(){
+  if (window.__ffVerticalExpandBound) return;
+  window.__ffVerticalExpandBound = true;
 
-/* === FF: global keys for expand/collapse on PC (OTP-safe) === */
-(function ffGlobalKeysDiscover(){
-  if (window.__ffGlobalKeysDiscover) return;
-  window.__ffGlobalKeysDiscover = true;
-  window.addEventListener("keydown", (e) => {
-    try{
-      if (e.key === "ArrowUp"){ e.preventDefault(); if (typeof expandCurrent === "function") expandCurrent(); }
-      if (e.key === "Escape"){ e.preventDefault(); if (typeof collapseSheet === "function") collapseSheet(); }
-    }catch(_){}
+  const getCard = () => (typeof swipeCardEl !== "undefined" && swipeCardEl) ? swipeCardEl : document.getElementById("swipeCard");
+  const getSheet = () => (typeof expandSheetEl !== "undefined" && expandSheetEl) ? expandSheetEl : document.getElementById("expandSheet");
+
+  let startX=0, startY=0, dx=0, dy=0, active=false, pid=null;
+
+  const reset = () => { active=false; pid=null; dx=0; dy=0; };
+
+  const onDown = (ev) => {
+    const card = getCard();
+    if (!card) return;
+    if (ev.button !== undefined && ev.button !== 0) return;
+    active = true;
+    pid = ev.pointerId ?? null;
+    startX = ev.clientX || 0;
+    startY = ev.clientY || 0;
+    dx = 0; dy = 0;
+    try{ card.setPointerCapture && pid!=null && card.setPointerCapture(pid); }catch(e){}
+  };
+
+  const onMove = (ev) => {
+    if (!active) return;
+    if (pid!=null && ev.pointerId!=null && ev.pointerId !== pid) return;
+    dx = (ev.clientX || 0) - startX;
+    dy = (ev.clientY || 0) - startY;
+
+    // Prevent page scroll only once we are sure it's a vertical gesture
+    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 14) {
+      try{ ev.preventDefault(); }catch(e){}
+    }
+  };
+
+  const onUp = (_ev) => {
+    if (!active) return;
+    const card = getCard();
+    const sheet = getSheet();
+
+    const vThresh = Math.min(140, Math.max(70, (window.innerHeight||700)*0.16));
+    const hCancel = Math.min(120, Math.max(60, (window.innerWidth||360)*0.22));
+
+    // Ignore if user clearly did a left/right swipe (like/pass)
+    if (Math.abs(dx) > hCancel) { reset(); return; }
+
+    // Swipe UP => expand
+    if (dy < -vThresh) {
+      try{
+        if (typeof expandCurrent === "function") { expandCurrent(); }
+        else if (typeof renderExpandedSheet === "function" && typeof currentProfile !== "undefined" && currentProfile) { renderExpandedSheet(currentProfile); }
+        else if (sheet) { sheet.hidden = false; }
+      }catch(e){}
+    }
+
+    // Swipe DOWN (only if expanded) => collapse
+    if (dy > vThresh) {
+      try{
+        if (typeof collapseExpanded === "function") { collapseExpanded(); }
+        else if (typeof renderExpandedSheet === "function") { renderExpandedSheet(null); }
+        else if (sheet) { sheet.hidden = true; }
+      }catch(e){}
+    }
+
+    reset();
+  };
+
+  const bind = () => {
+    const card = getCard();
+    if (!card || card.__ffVertHandlers) return;
+    card.__ffVertHandlers = true;
+
+    // critical: allow us to call preventDefault on pointermove
+    try{ card.style.touchAction = "none"; }catch(e){}
+
+    card.addEventListener("pointerdown", onDown, { passive: true });
+    card.addEventListener("pointermove", onMove, { passive: false });
+    card.addEventListener("pointerup", onUp, { passive: true });
+    card.addEventListener("pointercancel", onUp, { passive: true });
+  };
+
+  bind();
+  // Re-bind if the card node is replaced by re-render
+  setInterval(bind, 800);
+
+  // Keyboard: ArrowUp expands, Escape collapses
+  window.addEventListener("keydown", (ev) => {
+    if (ev.key === "ArrowUp") {
+      try{
+        if (typeof expandCurrent === "function") expandCurrent();
+      }catch(e){}
+    } else if (ev.key === "Escape" || ev.key === "ArrowDown") {
+      try{
+        if (typeof collapseExpanded === "function") collapseExpanded();
+        else if (typeof renderExpandedSheet === "function") renderExpandedSheet(null);
+      }catch(e){}
+    }
   });
 })();
+/* === FF_VERTICAL_EXPAND_END === */
+
