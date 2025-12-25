@@ -3185,3 +3185,121 @@ curX = dx;
   setInterval(tick, 800);
 })();
 
+
+/* === FF: FORCE vertical swipe -> expand/collapse (bind at pointerup) === */
+(function ff_forceVerticalExpand(){
+  if (window.__ffForceVertExpand) return;
+  window.__ffForceVertExpand = true;
+
+  function getCard(){
+    return (typeof swipeCardEl !== "undefined" && swipeCardEl) ||
+      document.getElementById("ffDiscoverCard") ||
+      document.querySelector(".ff-discover-card") ||
+      document.querySelector(".discoverCard") ||
+      null;
+  }
+
+  function doExpand(){
+    try{
+      if (typeof expandCurrent === "function") { expandCurrent(); return; }
+    }catch(e){}
+    try{
+      if (typeof renderExpandedSheet === "function" && window.__ff_last_discover_profile) {
+        renderExpandedSheet(window.__ff_last_discover_profile);
+        const sheet = document.getElementById("expandSheet");
+        if (sheet) sheet.hidden = false;
+        try{ isExpanded = true; }catch(e){}
+      }
+    }catch(e){}
+  }
+
+  function doCollapse(){
+    try{
+      const sheet = document.getElementById("expandSheet");
+      if (sheet) sheet.hidden = true;
+      try{ isExpanded = false; }catch(e){}
+    }catch(e){}
+  }
+
+  function bind(){
+    const card = getCard();
+    if (!card || card.__ffVertBound) return;
+    card.__ffVertBound = true;
+
+    try{ card.style.touchAction = "none"; }catch(e){}
+
+    let sx=0, sy=0, dx=0, dy=0, down=false;
+
+    card.addEventListener("pointerdown", (ev) => {
+      if (ev.button !== undefined && ev.button !== 0) return;
+      down = true;
+      sx = ev.clientX || 0;
+      sy = ev.clientY || 0;
+      dx = 0; dy = 0;
+    }, { passive: true });
+
+    card.addEventListener("pointermove", (ev) => {
+      if (!down) return;
+      dx = (ev.clientX || 0) - sx;
+      dy = (ev.clientY || 0) - sy;
+      // if it's vertical-ish, prevent the page from scrolling
+      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10){
+        try{ ev.preventDefault(); }catch(e){}
+      }
+    }, { passive: false });
+
+    card.addEventListener("pointerup", () => {
+      if (!down) return;
+      down = false;
+
+      const vThresh = Math.min(140, Math.max(70, (window.innerHeight||700) * 0.18));
+      const isVertical = Math.abs(dy) > Math.abs(dx) * 1.15;
+
+      // swipe up to expand
+      if (isVertical && dy < -vThresh){
+        doExpand();
+        return;
+      }
+      // swipe down to collapse (only if expanded)
+      if (isVertical && dy > vThresh){
+        doCollapse();
+        return;
+      }
+    }, { passive: true });
+  }
+
+  // Cache last discover profile from /api/feed to support fallback expand
+  (function hookFeed(){
+    if (window.__ffFeedHooked) return;
+    window.__ffFeedHooked = true;
+    const origFetch = window.fetch;
+    window.fetch = async function(input, init){
+      const res = await origFetch(input, init);
+      try{
+        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
+        if (url && url.includes("/api/feed")){
+          const clone = res.clone();
+          clone.json().then((data)=>{
+            try{
+              const arr = (data && (data.results || data.profiles || data.feed || data.items)) || null;
+              if (Array.isArray(arr) && arr.length){
+                window.__ff_last_discover_profile = arr[0];
+              }
+            }catch(e){}
+          }).catch(()=>{});
+        }
+      }catch(e){}
+      return res;
+    };
+  })();
+
+  bind();
+  setInterval(bind, 600);
+
+  // Keyboard expand/collapse
+  window.addEventListener("keydown", (ev) => {
+    if (ev.key === "ArrowUp"){ doExpand(); }
+    if (ev.key === "ArrowDown" || ev.key === "Escape"){ doCollapse(); }
+  });
+})();
+
