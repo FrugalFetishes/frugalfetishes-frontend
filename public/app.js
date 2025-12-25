@@ -513,7 +513,7 @@ async function getCredits() {
   const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/credits/balance`, {
     method: "GET",
-    headers: { "Authorization": `Bearer ${idToken}` }
+    headers: { "Authorization": `Bearer ${idToken}`, "Content-Type": "application/json" }
   });
 }
 
@@ -521,7 +521,7 @@ async function getFeed() {
   const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/feed`, {
     method: "GET",
-    headers: { "Authorization": `Bearer ${idToken}` }
+    headers: { "Authorization": `Bearer ${idToken}`, "Content-Type": "application/json" }
   });
 }
 
@@ -530,7 +530,7 @@ async function postLike(targetUid) {
   const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/like`, {
     method: "POST",
-    headers: { "Authorization": `Bearer ${idToken}` },
+    headers: { "Authorization": `Bearer ${idToken}`, "Content-Type": "application/json" },
     body: JSON.stringify({ targetUid })
   });
 }
@@ -563,7 +563,7 @@ async function updateProfile(fields) {
   const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/profile/update`, {
     method: "POST",
-    headers: { "Authorization": `Bearer ${idToken}` },
+    headers: { "Authorization": `Bearer ${idToken}`, "Content-Type": "application/json" },
     body: fields
   });
 }
@@ -648,7 +648,7 @@ async function getPublicProfile(uid) {
   const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/profile/public/${encodeURIComponent(uid)}`, {
     method: "GET",
-    headers: { "Authorization": `Bearer ${idToken}` }
+    headers: { "Authorization": `Bearer ${idToken}`, "Content-Type": "application/json" }
   });
 }
 
@@ -656,7 +656,7 @@ async function getMyProfile() {
   const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/profile/me`, {
     method: "GET",
-    headers: { "Authorization": `Bearer ${idToken}` }
+    headers: { "Authorization": `Bearer ${idToken}`, "Content-Type": "application/json" }
   });
 }
 
@@ -860,7 +860,7 @@ async function getMatches() {
   const idToken = await getValidIdToken();
   return jsonFetch(`${BACKEND_BASE_URL}/api/matches`, {
     method: "GET",
-    headers: { "Authorization": `Bearer ${idToken}` }
+    headers: { "Authorization": `Bearer ${idToken}`, "Content-Type": "application/json" }
   });
 }
 
@@ -871,7 +871,7 @@ async function getThread(matchId, limit = 50) {
   const qs = new URLSearchParams({ matchId, limit: String(limit) }).toString();
   return jsonFetch(`${BACKEND_BASE_URL}/api/messages/thread?${qs}`, {
     method: "GET",
-    headers: { "Authorization": `Bearer ${idToken}` }
+    headers: { "Authorization": `Bearer ${idToken}`, "Content-Type": "application/json" }
   });
 }
 
@@ -911,7 +911,7 @@ async function sendMessage(matchId, text, clientMessageId) {
 
   return jsonFetch(`${BACKEND_BASE_URL}/api/messages/send`, {
     method: "POST",
-    headers: { "Authorization": `Bearer ${idToken}` },
+    headers: { "Authorization": `Bearer ${idToken}`, "Content-Type": "application/json" },
     body: JSON.stringify(body)
   });
 }
@@ -2011,7 +2011,7 @@ initBioCounter();
       try {
         const me = await jsonFetch(`${BACKEND_BASE_URL}/api/profile/me`, {
           method: "GET",
-          headers: { "Authorization": `Bearer ${idToken}` }
+          headers: { "Authorization": `Bearer ${idToken}`, "Content-Type": "application/json" }
         });
         existing = (me && me.profile && Array.isArray(me.profile.photos)) ? me.profile.photos : [];
       } catch (e) {
@@ -2348,6 +2348,10 @@ function collapseSheet() {
 // Touch gestures on swipe card
 function attachSwipeHandlers() {
   if (!swipeCardEl) return;
+  try { swipeCardEl.setAttribute("tabindex","0"); } catch(e) {}
+  try { swipeCardEl.style.outline = "none"; } catch(e) {}
+  // Keep keyboard events working on desktop
+  try { swipeCardEl.addEventListener("pointerdown", ()=>{ try{ swipeCardEl.focus(); }catch(e){} }); } catch(e) {}
 
   swipeCardEl.addEventListener("touchstart", (e) => {
     const t = e.changedTouches && e.changedTouches[0];
@@ -2983,13 +2987,15 @@ photos.slice(0,6).forEach((url, idx) => {
       const dx = (ev.clientX || 0) - startX;
       const dy = (ev.clientY || 0) - startY;
 
-      // If mostly vertical, ignore (allow page scroll)
+      // If mostly vertical, treat as expand/collapse gesture on desktop drag
+      // (mobile touch already handled in attachSwipeHandlers)
       if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 18){
-        reset(false);
+        curX = dx;
+        curY = dy;
+        card.style.transform = `translate3d(${dx*0.15}px, ${dy}px, 0)`;
         return;
       }
-
-      curX = dx;
+curX = dx;
       curY = dy;
       const rot = clamp(dx / 22, -12, 12);
       card.style.transform = `translate3d(${dx}px, ${dy*0.15}px, 0) rotate(${rot}deg)`;
@@ -2998,6 +3004,20 @@ photos.slice(0,6).forEach((url, idx) => {
     const onUp = () => {
       if (!dragging) return;
       const dx = curX || 0;
+      const dy = curY || 0;
+      const vThresh = Math.min(140, Math.max(90, (window.innerHeight||700)*0.18));
+      // Drag up to expand profile
+      if (dy < -vThresh) {
+        try { if (typeof expandCurrent === "function") expandCurrent(); } catch(e) {}
+        reset(true);
+        return;
+      }
+      // Drag down to collapse back to discover
+      if (dy > vThresh) {
+        try { if (typeof collapseSheet === "function") collapseSheet(); } catch(e) {}
+        reset(true);
+        return;
+      }
       const threshold = Math.min(120, Math.max(70, (window.innerWidth||360)*0.22));
       if (dx > threshold){
         flyOut("right");
