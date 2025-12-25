@@ -60,6 +60,34 @@ function filterOutSelf(items) {
   return Array.isArray(items) ? items.filter(p => p && p.uid && p.uid !== myUid) : items;
 }
 
+
+function getProfileUid(p) {
+  if (!p) return "";
+  return String(
+    p.uid ||
+    (p.user && (p.user.uid || p.user.id)) ||
+    p.userId ||
+    p.profileUid ||
+    (p.profile && (p.profile.uid || p.profile.userId)) ||
+    ""
+  ).trim();
+}
+
+function normalizeFeedItem(item) {
+  if (!item || typeof item !== "object") return null;
+  const uid = getProfileUid(item);
+  const profile = item.profile && typeof item.profile === "object" ? item.profile : {};
+  const user = item.user && typeof item.user === "object" ? item.user : {};
+  const photos = Array.isArray(profile.photos) ? profile.photos : (Array.isArray(item.photos) ? item.photos : []);
+  const primaryPhotoUrl = profile.primaryPhotoUrl || item.primaryPhotoUrl || profile.primaryPhoto || item.primaryPhoto || "";
+  return {
+    ...item,
+    uid,
+    user,
+    profile: { ...profile, photos, primaryPhotoUrl },
+  };
+}
+
 /* Minimal web client for FrugalFetishes backend
  * - No frameworks
  * - Stores idToken in localStorage
@@ -1487,6 +1515,7 @@ if (!uiWired) {
   }
 
     attachSwipeHandlers();
+    attachSheetSwipeHandlers();
 }
 
     setStatus(feedStatusEl, "Signed in. Loading feed...");
@@ -1525,6 +1554,7 @@ initBioCounter();
   }
 
   attachSwipeHandlers();
+    attachSheetSwipeHandlers();
     showError(`Verify/sign-in failed: ${e.message}`);
   } finally {
     btnVerify.disabled = false;
@@ -1680,6 +1710,7 @@ initBioCounter();
   }
 
   attachSwipeHandlers();
+    attachSheetSwipeHandlers();
 });
 
 (function init() {
@@ -1831,6 +1862,7 @@ initBioCounter();
   }
 
   attachSwipeHandlers();
+    attachSheetSwipeHandlers();
   if (storage.idToken) {
     setStatus(feedStatusEl, "Signed in from previous session. Loading feed...");
     // UX: auto-load feed on startup (uses existing Load Feed handler)
@@ -2249,8 +2281,10 @@ function showNextProfile() {
 }
 
 function setDeckFromFeed(items) {
-  deckItems = Array.isArray(items) ? items.slice() : [];
+  const raw = Array.isArray(items) ? items : [];
+  deckItems = raw.map(normalizeFeedItem).filter(Boolean).filter((it) => !!getProfileUid(it));
   deckIndex = 0;
+
   isExpanded = false;
   if (expandSheetEl) expandSheetEl.hidden = true;
   showNextProfile();
@@ -2265,20 +2299,21 @@ function advanceDeck() {
 
 async function likeCurrent() {
   if (actionLocked) return;
-  if (!currentProfile || !currentProfile.uid) return;
+  const targetUid = getProfileUid(currentProfile);
+  if (!targetUid) return;
 
   actionLocked = true;
   // FF: prevent liking yourself (backend rejects; treat as pass)
   try {
     const myUid = getUidFromIdToken(storage.idToken);
-    if (currentProfile && myUid && currentProfile.uid === myUid) {
+    if (currentProfile && myUid && targetUid === myUid) {
       advanceDeck();
       actionLocked = false;
       return;
     }
   } catch (e) { /* ignore */ }
   try {
-    await postLike(currentProfile.uid);
+    await postLike(targetUid);
     advanceDeck();
   } catch (e) {
     showError(`Like failed: ${e.message}`);
@@ -2372,6 +2407,58 @@ function attachSwipeHandlers() {
     if (e.key === "ArrowRight") { e.preventDefault(); likeCurrent(); }
     if (e.key === "ArrowUp") { e.preventDefault(); expandCurrent(); }
     if (e.key === "Escape") { e.preventDefault(); collapseSheet(); }
+  });
+}
+
+
+function attachSheetSwipeHandlers() {
+  if (!expandSheetEl) return;
+
+  let startX = 0;
+  let startY = 0;
+  let active = false;
+
+  const onStart = (clientX, clientY) => {
+    startX = clientX;
+    startY = clientY;
+    active = true;
+  };
+
+  const onEnd = (clientX, clientY) => {
+    if (!active) return;
+    active = false;
+
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+
+    // swipe DOWN to close expanded profile
+    if (Math.abs(dy) > Math.abs(dx) && dy > 60) {
+      collapseSheet();
+    }
+  };
+
+  // Touch
+  expandSheetEl.addEventListener("touchstart", (e) => {
+    if (!e.touches || !e.touches[0]) return;
+    onStart(e.touches[0].clientX, e.touches[0].clientY);
+  }, { passive: true });
+
+  expandSheetEl.addEventListener("touchend", (e) => {
+    const t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+    if (!t) return;
+    onEnd(t.clientX, t.clientY);
+  }, { passive: true });
+
+  // Mouse / pointer
+  expandSheetEl.addEventListener("pointerdown", (e) => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    onStart(e.clientX, e.clientY);
+    try { expandSheetEl.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  expandSheetEl.addEventListener("pointerup", (e) => {
+    onEnd(e.clientX, e.clientY);
+    try { expandSheetEl.releasePointerCapture(e.pointerId); } catch (_) {}
   });
 }
 function sanitizeEmail(raw) {
