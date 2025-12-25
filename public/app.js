@@ -217,6 +217,104 @@ const swipeSubEl = $("swipeSub");
 const btnPassEl = $("btnPass");
 const btnLikeEl = $("btnLike");
 const btnExpandEl = $("btnExpand");
+
+/* === FF: ensure Expand Sheet DOM exists before refs are captured (OTP-safe) === */
+(function ffEnsureExpandSheetEarly(){
+  try{
+    const make = () => {
+      if (document.getElementById("expandSheet")) return;
+      const sheet = document.createElement("div");
+      sheet.id = "expandSheet";
+      sheet.hidden = true;
+      sheet.style.position = "fixed";
+      sheet.style.left = "0";
+      sheet.style.right = "0";
+      sheet.style.bottom = "0";
+      sheet.style.top = "0";
+      sheet.style.zIndex = "9998";
+      sheet.style.background = "rgba(0,0,0,0.55)";
+      sheet.style.display = "grid";
+      sheet.style.placeItems = "end center";
+
+      const panel = document.createElement("div");
+      panel.style.width = "100%";
+      panel.style.maxWidth = "520px";
+      panel.style.maxHeight = "92vh";
+      panel.style.overflow = "auto";
+      panel.style.borderRadius = "22px 22px 0 0";
+      panel.style.background = "rgba(20,20,24,0.98)";
+      panel.style.border = "1px solid rgba(255,255,255,0.10)";
+      panel.style.boxShadow = "0 -20px 60px rgba(0,0,0,0.55)";
+      panel.style.padding = "14px 16px 18px";
+
+      const title = document.createElement("div");
+      title.id = "sheetTitle";
+      title.style.fontSize = "22px";
+      title.style.fontWeight = "800";
+      title.style.marginBottom = "6px";
+
+      const meta = document.createElement("div");
+      meta.style.display = "flex";
+      meta.style.gap = "10px";
+      meta.style.flexWrap = "wrap";
+      meta.style.opacity = "0.9";
+      meta.style.marginBottom = "10px";
+
+      const age = document.createElement("div"); age.id="sheetAge";
+      const city = document.createElement("div"); city.id="sheetCity";
+      const last = document.createElement("div"); last.id="sheetLastActive";
+      meta.appendChild(age); meta.appendChild(city); meta.appendChild(last);
+
+      const about = document.createElement("div");
+      about.id = "sheetAbout";
+      about.style.marginTop = "10px";
+      about.style.whiteSpace = "pre-wrap";
+      about.style.opacity = "0.95";
+
+      const interests = document.createElement("div");
+      interests.id = "sheetInterests";
+      interests.style.marginTop = "10px";
+      interests.style.display = "flex";
+      interests.style.flexWrap = "wrap";
+      interests.style.gap = "8px";
+
+      const photos = document.createElement("div");
+      photos.id = "sheetPhotos";
+      photos.style.marginTop = "12px";
+      photos.style.display = "grid";
+      photos.style.gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
+      photos.style.gap = "10px";
+
+      const plan = document.createElement("div");
+      plan.id = "sheetPlan";
+      plan.style.marginTop = "10px";
+      plan.style.opacity = "0.85";
+      plan.style.fontSize = "12px";
+
+      panel.appendChild(title);
+      panel.appendChild(meta);
+      panel.appendChild(interests);
+      panel.appendChild(about);
+      panel.appendChild(photos);
+      panel.appendChild(plan);
+
+      sheet.appendChild(panel);
+      document.body.appendChild(sheet);
+
+      // Click backdrop to close
+      sheet.addEventListener("click", (ev) => {
+        if (ev.target === sheet) { sheet.hidden = true; }
+      });
+    };
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", make, { once: true });
+    } else {
+      make();
+    }
+  }catch(e){}
+})();
+
 const expandSheetEl = $("expandSheet");
 const btnCollapseEl = $("btnCollapse");
 const sheetTitleEl = $("sheetTitle");
@@ -3074,3 +3172,16 @@ curX = dx;
   setInterval(tick, 800);
 })();
 
+
+
+/* === FF: global keys for expand/collapse on PC (OTP-safe) === */
+(function ffGlobalKeysDiscover(){
+  if (window.__ffGlobalKeysDiscover) return;
+  window.__ffGlobalKeysDiscover = true;
+  window.addEventListener("keydown", (e) => {
+    try{
+      if (e.key === "ArrowUp"){ e.preventDefault(); if (typeof expandCurrent === "function") expandCurrent(); }
+      if (e.key === "Escape"){ e.preventDefault(); if (typeof collapseSheet === "function") collapseSheet(); }
+    }catch(_){}
+  });
+})();
