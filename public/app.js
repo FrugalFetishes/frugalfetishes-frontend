@@ -2309,14 +2309,14 @@ function clearChildren(el) { if (!el) return; while (el.firstChild) el.removeChi
 
 function renderExpandedSheet(p) {
   ffEnsureExpandSheetDOM();
-  const _sheet = document.getElementById("expandSheet") || expandSheetEl;
-  const _title = document.getElementById("sheetTitle") || _title;
-  const _meta = document.getElementById("sheetMeta") || _meta;
-  const _photos = document.getElementById("sheetPhotos") || _photos;
-  const _interests = document.getElementById("sheetInterests") || _interests;
-  const _bio = document.getElementById("sheetBio") || _bio;
+  const _sheet = document.getElementById("expandSheet") || (typeof expandSheetEl !== "undefined" ? expandSheetEl : null);
+  const _titleElEl = document.getElementById("sheetTitle");
+  const _metaElEl = document.getElementById("sheetMeta");
+  const _photosElEl = document.getElementById("sheetPhotos");
+  const _interestsElEl = document.getElementById("sheetInterests");
+  const _bioElEl = document.getElementById("sheetBio");
   if (!_sheet) return;
-  if (!p) {
+if (!p) {
     _sheet.hidden = true;
     isExpanded = false;
     return;
@@ -2330,48 +2330,48 @@ function renderExpandedSheet(p) {
   const city = p.city || "";
   const uid = p.uid || "Profile";
 
-  if (_title) _title.textContent = (currentProfile && currentProfile.displayName) ? String(currentProfile.displayName) : "";
+  if (_titleEl) _titleEl.textContent = (currentProfile && currentProfile.displayName) ? String(currentProfile.displayName) : "";
   if (sheetAgeEl) sheetAgeEl.textContent = safeText(age);
   if (sheetCityEl) sheetCityEl.textContent = safeText(city);
   if (sheetPlanEl) sheetPlanEl.textContent = safeText(p.plan || "");
   if (sheetLastActiveEl) sheetLastActiveEl.textContent = p.lastActiveAt ? JSON.stringify(p.lastActiveAt) : "";
 
   // Photos grid
-  clearChildren(_photos);
+  clearChildren(_photosEl);
   const photos = Array.isArray(p.photos) ? p.photos.filter(x => typeof x === "string") : [];
-  if (_photos) {
+  if (_photosEl) {
     if (photos.length) {
       photos.slice(0, 6).forEach((src, idx) => {
         const img = document.createElement("img");
         img.src = src;
         img.alt = `${uid} photo ${idx + 1}`;
         img.loading = "lazy";
-        _photos.appendChild(img);
+        _photosEl.appendChild(img);
       });
     } else {
       const ph = document.createElement("div");
       ph.className = "muted";
       ph.textContent = "No photos yet.";
-      _photos.appendChild(ph);
+      _photosEl.appendChild(ph);
     }
   }
 
   // Kinks/interests (ONLY in expanded)
-  clearChildren(_interests);
+  clearChildren(_interestsEl);
   const interests = Array.isArray(p.interests) ? p.interests : [];
-  if (_interests) {
+  if (_interestsEl) {
     if (interests.length) {
       interests.slice(0, 24).forEach(tag => {
         const chip = document.createElement("span");
         chip.className = "chip";
         chip.textContent = safeText(tag);
-        _interests.appendChild(chip);
+        _interestsEl.appendChild(chip);
       });
     } else {
       const m = document.createElement("div");
       m.className = "muted";
       m.textContent = "(none)";
-      _interests.appendChild(m);
+      _interestsEl.appendChild(m);
     }
   }
 
