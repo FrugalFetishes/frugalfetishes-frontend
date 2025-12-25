@@ -2308,75 +2308,67 @@ function renderCollapsedCard(p) {
 function clearChildren(el) { if (!el) return; while (el.firstChild) el.removeChild(el.firstChild); }
 
 function renderExpandedSheet(p) {
-  ffEnsureExpandSheetDOM();
-  const _sheet = document.getElementById("expandSheet") || (typeof expandSheetEl !== "undefined" ? expandSheetEl : null);
-  const _titleElEl = document.getElementById("sheetTitle");
-  const _metaElEl = document.getElementById("sheetMeta");
-  const _photosElEl = document.getElementById("sheetPhotos");
-  const _interestsElEl = document.getElementById("sheetInterests");
-  const _bioElEl = document.getElementById("sheetBio");
-  if (!_sheet) return;
-if (!p) {
-    _sheet.hidden = true;
-    isExpanded = false;
-    return;
-  }
+  try{
+    ffEnsureExpandSheetDOM();
+    const sheet = document.getElementById("expandSheet") || (typeof expandSheetEl !== "undefined" ? expandSheetEl : null);
+    if (!sheet) return;
 
-  // Show sheet
-  _sheet.hidden = false;
-  isExpanded = true;
+    const titleEl = document.getElementById("sheetTitle");
+    const metaEl = document.getElementById("sheetMeta");
+    const photosEl = document.getElementById("sheetPhotos");
+    const interestsEl = document.getElementById("sheetInterests");
+    const bioEl = document.getElementById("sheetBio");
 
-  const age = (p.age !== undefined && p.age !== null) ? p.age : "?";
-  const city = p.city || "";
-  const uid = p.uid || "Profile";
+    if (!p) {
+      sheet.hidden = true;
+      try{ isExpanded = false; }catch(e){}
+      return;
+    }
 
-  if (_titleEl) _titleEl.textContent = (currentProfile && currentProfile.displayName) ? String(currentProfile.displayName) : "";
-  if (sheetAgeEl) sheetAgeEl.textContent = safeText(age);
-  if (sheetCityEl) sheetCityEl.textContent = safeText(city);
-  if (sheetPlanEl) sheetPlanEl.textContent = safeText(p.plan || "");
-  if (sheetLastActiveEl) sheetLastActiveEl.textContent = p.lastActiveAt ? JSON.stringify(p.lastActiveAt) : "";
+    sheet.hidden = false;
+    try{ isExpanded = true; }catch(e){}
 
-  // Photos grid
-  clearChildren(_photosEl);
-  const photos = Array.isArray(p.photos) ? p.photos.filter(x => typeof x === "string") : [];
-  if (_photosEl) {
-    if (photos.length) {
-      photos.slice(0, 6).forEach((src, idx) => {
+    const name = ((p.displayName || p.name) || "").trim();
+    const age = (p.age !== undefined && p.age !== null) ? Number(p.age) : null;
+    const city = (p.city || "").trim();
+    if (titleEl) titleEl.textContent = name ? (age && !Number.isNaN(age) ? `${name}, ${age}` : name) : "Profile";
+    if (metaEl) metaEl.textContent = city ? city : "";
+
+    const photos = Array.isArray(p.photos) ? p.photos.map(ff_norm).filter(Boolean) : [];
+    if (photosEl){
+      photosEl.innerHTML = "";
+      photos.forEach((url) => {
         const img = document.createElement("img");
-        img.src = src;
-        img.alt = `${uid} photo ${idx + 1}`;
+        img.src = String(url);
+        img.alt = "Photo";
         img.loading = "lazy";
-        _photosEl.appendChild(img);
+        img.style.width = "100%";
+        img.style.height = "140px";
+        img.style.objectFit = "cover";
+        img.style.borderRadius = "14px";
+        photosEl.appendChild(img);
       });
-    } else {
-      const ph = document.createElement("div");
-      ph.className = "muted";
-      ph.textContent = "No photos yet.";
-      _photosEl.appendChild(ph);
     }
-  }
 
-  // Kinks/interests (ONLY in expanded)
-  clearChildren(_interestsEl);
-  const interests = Array.isArray(p.interests) ? p.interests : [];
-  if (_interestsEl) {
-    if (interests.length) {
-      interests.slice(0, 24).forEach(tag => {
-        const chip = document.createElement("span");
-        chip.className = "chip";
-        chip.textContent = safeText(tag);
-        _interestsEl.appendChild(chip);
+    const interests = Array.isArray(p.interests) ? p.interests : [];
+    if (interestsEl){
+      interestsEl.innerHTML = "";
+      interests.slice(0, 24).forEach((t) => {
+        const pill = document.createElement("span");
+        pill.textContent = String(t);
+        pill.style.display = "inline-block";
+        pill.style.padding = "6px 10px";
+        pill.style.borderRadius = "999px";
+        pill.style.border = "1px solid rgba(255,255,255,0.15)";
+        pill.style.background = "rgba(255,255,255,0.06)";
+        pill.style.margin = "4px 6px 0 0";
+        pill.style.fontSize = "12px";
+        interestsEl.appendChild(pill);
       });
-    } else {
-      const m = document.createElement("div");
-      m.className = "muted";
-      m.textContent = "(none)";
-      _interestsEl.appendChild(m);
     }
-  }
 
-  // About (optional)
-  if (sheetAboutEl) sheetAboutEl.textContent = safeText(p.bio || p.about || "");
+    if (bioEl) bioEl.textContent = (p.bio || p.about || "").trim();
+  }catch(e){}
 }
 
 function showNextProfile() {
