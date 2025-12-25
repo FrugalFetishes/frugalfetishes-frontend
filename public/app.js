@@ -97,6 +97,115 @@ function normalizeFeedItem(item) {
 // ====== CONFIG ======
 const BACKEND_BASE_URL = "https://express-js-on-vercel-rosy-one.vercel.app";
 
+
+/* === FF: Ensure Expand Sheet DOM exists (so swipe up can actually expand) === */
+function ffEnsureExpandSheetDOM(){
+  try{
+    if (document.getElementById("expandSheet")) return;
+    const sheet = document.createElement("div");
+    sheet.id = "expandSheet";
+    sheet.hidden = true;
+    sheet.style.position = "fixed";
+    sheet.style.left = "0";
+    sheet.style.right = "0";
+    sheet.style.bottom = "0";
+    sheet.style.top = "0";
+    sheet.style.zIndex = "99999";
+    sheet.style.background = "rgba(0,0,0,0.72)";
+    sheet.style.display = "grid";
+    sheet.style.placeItems = "end center";
+    sheet.style.padding = "16px";
+
+    const panel = document.createElement("div");
+    panel.style.width = "min(520px, 100%)";
+    panel.style.maxHeight = "86vh";
+    panel.style.overflow = "auto";
+    panel.style.borderRadius = "22px";
+    panel.style.background = "rgba(20,20,24,0.98)";
+    panel.style.border = "1px solid rgba(255,255,255,0.10)";
+    panel.style.boxShadow = "0 24px 80px rgba(0,0,0,0.65)";
+    panel.style.padding = "14px";
+
+    const topRow = document.createElement("div");
+    topRow.style.display = "flex";
+    topRow.style.justifyContent = "space-between";
+    topRow.style.alignItems = "center";
+    topRow.style.gap = "12px";
+
+    const title = document.createElement("div");
+    title.id = "sheetTitle";
+    title.style.fontSize = "22px";
+    title.style.fontWeight = "800";
+
+    const meta = document.createElement("div");
+    meta.id = "sheetMeta";
+    meta.style.fontSize = "13px";
+    meta.style.opacity = "0.85";
+    meta.style.marginTop = "2px";
+
+    const left = document.createElement("div");
+    left.appendChild(title);
+    left.appendChild(meta);
+
+    const close = document.createElement("button");
+    close.id = "sheetCloseBtn";
+    close.type = "button";
+    close.textContent = "Close";
+    close.style.borderRadius = "999px";
+    close.style.padding = "10px 14px";
+    close.style.border = "1px solid rgba(255,255,255,0.14)";
+    close.style.background = "rgba(255,255,255,0.06)";
+    close.style.color = "inherit";
+    close.style.cursor = "pointer";
+
+    close.addEventListener("click", () => {
+      const s = document.getElementById("expandSheet");
+      if (s) s.hidden = true;
+      try{ window.__ff_isExpanded = false; }catch(e){}
+    });
+
+    topRow.appendChild(left);
+    topRow.appendChild(close);
+
+    const photos = document.createElement("div");
+    photos.id = "sheetPhotos";
+    photos.style.display = "grid";
+    photos.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+    photos.style.gap = "10px";
+    photos.style.marginTop = "12px";
+
+    const interests = document.createElement("div");
+    interests.id = "sheetInterests";
+    interests.style.display = "flex";
+    interests.style.flexWrap = "wrap";
+    interests.style.gap = "8px";
+    interests.style.marginTop = "12px";
+
+    const bio = document.createElement("div");
+    bio.id = "sheetBio";
+    bio.style.marginTop = "12px";
+    bio.style.opacity = "0.92";
+    bio.style.lineHeight = "1.35";
+
+    panel.appendChild(topRow);
+    panel.appendChild(photos);
+    panel.appendChild(interests);
+    panel.appendChild(bio);
+
+    sheet.appendChild(panel);
+    document.body.appendChild(sheet);
+
+    // click outside closes
+    sheet.addEventListener("click", (ev) => {
+      if (ev.target === sheet){
+        sheet.hidden = true;
+        try{ window.__ff_isExpanded = false; }catch(e){}
+      }
+    });
+  }catch(e){}
+}
+
+
 // DEV ONLY: matches backend env DEV_OTP_KEY (used to receive devOtp for any email)
 const DEV_OTP_KEY = "ff-dev";
 const FIREBASE_WEB_API_KEY = "AIzaSyBcMM5dAFqbQXcN0ltT4Py6SeA5Fzg-nD8";
@@ -2199,63 +2308,70 @@ function renderCollapsedCard(p) {
 function clearChildren(el) { if (!el) return; while (el.firstChild) el.removeChild(el.firstChild); }
 
 function renderExpandedSheet(p) {
-  if (!expandSheetEl) return;
+  ffEnsureExpandSheetDOM();
+  const _sheet = document.getElementById("expandSheet") || expandSheetEl;
+  const _title = document.getElementById("sheetTitle") || _title;
+  const _meta = document.getElementById("sheetMeta") || _meta;
+  const _photos = document.getElementById("sheetPhotos") || _photos;
+  const _interests = document.getElementById("sheetInterests") || _interests;
+  const _bio = document.getElementById("sheetBio") || _bio;
+  if (!_sheet) return;
   if (!p) {
-    expandSheetEl.hidden = true;
+    _sheet.hidden = true;
     isExpanded = false;
     return;
   }
 
   // Show sheet
-  expandSheetEl.hidden = false;
+  _sheet.hidden = false;
   isExpanded = true;
 
   const age = (p.age !== undefined && p.age !== null) ? p.age : "?";
   const city = p.city || "";
   const uid = p.uid || "Profile";
 
-  if (sheetTitleEl) sheetTitleEl.textContent = (currentProfile && currentProfile.displayName) ? String(currentProfile.displayName) : "";
+  if (_title) _title.textContent = (currentProfile && currentProfile.displayName) ? String(currentProfile.displayName) : "";
   if (sheetAgeEl) sheetAgeEl.textContent = safeText(age);
   if (sheetCityEl) sheetCityEl.textContent = safeText(city);
   if (sheetPlanEl) sheetPlanEl.textContent = safeText(p.plan || "");
   if (sheetLastActiveEl) sheetLastActiveEl.textContent = p.lastActiveAt ? JSON.stringify(p.lastActiveAt) : "";
 
   // Photos grid
-  clearChildren(sheetPhotosEl);
+  clearChildren(_photos);
   const photos = Array.isArray(p.photos) ? p.photos.filter(x => typeof x === "string") : [];
-  if (sheetPhotosEl) {
+  if (_photos) {
     if (photos.length) {
       photos.slice(0, 6).forEach((src, idx) => {
         const img = document.createElement("img");
         img.src = src;
         img.alt = `${uid} photo ${idx + 1}`;
         img.loading = "lazy";
-        sheetPhotosEl.appendChild(img);
+        _photos.appendChild(img);
       });
     } else {
       const ph = document.createElement("div");
       ph.className = "muted";
       ph.textContent = "No photos yet.";
-      sheetPhotosEl.appendChild(ph);
+      _photos.appendChild(ph);
     }
   }
 
   // Kinks/interests (ONLY in expanded)
-  clearChildren(sheetInterestsEl);
+  clearChildren(_interests);
   const interests = Array.isArray(p.interests) ? p.interests : [];
-  if (sheetInterestsEl) {
+  if (_interests) {
     if (interests.length) {
       interests.slice(0, 24).forEach(tag => {
         const chip = document.createElement("span");
         chip.className = "chip";
         chip.textContent = safeText(tag);
-        sheetInterestsEl.appendChild(chip);
+        _interests.appendChild(chip);
       });
     } else {
       const m = document.createElement("div");
       m.className = "muted";
       m.textContent = "(none)";
-      sheetInterestsEl.appendChild(m);
+      _interests.appendChild(m);
     }
   }
 
@@ -2337,6 +2453,7 @@ function passCurrent() {
 
 function expandCurrent() {
   if (!currentProfile) return;
+  try{ ffEnsureExpandSheetDOM(); }catch(e){}
   renderExpandedSheet(currentProfile);
 }
 
@@ -2926,7 +3043,7 @@ photos.slice(0,6).forEach((url, idx) => {
     try{
       card.id = card.id || "ffDiscoverCard";
       card.classList.add("ff-discover-card");
-      card.style.touchAction = "pan-y";
+      card.style.touchAction = "none";
       card.style.userSelect = "none";
       card.style.willChange = "transform";
       card.style.transform = "translate3d(0,0,0)";
@@ -3005,19 +3122,21 @@ curX = dx;
       if (!dragging) return;
       const dx = curX || 0;
       const dy = curY || 0;
-      const vThresh = Math.min(140, Math.max(90, (window.innerHeight||700)*0.18));
-      // Drag up to expand profile
-      if (dy < -vThresh) {
-        try { if (typeof expandCurrent === "function") expandCurrent(); } catch(e) {}
+
+      // Vertical gestures (expand/collapse)
+      const vThresh = Math.min(140, Math.max(85, (window.innerHeight||700)*0.14));
+      if (dy < -vThresh){
+        try{ if (typeof expandCurrent === "function") expandCurrent(); }catch(e){}
         reset(true);
         return;
       }
-      // Drag down to collapse back to discover
-      if (dy > vThresh) {
-        try { if (typeof collapseSheet === "function") collapseSheet(); } catch(e) {}
+      if (dy > vThresh){
+        try{ if (typeof collapseExpanded === "function") collapseExpanded(); }catch(e){}
         reset(true);
         return;
       }
+
+      // Horizontal gestures (pass/like)
       const threshold = Math.min(120, Math.max(70, (window.innerWidth||360)*0.22));
       if (dx > threshold){
         flyOut("right");
@@ -3073,109 +3192,4 @@ curX = dx;
   tick();
   setInterval(tick, 800);
 })();
-
-
-/* === FF_VERTICAL_EXPAND_START === */
-// Tinder/Bumble style vertical gestures on the existing swipe card.
-// Up = expandCurrent(); Down (when expanded) = collapse sheet.
-(function ff_bindVerticalExpand(){
-  if (window.__ffVerticalExpandBound) return;
-  window.__ffVerticalExpandBound = true;
-
-  const getCard = () => (typeof swipeCardEl !== "undefined" && swipeCardEl) ? swipeCardEl : document.getElementById("swipeCard");
-  const getSheet = () => (typeof expandSheetEl !== "undefined" && expandSheetEl) ? expandSheetEl : document.getElementById("expandSheet");
-
-  let startX=0, startY=0, dx=0, dy=0, active=false, pid=null;
-
-  const reset = () => { active=false; pid=null; dx=0; dy=0; };
-
-  const onDown = (ev) => {
-    const card = getCard();
-    if (!card) return;
-    if (ev.button !== undefined && ev.button !== 0) return;
-    active = true;
-    pid = ev.pointerId ?? null;
-    startX = ev.clientX || 0;
-    startY = ev.clientY || 0;
-    dx = 0; dy = 0;
-    try{ card.setPointerCapture && pid!=null && card.setPointerCapture(pid); }catch(e){}
-  };
-
-  const onMove = (ev) => {
-    if (!active) return;
-    if (pid!=null && ev.pointerId!=null && ev.pointerId !== pid) return;
-    dx = (ev.clientX || 0) - startX;
-    dy = (ev.clientY || 0) - startY;
-
-    // Prevent page scroll only once we are sure it's a vertical gesture
-    if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 14) {
-      try{ ev.preventDefault(); }catch(e){}
-    }
-  };
-
-  const onUp = (_ev) => {
-    if (!active) return;
-    const card = getCard();
-    const sheet = getSheet();
-
-    const vThresh = Math.min(140, Math.max(70, (window.innerHeight||700)*0.16));
-    const hCancel = Math.min(120, Math.max(60, (window.innerWidth||360)*0.22));
-
-    // Ignore if user clearly did a left/right swipe (like/pass)
-    if (Math.abs(dx) > hCancel) { reset(); return; }
-
-    // Swipe UP => expand
-    if (dy < -vThresh) {
-      try{
-        if (typeof expandCurrent === "function") { expandCurrent(); }
-        else if (typeof renderExpandedSheet === "function" && typeof currentProfile !== "undefined" && currentProfile) { renderExpandedSheet(currentProfile); }
-        else if (sheet) { sheet.hidden = false; }
-      }catch(e){}
-    }
-
-    // Swipe DOWN (only if expanded) => collapse
-    if (dy > vThresh) {
-      try{
-        if (typeof collapseExpanded === "function") { collapseExpanded(); }
-        else if (typeof renderExpandedSheet === "function") { renderExpandedSheet(null); }
-        else if (sheet) { sheet.hidden = true; }
-      }catch(e){}
-    }
-
-    reset();
-  };
-
-  const bind = () => {
-    const card = getCard();
-    if (!card || card.__ffVertHandlers) return;
-    card.__ffVertHandlers = true;
-
-    // critical: allow us to call preventDefault on pointermove
-    try{ card.style.touchAction = "none"; }catch(e){}
-
-    card.addEventListener("pointerdown", onDown, { passive: true });
-    card.addEventListener("pointermove", onMove, { passive: false });
-    card.addEventListener("pointerup", onUp, { passive: true });
-    card.addEventListener("pointercancel", onUp, { passive: true });
-  };
-
-  bind();
-  // Re-bind if the card node is replaced by re-render
-  setInterval(bind, 800);
-
-  // Keyboard: ArrowUp expands, Escape collapses
-  window.addEventListener("keydown", (ev) => {
-    if (ev.key === "ArrowUp") {
-      try{
-        if (typeof expandCurrent === "function") expandCurrent();
-      }catch(e){}
-    } else if (ev.key === "Escape" || ev.key === "ArrowDown") {
-      try{
-        if (typeof collapseExpanded === "function") collapseExpanded();
-        else if (typeof renderExpandedSheet === "function") renderExpandedSheet(null);
-      }catch(e){}
-    }
-  });
-})();
-/* === FF_VERTICAL_EXPAND_END === */
 
