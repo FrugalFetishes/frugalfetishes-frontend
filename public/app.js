@@ -3186,28 +3186,22 @@ curX = dx;
 })();
 
 
-/* === FF: CAPTURE swipe-up expand (prevents conflicts with other handlers) === */
-(function ff_captureExpand(){
-  if (window.__ffCaptureExpand) return;
-  window.__ffCaptureExpand = true;
+/* === FF: CAPTURE swipe-up expand v2 (touch + pointer, low threshold) === */
+(function ff_captureExpandV2(){
+  if (window.__ffCaptureExpandV2) return;
+  window.__ffCaptureExpandV2 = true;
 
   function getCardFromTarget(t){
     try{
+      if (t && t.closest){
+        const c2 = t.closest(".ff-discover-card") || t.closest(".discoverCard") || t.closest("#ffDiscoverCard");
+        if (c2) return c2;
+      }
       const card = (typeof swipeCardEl !== "undefined" && swipeCardEl) ||
         document.getElementById("ffDiscoverCard") ||
         document.querySelector(".ff-discover-card") ||
         document.querySelector(".discoverCard");
-      if (t && t.closest){
-        const c2 = t.closest(".ff-discover-card") || t.closest(".discoverCard");
-        if (c2) return c2;
-      }
-      if (!card) return null;
-      if (!t) return card;
-      try{
-        if (t === card) return card;
-        if (card.contains && card.contains(t)) return card;
-      }catch(e){}
-      return null;
+      return card || null;
     }catch(e){ return null; }
   }
 
@@ -3247,43 +3241,53 @@ curX = dx;
     }catch(e){}
   }
 
-  let down = false;
-  let sx=0, sy=0, dx=0, dy=0;
+  // Cache last profile when feed renders (supports fallback)
+  (function hookFeedOnce(){
+    if (window.__ffFeedHookedV2) return;
+    window.__ffFeedHookedV2 = true;
+    const origFetch = window.fetch;
+    window.fetch = async function(input, init){
+      const res = await origFetch(input, init);
+      try{
+        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
+        if (url && url.includes("/api/feed")){
+          const clone = res.clone();
+          clone.json().then((data)=>{
+            try{
+              const arr = (data && (data.results || data.profiles || data.feed || data.items)) || null;
+              if (Array.isArray(arr) && arr.length){
+                window.__ff_last_discover_profile = arr[0];
+              }
+            }catch(e){}
+          }).catch(()=>{});
+        }
+      }catch(e){}
+      return res;
+    };
+  })();
+
+  // thresholds: keep low so user sees expand easily
+  const vThresh = () => 45;
+
+  let down = false, sx=0, sy=0, dx=0, dy=0;
   let trackingCard = null;
 
-  const vThresh = () => Math.min(160, Math.max(70, (window.innerHeight||700) * 0.18));
-
-  document.addEventListener("pointerdown", (ev) => {
-    const card = getCardFromTarget(ev.target);
-    if (!card) return;
-    down = true;
-    trackingCard = card;
-    sx = ev.clientX || 0;
-    sy = ev.clientY || 0;
-    dx = 0; dy = 0;
-  }, true); // CAPTURE
-
-  document.addEventListener("pointermove", (ev) => {
-    if (!down || !trackingCard) return;
-    dx = (ev.clientX || 0) - sx;
-    dy = (ev.clientY || 0) - sy;
-
-    // If it's a vertical gesture, prevent scroll BEFORE other handlers
-    if (Math.abs(dy) > Math.abs(dx) * 1.1 && Math.abs(dy) > 12){
-      try{ ev.preventDefault(); }catch(e){}
+  function start(x,y,card){
+    down = true; sx = x; sy = y; dx = 0; dy = 0; trackingCard = card;
+    try{ trackingCard && (trackingCard.style.touchAction = "none"); }catch(e){}
+  }
+  function move(x,y,ev){
+    if (!down) return;
+    dx = x - sx; dy = y - sy;
+    if (Math.abs(dy) > Math.abs(dx) * 1.05 && Math.abs(dy) > 10){
+      try{ ev && ev.preventDefault && ev.preventDefault(); }catch(e){}
     }
-  }, { capture: true, passive: false });
-
-  document.addEventListener("pointerup", () => {
+  }
+  function end(){
     if (!down) return;
     down = false;
 
-    const isVertical = Math.abs(dy) > Math.abs(dx) * 1.15;
-
-    if (trackingCard){
-      try{ trackingCard.style.transform = "translate3d(0,0,0) rotate(0deg)"; }catch(e){}
-      try{ trackingCard.style.transition = "none"; }catch(e){}
-    }
+    const isVertical = Math.abs(dy) > Math.abs(dx) * 1.10;
 
     if (isVertical && dy < -vThresh()){
       doExpand();
@@ -3291,13 +3295,55 @@ curX = dx;
       doCollapse();
     }
 
-    trackingCard = null;
-    dx = 0; dy = 0;
-  }, true); // CAPTURE
+    trackingCard = null; dx = 0; dy = 0;
+  }
 
+  // POINTER events (desktop + most mobile emulation)
+  document.addEventListener("pointerdown", (ev) => {
+    const card = getCardFromTarget(ev.target);
+    if (!card) return;
+    if (ev.button !== undefined && ev.button !== 0) return;
+    start(ev.clientX || 0, ev.clientY || 0, card);
+  }, true);
+
+  document.addEventListener("pointermove", (ev) => {
+    if (!down) return;
+    move(ev.clientX || 0, ev.clientY || 0, ev);
+  }, { capture: true, passive: false });
+
+  document.addEventListener("pointerup", () => end(), true);
+  document.addEventListener("pointercancel", () => end(), true);
+
+  // TOUCH events (real phones)
+  document.addEventListener("touchstart", (ev) => {
+    const t = ev.touches && ev.touches[0];
+    if (!t) return;
+    const card = getCardFromTarget(ev.target);
+    if (!card) return;
+    start(t.clientX || 0, t.clientY || 0, card);
+  }, { capture: true, passive: true });
+
+  document.addEventListener("touchmove", (ev) => {
+    if (!down) return;
+    const t = ev.touches && ev.touches[0];
+    if (!t) return;
+    move(t.clientX || 0, t.clientY || 0, ev);
+  }, { capture: true, passive: false });
+
+  document.addEventListener("touchend", () => end(), true);
+  document.addEventListener("touchcancel", () => end(), true);
+
+  // Fallback: double-click / double-tap on card expands
+  document.addEventListener("dblclick", (ev) => {
+    const card = getCardFromTarget(ev.target);
+    if (!card) return;
+    doExpand();
+  }, true);
+
+  // Keyboard
   window.addEventListener("keydown", (ev) => {
-    if (ev.key === "ArrowUp"){ doExpand(); }
-    if (ev.key === "ArrowDown" || ev.key === "Escape"){ doCollapse(); }
+    if (ev.key === "ArrowUp") doExpand();
+    if (ev.key === "ArrowDown" || ev.key === "Escape") doCollapse();
   }, true);
 })();
 
