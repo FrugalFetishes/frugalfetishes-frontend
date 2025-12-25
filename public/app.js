@@ -1538,7 +1538,7 @@ btnLoadFeed.addEventListener("click", async () => {
   try {
     setFeedLoading(true, "Loading feed...");
     const r = await getFeed();
-    allFeedItems = r.items || [];
+    allFeedItems = filterOutSelf(r.items || []);
     setDeckFromFeed(allFeedItems);
     // Keep old list renderer available (dev tab)
     renderFeed(getFilteredItems(allFeedItems));
@@ -2268,6 +2268,15 @@ async function likeCurrent() {
   if (!currentProfile || !currentProfile.uid) return;
 
   actionLocked = true;
+  // FF: prevent liking yourself (backend rejects; treat as pass)
+  try {
+    const myUid = getUidFromIdToken(storage.idToken);
+    if (currentProfile && myUid && currentProfile.uid === myUid) {
+      advanceDeck();
+      actionLocked = false;
+      return;
+    }
+  } catch (e) { /* ignore */ }
   try {
     await postLike(currentProfile.uid);
     advanceDeck();
