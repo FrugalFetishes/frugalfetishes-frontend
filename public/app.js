@@ -3186,28 +3186,54 @@ curX = dx;
 })();
 
 
-/* === FF: FORCE vertical swipe -> expand/collapse (bind at pointerup) === */
-(function ff_forceVerticalExpand(){
-  if (window.__ffForceVertExpand) return;
-  window.__ffForceVertExpand = true;
+/* === FF: CAPTURE swipe-up expand (prevents conflicts with other handlers) === */
+(function ff_captureExpand(){
+  if (window.__ffCaptureExpand) return;
+  window.__ffCaptureExpand = true;
 
-  function getCard(){
-    return (typeof swipeCardEl !== "undefined" && swipeCardEl) ||
-      document.getElementById("ffDiscoverCard") ||
-      document.querySelector(".ff-discover-card") ||
-      document.querySelector(".discoverCard") ||
-      null;
+  function getCardFromTarget(t){
+    try{
+      const card = (typeof swipeCardEl !== "undefined" && swipeCardEl) ||
+        document.getElementById("ffDiscoverCard") ||
+        document.querySelector(".ff-discover-card") ||
+        document.querySelector(".discoverCard");
+      if (t && t.closest){
+        const c2 = t.closest(".ff-discover-card") || t.closest(".discoverCard");
+        if (c2) return c2;
+      }
+      if (!card) return null;
+      if (!t) return card;
+      try{
+        if (t === card) return card;
+        if (card.contains && card.contains(t)) return card;
+      }catch(e){}
+      return null;
+    }catch(e){ return null; }
+  }
+
+  function ensureSheetVisible(){
+    try{
+      if (typeof ffEnsureExpandSheetDOM === "function") ffEnsureExpandSheetDOM();
+      const sheet = document.getElementById("expandSheet");
+      if (!sheet) return;
+      sheet.hidden = false;
+      sheet.style.position = "fixed";
+      sheet.style.left = "0";
+      sheet.style.right = "0";
+      sheet.style.bottom = "0";
+      sheet.style.zIndex = "99999";
+    }catch(e){}
   }
 
   function doExpand(){
     try{
-      if (typeof expandCurrent === "function") { expandCurrent(); return; }
+      ensureSheetVisible();
+      if (typeof expandCurrent === "function") { expandCurrent(); ensureSheetVisible(); return; }
     }catch(e){}
     try{
       if (typeof renderExpandedSheet === "function" && window.__ff_last_discover_profile) {
         renderExpandedSheet(window.__ff_last_discover_profile);
-        const sheet = document.getElementById("expandSheet");
-        if (sheet) sheet.hidden = false;
+        ensureSheetVisible();
         try{ isExpanded = true; }catch(e){}
       }
     }catch(e){}
@@ -3221,85 +3247,57 @@ curX = dx;
     }catch(e){}
   }
 
-  function bind(){
-    const card = getCard();
-    if (!card || card.__ffVertBound) return;
-    card.__ffVertBound = true;
+  let down = false;
+  let sx=0, sy=0, dx=0, dy=0;
+  let trackingCard = null;
 
-    try{ card.style.touchAction = "none"; }catch(e){}
+  const vThresh = () => Math.min(160, Math.max(70, (window.innerHeight||700) * 0.18));
 
-    let sx=0, sy=0, dx=0, dy=0, down=false;
+  document.addEventListener("pointerdown", (ev) => {
+    const card = getCardFromTarget(ev.target);
+    if (!card) return;
+    down = true;
+    trackingCard = card;
+    sx = ev.clientX || 0;
+    sy = ev.clientY || 0;
+    dx = 0; dy = 0;
+  }, true); // CAPTURE
 
-    card.addEventListener("pointerdown", (ev) => {
-      if (ev.button !== undefined && ev.button !== 0) return;
-      down = true;
-      sx = ev.clientX || 0;
-      sy = ev.clientY || 0;
-      dx = 0; dy = 0;
-    }, { passive: true });
+  document.addEventListener("pointermove", (ev) => {
+    if (!down || !trackingCard) return;
+    dx = (ev.clientX || 0) - sx;
+    dy = (ev.clientY || 0) - sy;
 
-    card.addEventListener("pointermove", (ev) => {
-      if (!down) return;
-      dx = (ev.clientX || 0) - sx;
-      dy = (ev.clientY || 0) - sy;
-      // if it's vertical-ish, prevent the page from scrolling
-      if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 10){
-        try{ ev.preventDefault(); }catch(e){}
-      }
-    }, { passive: false });
+    // If it's a vertical gesture, prevent scroll BEFORE other handlers
+    if (Math.abs(dy) > Math.abs(dx) * 1.1 && Math.abs(dy) > 12){
+      try{ ev.preventDefault(); }catch(e){}
+    }
+  }, { capture: true, passive: false });
 
-    card.addEventListener("pointerup", () => {
-      if (!down) return;
-      down = false;
+  document.addEventListener("pointerup", () => {
+    if (!down) return;
+    down = false;
 
-      const vThresh = Math.min(140, Math.max(70, (window.innerHeight||700) * 0.18));
-      const isVertical = Math.abs(dy) > Math.abs(dx) * 1.15;
+    const isVertical = Math.abs(dy) > Math.abs(dx) * 1.15;
 
-      // swipe up to expand
-      if (isVertical && dy < -vThresh){
-        doExpand();
-        return;
-      }
-      // swipe down to collapse (only if expanded)
-      if (isVertical && dy > vThresh){
-        doCollapse();
-        return;
-      }
-    }, { passive: true });
-  }
+    if (trackingCard){
+      try{ trackingCard.style.transform = "translate3d(0,0,0) rotate(0deg)"; }catch(e){}
+      try{ trackingCard.style.transition = "none"; }catch(e){}
+    }
 
-  // Cache last discover profile from /api/feed to support fallback expand
-  (function hookFeed(){
-    if (window.__ffFeedHooked) return;
-    window.__ffFeedHooked = true;
-    const origFetch = window.fetch;
-    window.fetch = async function(input, init){
-      const res = await origFetch(input, init);
-      try{
-        const url = (typeof input === "string") ? input : (input && input.url) ? input.url : "";
-        if (url && url.includes("/api/feed")){
-          const clone = res.clone();
-          clone.json().then((data)=>{
-            try{
-              const arr = (data && (data.results || data.profiles || data.feed || data.items)) || null;
-              if (Array.isArray(arr) && arr.length){
-                window.__ff_last_discover_profile = arr[0];
-              }
-            }catch(e){}
-          }).catch(()=>{});
-        }
-      }catch(e){}
-      return res;
-    };
-  })();
+    if (isVertical && dy < -vThresh()){
+      doExpand();
+    } else if (isVertical && dy > vThresh()){
+      doCollapse();
+    }
 
-  bind();
-  setInterval(bind, 600);
+    trackingCard = null;
+    dx = 0; dy = 0;
+  }, true); // CAPTURE
 
-  // Keyboard expand/collapse
   window.addEventListener("keydown", (ev) => {
     if (ev.key === "ArrowUp"){ doExpand(); }
     if (ev.key === "ArrowDown" || ev.key === "Escape"){ doCollapse(); }
-  });
+  }, true);
 })();
 
